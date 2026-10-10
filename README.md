@@ -1,14 +1,16 @@
 # Pixel Agency Image Engine
 
-The reference engine for the [Media Engine Specification](../media-engine-spec/spec/base.md) (MES) **Image
+The reference engine for the [Media Engine Specification](https://github.com/xocialize/media-engine-spec/blob/main/spec/base.md) (MES) **Image
 profile**: Base 0.1 and Image 0.1, over local MLX models on Apple silicon. Pixel Agency Lite, Pixel Agency Desktop,
 the `mes` CLI, or any other MES client can find it on the network and run every Image operation on it.
 
 It's built from three parts:
 - **MESEngineKit** (media-engine-spec) serves Base 0.1: routes, jobs, the spool, pairing, DNS-SD, SSE, WebSocket
   and MCP.
-- **The model runtime** is ML[X] Image Server's engine half (`ImageServerModels`): the model catalog, routing and the
-  runner over MLXEngine and ForgeCore, with one heavy model resident at a time under MLXServe's memory governor.
+- **The model runtime** is [mlx-image-runtime](https://github.com/xocialize/mlx-image-runtime), ML[X] Image Server's
+  engine half (`ImageServerModels`): the model catalog, routing and the runner over
+  [MLXEngine](https://github.com/xocialize/mlx-engine-swift) and [ForgeCore](https://github.com/xocialize/ForgeCore),
+  with one heavy model resident at a time under MLXServe's memory governor.
 - **This package** adds the normalizer between them (Engines-PRD ENG-5): MES operations and vocabulary in, model
   runs out, and the Image profile's rules applied to whatever a model returns.
 
@@ -16,8 +18,10 @@ It's built from three parts:
 
 ## Run it
 
+Apple silicon, macOS 26, Swift 6.2. Every dependency is public, so it builds from source:
+
 ```bash
-swift run pixel-agency-image-engine
+swift run -c release pixel-agency-image-engine
 ```
 
 That serves open mode on `http://127.0.0.1:17610/mes/v0`, to this Mac only, and advertises `_mes-engine._tcp` on
@@ -98,8 +102,7 @@ The normalizer (`ImageNormalizer`, `RunPlan`) holds every model to the profile, 
     spread smoothly into the new area, and added there (`Media.harmonize`).
   - **Structure (extend).** LaMa repaints a thin band on the new side of the seam from both sides' context
     (`Media.seamBand`), so an edge the model drew a little out of step joins up.
-  - **Known limit:** at full size the new area can be softer than the original (Klein's 4 steps). The best tier,
-    Qwen-Image-Edit, is more faithful.
+  - **Known limit:** at full size the new area can be softer than the original (Klein's 4 steps).
 - **Colour and orientation (§1.3, §1.4).** Inputs are read upright and in sRGB, with `color_converted` when converted.
   Outputs are written sRGB and upright.
 - **Alpha (§1.5).** The input's alpha is re-applied when a model drops it (`alpha_reapplied`).

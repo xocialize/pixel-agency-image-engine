@@ -44,7 +44,8 @@ Not offered:
 - **Corpora** (measurement only, never shipped; `mlxengine-image/corpus`):
   - DIV2K validation HR (upscale, restore);
   - GrabCut (segment).
-- **Raw summaries and contact sheets:** [`docs/tiers/`](tiers/).
+- **Raw summaries and the generate contact sheets:** [`docs/tiers/`](tiers/). Sheets built from DIV2K photos are
+  kept out of the repo (research-only licence).
 
 ## Evidence
 
@@ -125,10 +126,11 @@ the engine, so SAM 2.1 is the default. Segment's vocabulary has no `quality`, so
 
 - **LaMa erase:** 0.83 s at 1024².
 - **MI-GAN extend (draft):** 2.0 s.
-- [Sheet](tiers/edits-sheet.jpg). Its LaMa erase tiles predate the fp32 fix and show the old pink.
+- The contact sheet stays out of this repo: its photos are DIV2K, licensed for academic research only. Its LaMa
+  erase tiles predated the fp32 fix and showed the old pink.
 - **Extend.** After the fix, LaMa continues both busy photos coherently but softly.
   - With a prompt, Klein painted both scenes seamlessly on 2 of 4 tries, left one side dark maroon once, and tinted
-    one side purple once ([sheet](tiers/extend-guard-sheet.jpg)).
+    one side purple once (sheet kept locally, DIV2K).
   - The paint guard now checks each side: purple-dominant over 25%, or under half as bright as the picture along its
     edge. It retries once with the next seed, then falls back to LaMa with `model_fallback`.
   - The maroon side measured 27 against an edge of 86, so it is now rejected. The slight tint (56) passes.

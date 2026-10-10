@@ -1,5 +1,5 @@
 {
-  "originHash" : "e460d7ffba2be93c916fdd9f3bb8de4548fcadfe1677901a7d94a61f515d0023",
+  "originHash" : "107b1995b72b5bcabde9d9ceae7441e6c70ccc417fa2c41cfdec6152cae0f330",
   "pins" : [
     {
       "identity" : "anima-mlx-swift",
@@ -143,15 +143,6 @@
       "state" : {
         "revision" : "e71050be546102d25a502eda0aa6400422406104",
         "version" : "0.4.0"
-      }
-    },
-    {
-      "identity" : "grdb.swift",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/groue/GRDB.swift.git",
-      "state" : {
-        "revision" : "b83108d10f42680d78f23fe4d4d80fc88dab3212",
-        "version" : "7.11.1"
       }
     },
     {
@@ -332,6 +323,15 @@
       "state" : {
         "revision" : "193099e74b1e135f7f47db1a4964b28dbacfa67b",
         "version" : "0.1.0"
+      }
+    },
+    {
+      "identity" : "mlx-image-runtime",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/xocialize/mlx-image-runtime.git",
+      "state" : {
+        "revision" : "4d1ef5f763eb43ae0fffc51230f6503d8a4e3a75",
+        "version" : "0.1.1"
       }
     },
     {

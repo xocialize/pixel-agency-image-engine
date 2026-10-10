@@ -12,7 +12,8 @@ struct TierBench: AsyncParsableCommand {
 
     @Argument(help: "Suites to run.") var suites: [String] = ["all"]
     @Option(help: "The engine's base URL.") var engine = "http://127.0.0.1:17610/mes/v0"
-    @Option(help: "The corpus root (sr-bench, interactive-seg).") var corpus = "/Volumes/Satechi/Development/mlxengine-image/corpus"
+    @Option(help: "The corpus root (sr-bench, interactive-seg). Default: $TIERBENCH_CORPUS, else ./corpus.")
+    var corpus = ProcessInfo.processInfo.environment["TIERBENCH_CORPUS"] ?? "corpus"
     @Option(help: "Where results go.") var out: String
     @Option(help: "Images per measured set.") var count = 6
     @Option(help: "Objects for segment.") var objects = 50
