@@ -202,10 +202,12 @@ struct ImageEngineTests {
             // Best is Qwen-Image-Edit's tier; the fake catalog lacks it, so LaMa runs and says the prompt went unused.
             #expect(best.plan?.model.id == "lama-inpaint" && best.warnings.map(\.code) == ["prompt_ignored"])
 
-            let plain = try await probe.succeed(JobRequest(operation: "image.fill", inputs: ["image": image(), "mask": .one(.inline(mediaType: "image/png", data: soft))]))
-            #expect(plain.plan?.model.id == "lama-inpaint")
+            let plain = try await probe.succeed(JobRequest(operation: "image.fill", inputs: ["image": image(), "mask": .one(.inline(mediaType: "image/png", data: soft))],
+                                                           params: ["quality": "best"]))
+            #expect(plain.plan?.model.id == "lama-inpaint" && plain.result?.effective["model_params"]?["variant"] == "lama")
+            #expect(runner.calls.withLock { $0.last!.spec.mode } == nil)
             let erase = try await probe.succeed(JobRequest(operation: "image.erase", inputs: ["image": image(), "mask": .one(.inline(mediaType: "image/png", data: soft))],
-                                                           params: ["quality": "draft"]))
+                                                           params: ["quality": "standard"]))
             #expect(erase.result?.effective["model_params"]?["variant"] == "mi-gan")
             let work = runner.calls.withLock { $0.last! }
             #expect(work.spec.mode == "fast")

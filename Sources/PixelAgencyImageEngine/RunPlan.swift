@@ -219,6 +219,16 @@ struct RunPlan {
 
     // MARK: - Masks: fill, erase, extend
 
+    /// The inpainting package's variant for a large hole: MI-GAN below best, LaMa at best. LaMa's MLX port casts
+    /// large fills pink on colour images (seen at 512² and 1024², fp32 and bf16; its parity fixture is greyscale, so
+    /// colour was never checked), while MI-GAN fills them cleanly. LaMa still bridges thin bands (extend's seam,
+    /// scratch defects), which it does well.
+    mutating func inpaintMode() -> String? {
+        let lama = context.quality == .best
+        modelParams["variant"] = .string(lama ? "lama" : "mi-gan")
+        return lama ? nil : "fast"
+    }
+
     /// Whether the chosen model is an edit model, which runs fill and extend generatively.
     func generative() async -> Bool {
         await normalizer.directory.model(ModelID(context.model.id))?.capabilities.contains(.imageEdit) ?? false
@@ -240,9 +250,8 @@ struct RunPlan {
         }
         let route = try await route(.imageInpaint)
         record(route)
-        let draft = context.quality == .draft                                   // MI-GAN, LaMa's fast sibling
-        if draft { modelParams["variant"] = "mi-gan" }
-        let result = try image(try await invoke(route, params: [:], mode: draft ? "fast" : nil,
+        let mode = inpaintMode()
+        let result = try image(try await invoke(route, params: [:], mode: mode,
                                                 inputs: ["image": [Media.modelImage(original)], "mask": [Media.modelImage(mask.hole)]]))
         return [try write(Media.composite(result: result, over: original, mask: mask), name: "image")]
     }
@@ -277,8 +286,8 @@ struct RunPlan {
             }
             let route = try await route(.imageInpaint)
             record(route)
-            result = try image(try await invoke(route, params: [:], inputs: ["image": [Media.modelImage(canvas)],
-                                                                             "mask": [Media.modelImage(mask)]]))
+            result = try image(try await invoke(route, params: [:], mode: inpaintMode(), inputs: ["image": [Media.modelImage(canvas)],
+                                                                                                "mask": [Media.modelImage(mask)]]))
         }
         return [try write(Media.composite(result: result, over: canvas, mask: mask), name: "image")]
     }

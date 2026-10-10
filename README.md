@@ -37,10 +37,10 @@ the loopback interface. Models download into the shared models folder on first u
 |---|---|---|---|
 | `image.generate` | FLUX.2 Klein 4B | **Z-Image Turbo** | Z-Image |
 | `image.edit` | **Klein 4B** | **Klein 4B** | Qwen-Image-Edit 2511 |
-| `image.fill` | MI-GAN | **LaMa** | LaMa |
+| `image.fill` | MI-GAN | **MI-GAN** | LaMa |
 | ↳ with a prompt | Klein 4B | Klein 4B | Qwen-Image-Edit 2511 |
-| `image.erase` | MI-GAN | **LaMa** | LaMa |
-| `image.extend` | LaMa | **Klein 4B** | Qwen-Image-Edit 2511 |
+| `image.erase` | MI-GAN | **MI-GAN** | LaMa |
+| `image.extend` | MI-GAN | **Klein 4B** | Qwen-Image-Edit 2511 |
 | `image.upscale` | NERVE | **RealPLKSR** | HEART, SeedVR2, NACRE |
 | `image.restore` | by `kind`: NAFNet (general), SCUNet / Restormer / DRUNet (denoise), Restormer (deblur), GFPGAN / RestoreFormer++ (faces); `scratches` runs defect detection, then LaMa on just the defects |||
 | `image.relight` | HVI-CIDNet |||
@@ -50,7 +50,9 @@ the loopback interface. Models download into the shared models folder on first u
 | `image.describe` | Mage-VL |||
 | `image.score` | SigLIP2 quality |||
 
-Bold is the default when a request names no model. Every offer carries its licence in MES terms (Base §10.2).
+Bold is the default when a request names no model. MI-GAN and LaMa are one package (`lama-inpaint`), so the
+offer is LaMa's; `effective.model_params.variant` says which ran. LaMa's MLX port casts large fills pink on colour
+images, so it runs only at best until that's fixed. It still bridges thin bands (extend's seam, scratch defects). Every offer carries its licence in MES terms (Base §10.2).
 `commercial_use` is `true` only when every weight licence and the port's code licence are permissive.
 
 ### Research models (opt-in)
