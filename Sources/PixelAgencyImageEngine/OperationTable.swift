@@ -1,0 +1,116 @@
+import Foundation
+import MESCore
+import MLXToolKit
+
+/// How each Image-profile operation maps onto the model runtime (Engines-PRD IMG-1–5): the capability that serves
+/// it, which model serves each quality tier by default, and the vocabulary the engine honours. A parameter the
+/// engine can't honour isn't offered (Base §6 rule 4: no surprises); one it accepts but a model ignores is warned.
+struct OperationSpec: Sendable {
+    let operation: String
+    /// The capabilities whose models are offered, the operation's own first (fill and extend also offer edit models,
+    /// which run them generatively).
+    let capabilities: [Capability]
+    var capability: Capability { capabilities[0] }
+    /// Tiers per model id. A tier's default is the first registered model listed for it in `defaults`.
+    let tiers: [String: [QualityTier]]
+    /// Preferred defaults, most preferred first. The first registered one is the operation's default.
+    let defaults: [String]
+    /// Tiers for offered models the table doesn't name.
+    let otherTiers: [QualityTier]
+    /// Vocabulary names offered as params.
+    let params: [String]
+    /// Narrower schemas than the vocabulary's, where the engine honours less.
+    let narrowed: [String: JSONValue]
+    /// Inputs the engine declares (name → required); others in the profile table are left out.
+    let inputs: [String: Bool]
+    /// Further capabilities a plan may use (e.g. restore's scratches use defect detection and inpainting).
+    let helpers: [Capability]
+
+    init(_ operation: String, _ capabilities: Capability..., tiers: [String: [QualityTier]] = [:], defaults: [String] = [],
+         otherTiers: [QualityTier] = [.standard], params: [String], narrowed: [String: JSONValue] = [:],
+         inputs: [String: Bool], helpers: [Capability] = []) {
+        self.operation = operation; self.capabilities = capabilities; self.tiers = tiers; self.defaults = defaults
+        self.otherTiers = otherTiers; self.params = params; self.narrowed = narrowed; self.inputs = inputs; self.helpers = helpers
+    }
+}
+
+enum OperationTable {
+    static let all: [QualityTier] = [.draft, .standard, .best]
+    /// PNG and JPEG, 8-bit: what the engine writes (Image §1.2 lets an engine refuse other formats; here they're
+    /// simply not offered).
+    static let output: JSONValue = [
+        "type": "object", "additionalProperties": false,
+        "properties": ["media_type": ["enum": ["image/png", "image/jpeg"]], "bit_depth": ["enum": [8]]],
+    ]
+
+    static let specs: [OperationSpec] = [
+        OperationSpec("image.generate", .textToImage,
+                      tiers: ["klein-4b": [.draft], "z-image-turbo": [.standard], "z-image": [.best], "qwen-image-flash": [.standard, .best]],
+                      defaults: ["z-image-turbo", "klein-4b", "z-image", "qwen-image-flash"],
+                      params: ["negative_prompt", "size", "aspect", "megapixels", "quality", "seed", "count", "output"],
+                      narrowed: ["count": ["type": "integer", "minimum": 1, "maximum": 4, "default": 1], "output": output],
+                      inputs: ["prompt": true]),
+        OperationSpec("image.edit", .imageEdit,
+                      tiers: ["klein-4b": [.draft, .standard], "qwen-image-edit": [.best]],
+                      defaults: ["klein-4b", "qwen-image-edit"],
+                      params: ["strength", "quality", "seed", "size", "output"], narrowed: ["output": output],
+                      inputs: ["images": true, "instruction": true]),
+        // Fill: LaMa without a prompt; with one, an edit model paints it in (`ImageNormalizer.defaultModel`).
+        OperationSpec("image.fill", .imageInpaint, .imageEdit,
+                      tiers: ["lama-inpaint": all, "klein-4b": [.draft, .standard], "qwen-image-edit": [.best]],
+                      defaults: ["lama-inpaint"],
+                      params: ["quality", "seed", "output"], narrowed: ["output": output],
+                      inputs: ["image": true, "mask": true, "prompt": false]),
+        // Erase is prompt-less inpainting (IMG-5): LaMa, or MI-GAN at draft.
+        OperationSpec("image.erase", .imageInpaint, defaults: ["lama-inpaint"], otherTiers: all,
+                      params: ["quality", "output"], narrowed: ["output": output],
+                      inputs: ["image": true, "mask": true]),
+        // Extend is inpainting on a padded canvas (IMG-5). LaMa fills holes well but can't continue a scene past the
+        // border, so an edit model is the default and LaMa the draft.
+        OperationSpec("image.extend", .imageEdit, .imageInpaint,
+                      tiers: ["lama-inpaint": [.draft], "klein-4b": [.standard], "qwen-image-edit": [.best]],
+                      defaults: ["klein-4b", "lama-inpaint"],
+                      params: ["canvas", "quality", "seed", "output"], narrowed: ["output": output],
+                      inputs: ["image": true, "prompt": false]),
+        OperationSpec("image.upscale", .imageUpscale,
+                      tiers: ["nerve-upscale": [.draft], "realplksr-upscale": [.standard], "heart-upscale": [.best],
+                              "seedvr2-upscale": [.best], "nacre-upscale": [.best]],
+                      defaults: ["realplksr-upscale", "nerve-upscale", "heart-upscale"],
+                      params: ["scale", "content", "quality", "output"],
+                      narrowed: ["content": ["enum": ["photo"], "default": "photo"], "output": output],
+                      inputs: ["image": true]),
+        OperationSpec("image.restore", .imageRestore, defaults: ["nafnet-restore"], otherTiers: all,
+                      params: ["kind", "quality", "output"], narrowed: ["output": output],
+                      inputs: ["image": true], helpers: [.defectDetect, .imageInpaint]),
+        OperationSpec("image.relight", .imageRelight, defaults: ["cidnet-relight"], otherTiers: all,
+                      params: ["strength", "quality", "output"], narrowed: ["output": output],
+                      inputs: ["image": true, "prompt": false]),
+        OperationSpec("image.colorize", .imageColorize, defaults: ["ddcolor-colorize"], otherTiers: all,
+                      params: ["quality", "output"], narrowed: ["output": output],
+                      inputs: ["image": true]),
+        OperationSpec("image.matte", .matting, defaults: ["birefnet-matte"], otherTiers: all,
+                      params: ["outputs"], inputs: ["image": true]),
+        OperationSpec("image.segment", .promptSegment,
+                      tiers: ["edgetam-segment": [.draft, .standard], "sam21-segment": [.best]],
+                      defaults: ["edgetam-segment", "sam21-segment"],
+                      params: ["count"], narrowed: ["count": ["type": "integer", "minimum": 1, "maximum": 1, "default": 1]],
+                      inputs: ["image": true, "points": true]),
+        OperationSpec("image.describe", .imageAnalysis, defaults: ["mage-vl"], otherTiers: all,
+                      params: ["language"], inputs: ["image": true]),
+        OperationSpec("image.score", .imageQualityScore, defaults: ["siglip2-quality"], otherTiers: all,
+                      params: [], inputs: ["image": true]),
+    ]
+
+    /// Fill with a prompt, by quality tier: the edit models that paint it, most preferred first.
+    static let generativeFill: [QualityTier: [String]] = [
+        .draft: ["klein-4b"], .standard: ["klein-4b", "qwen-image-edit"], .best: ["qwen-image-edit", "klein-4b"],
+    ]
+
+    /// `restore`'s `kind` → the model that does it (when the request didn't name one).
+    static let restoreModels: [String: [String]] = [
+        "general": ["nafnet-restore"],
+        "denoise": ["scunet-denoise", "restormer-denoise", "drunet-denoise", "nafnet-restore"],
+        "deblur": ["restormer-motion", "restormer-defocus", "nafnet-restore"],
+        "faces": ["gfpgan-face", "restoreformer-face"],
+    ]
+}
