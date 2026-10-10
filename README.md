@@ -12,6 +12,8 @@ It's built from three parts:
 - **This package** adds the normalizer between them (Engines-PRD ENG-5): MES operations and vocabulary in, model
   runs out, and the Image profile's rules applied to whatever a model returns.
 
+![Live results through Pixel Agency Lite's run workflow: generate with Z-Image Turbo and Qwen-Image 2.1 Turbo, edit, matte, erase, fill with a prompt, extend, segment](docs/images/l2-live-results.png)
+
 ## Run it
 
 ```bash
