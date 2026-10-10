@@ -1,5 +1,7 @@
 import ArgumentParser
 import Foundation
+import ImageServerCatalog
+import ImageServerModels
 import MESEngineKit
 import PixelAgencyImageEngine
 
@@ -41,7 +43,8 @@ struct ImageEngineCommand: AsyncParsableCommand {
 
         let modelStore = store.map { URL(fileURLWithPath: $0, isDirectory: true) } ?? ImageRuntime.defaultModelStore
         print("Registering models (models folder: \(modelStore.path))…")
-        let runtime = await ImageRuntime.start(modelStore: modelStore, options: .init(allowResearch: allowResearch))
+        let runtime = await ImageRuntime.start(modelStore: modelStore, catalog: ModelCatalog.all(),
+                                               options: .init(allowResearch: allowResearch))
         for (model, reason) in ImageNormalizer.quarantined.sorted(by: { $0.key < $1.key }) {
             print("not offering \(model): \(reason)")
         }

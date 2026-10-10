@@ -24,13 +24,16 @@ public final class ImageRuntime {
             .appendingPathComponent("MLXEngine/Models", isDirectory: true)
     }
 
-    /// Registers every catalog model with the runtime (nothing is downloaded or loaded until a job needs it).
+    /// Registers `catalog`'s models with the runtime (nothing is downloaded or loaded until a job needs it). The
+    /// headless engine passes `ModelCatalog.all()` (ImageServerCatalog: every package); an app that embeds only
+    /// ForgeCore's tiers passes those (`ModelCatalog.processing()`, or a subset), and links no generative package.
     ///
     /// The router may run restricted models: what's offered is the normalizer's call (`allowResearch`), and an
     /// offered research model is `named_only`, so it runs only when a request names it.
-    public static func start(modelStore: URL = defaultModelStore, options: ImageNormalizer.Options = .init()) async -> ImageRuntime {
+    public static func start(modelStore: URL = defaultModelStore, catalog: [CatalogEntry],
+                             options: ImageNormalizer.Options = .init()) async -> ImageRuntime {
         try? FileManager.default.createDirectory(at: modelStore, withIntermediateDirectories: true)
-        let (service, forge) = await ImageEngineService.bootstrap(storeRoot: modelStore, catalog: ModelCatalog.all(),
+        let (service, forge) = await ImageEngineService.bootstrap(storeRoot: modelStore, catalog: catalog,
                                                                   allowRestricted: true)
         let normalizer = ImageNormalizer(directory: service, runner: EngineRunner(engine: service.engine), options: options)
         return ImageRuntime(normalizer: normalizer, service: service, forge: forge)

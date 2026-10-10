@@ -30,6 +30,8 @@ let package = Package(
         ]),
         .executableTarget(name: "ImageEngineCLI", dependencies: [
             "PixelAgencyImageEngine",
+            .product(name: "ImageServerCatalog", package: "ImageServerKit"),
+            .product(name: "ImageServerModels", package: "ImageServerKit"),
             .product(name: "MESEngineKit", package: "media-engine-spec"),
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
         ]),
