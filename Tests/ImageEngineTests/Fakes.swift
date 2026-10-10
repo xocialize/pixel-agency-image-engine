@@ -62,6 +62,8 @@ actor FakeModels: ImageModelDirectory, ModelRouter {
         model("lama-inpaint", [.imageInpaint]),
         model("realplksr-upscale", [.imageUpscale]),
         model("nerve-upscale", [.imageUpscale]),
+        model("heart-upscale", [.imageUpscale]),
+        model("seedvr2-upscale", [.imageUpscale]),
         model("nafnet-restore", [.imageRestore]),
         model("scunet-denoise", [.imageRestore]),
         model("defect-detect", [.defectDetect]),
@@ -69,6 +71,7 @@ actor FakeModels: ImageModelDirectory, ModelRouter {
         model("ddcolor-colorize", [.imageColorize]),
         model("birefnet-matte", [.matting]),
         model("edgetam-segment", [.promptSegment]),
+        model("sam21-segment", [.promptSegment]),
         model("mage-vl", [.imageAnalysis]),
         model("siglip2-quality", [.imageQualityScore]),
     ]

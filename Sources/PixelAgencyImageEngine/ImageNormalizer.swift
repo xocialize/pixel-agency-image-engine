@@ -171,24 +171,27 @@ public struct ImageNormalizer: MediaEngine {
         }
     }
 
-    /// Defaults that depend on the request (Base §6 rule 2): restore picks its network by `kind`, and fill with a
-    /// prompt goes to an edit model, which can paint what the prompt asks for.
+    /// The default when a request names no model (Base §6 rule 2): each tier's preferred model (`OperationSpec.
+    /// preferred`), refined by the request's params: restore by `kind`, fill with a prompt to an edit model, upscale
+    /// of drawn content to NERVE. Only `candidates` (the tier's allowed, not named-only offers) can be returned.
     public func defaultModel(for request: JobRequest, descriptor: Descriptor, kitChoice: ModelOffer,
                              candidates: [ModelOffer]) -> ModelOffer? {
+        guard let spec = OperationTable.specs.first(where: { $0.operation == request.operation }) else { return nil }
+        let tier = request.params?["quality"]?.stringValue.flatMap(QualityTier.init(rawValue:)) ?? .standard
         var preferred: [String] = []
         switch request.operation {
         case "image.restore":
-            guard let kind = request.params?["kind"]?.stringValue else { return nil }
-            preferred = OperationTable.restoreModels[kind] ?? []
+            if let kind = request.params?["kind"]?.stringValue { preferred = OperationTable.restoreModels[kind] ?? [] }
         case "image.fill":
-            guard case .text(let prompt)? = request.inputs?["prompt"], !prompt.trimmingCharacters(in: .whitespaces).isEmpty
-            else { return nil }
-            let tier = request.params?["quality"]?.stringValue.flatMap(QualityTier.init(rawValue:)) ?? .standard
-            preferred = OperationTable.generativeFill[tier] ?? []
+            if case .text(let prompt)? = request.inputs?["prompt"], !prompt.trimmingCharacters(in: .whitespaces).isEmpty {
+                preferred = OperationTable.generativeFill[tier] ?? []
+            }
+        case "image.upscale":
+            if request.params?["content"]?.stringValue == "drawn" { preferred = OperationTable.drawnUpscale }
         default:
-            return nil
+            break
         }
-        return preferred.lazy.compactMap { id in candidates.first { $0.id == id } }.first
+        return (preferred + spec.preferred(at: tier)).lazy.compactMap { id in candidates.first { $0.id == id } }.first
     }
 
     public func residentModels() async -> [String] {

@@ -69,7 +69,7 @@ struct ImageEngineTests {
         #expect(edit.models.map(\.id) == ["klein-4b"])            // boogu is work in progress
         #expect(edit.inputs.first { $0.name == "images" }?.max == 4)
         let upscale = try #require(ops.first { $0.operation == "image.upscale" })
-        #expect(upscale.params["properties"]?["content"]?["enum"] == ["photo"])
+        #expect(upscale.params["properties"]?["content"]?["enum"] == ["photo", "drawn"])
     }
 
     @Test("--allow-research offers research and WIP models named-only, with their terms; the default never picks them")
@@ -255,6 +255,28 @@ struct ImageEngineTests {
         #expect(abs(grey(128) - 100) <= 3, "at the seam: \(grey(128))")
         #expect(grey(160) > grey(130) && abs(grey(255) - 140) <= 3, "fades: \(grey(160)), far: \(grey(255))")
         #expect(grey(10) == 140, "outside the region the result is left as it was (the composite takes the original)")
+    }
+
+    @Test("Each tier runs its measured default, whatever the catalog order; drawn content upscales with NERVE")
+    func tierDefaults() async throws {
+        try await withEngine { probe, _ in
+            func model(_ op: String, _ inputs: [String: RequestInput], _ params: [String: MESValue]) async throws -> String? {
+                try await probe.succeed(JobRequest(operation: op, inputs: inputs, params: params)).plan?.model.id
+            }
+            let small = image(Fixtures.png(width: 32, height: 24))
+            let upscale = [try await model("image.upscale", ["image": small], ["quality": "draft"]),
+                           try await model("image.upscale", ["image": small], [:]),
+                           try await model("image.upscale", ["image": small], ["quality": "best"]),
+                           try await model("image.upscale", ["image": small], ["quality": "best", "content": "drawn"])]
+            #expect(upscale == ["nerve-upscale", "realplksr-upscale", "heart-upscale", "nerve-upscale"])
+            let points: RequestInput = .one(.data([["x": 0.5, "y": 0.5, "label": "include"]]))
+            // Segment's vocabulary has no `quality` (Image §5): its default is the standard tier's model.
+            #expect(try await model("image.segment", ["image": image(), "points": points], [:]) == "sam21-segment")
+            let generate = [try await model("image.generate", ["prompt": .text("x")], ["quality": "draft", "size": ["width": 64, "height": 64]]),
+                            try await model("image.generate", ["prompt": .text("x")], ["size": ["width": 64, "height": 64]]),
+                            try await model("image.generate", ["prompt": .text("x")], ["quality": "best", "size": ["width": 64, "height": 64]])]
+            #expect(generate == ["klein-4b", "z-image-turbo", "z-image"])
+        }
     }
 
     @Test("Runtime failures arrive as MES errors")

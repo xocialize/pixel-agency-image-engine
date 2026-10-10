@@ -26,6 +26,11 @@ struct OperationSpec: Sendable {
     /// Further capabilities a plan may use (e.g. restore's scratches use defect detection and inpainting).
     let helpers: [Capability]
 
+    /// The models to prefer at `tier` when a request names none: `defaults` in order, those that serve the tier.
+    func preferred(at tier: QualityTier) -> [String] {
+        defaults.filter { (tiers[$0] ?? otherTiers).contains(tier) }
+    }
+
     init(_ operation: String, _ capabilities: Capability..., tiers: [String: [QualityTier]] = [:], defaults: [String] = [],
          otherTiers: [QualityTier] = [.standard], params: [String], narrowed: [String: JSONValue] = [:],
          inputs: [String: Bool], helpers: [Capability] = []) {
@@ -69,15 +74,17 @@ enum OperationTable {
         // border, so an edit model is the default and LaMa the draft.
         OperationSpec("image.extend", .imageEdit, .imageInpaint,
                       tiers: ["lama-inpaint": [.draft], "klein-4b": [.standard], "qwen-image-edit": [.best]],
-                      defaults: ["klein-4b", "lama-inpaint"],
+                      defaults: ["klein-4b", "qwen-image-edit", "lama-inpaint"],
                       params: ["canvas", "quality", "seed", "output"], narrowed: ["output": output],
                       inputs: ["image": true, "prompt": false]),
+        // Measured (R1b, docs/TIERS.md): photos, NERVE → RealPLKSR → HEART (best PSNR on 12 of 12 Commons rungs).
+        // SeedVR2 measured worst of the learned models on photos, and Nacre is a generative route: offered, never a
+        // default. Drawn content goes to NERVE at every tier (it beats RealPLKSR on graphics), so NERVE serves all.
         OperationSpec("image.upscale", .imageUpscale,
-                      tiers: ["nerve-upscale": [.draft], "realplksr-upscale": [.standard], "heart-upscale": [.best],
+                      tiers: ["nerve-upscale": all, "realplksr-upscale": [.standard], "heart-upscale": [.best],
                               "seedvr2-upscale": [.best], "nacre-upscale": [.best]],
-                      defaults: ["realplksr-upscale", "nerve-upscale", "heart-upscale"],
-                      params: ["scale", "content", "quality", "output"],
-                      narrowed: ["content": ["enum": ["photo"], "default": "photo"], "output": output],
+                      defaults: ["realplksr-upscale", "heart-upscale", "nerve-upscale"],
+                      params: ["scale", "content", "quality", "output"], narrowed: ["output": output],
                       inputs: ["image": true]),
         OperationSpec("image.restore", .imageRestore, defaults: ["nafnet-restore"], otherTiers: all,
                       params: ["kind", "quality", "output"], narrowed: ["output": output],
@@ -90,9 +97,10 @@ enum OperationTable {
                       inputs: ["image": true]),
         OperationSpec("image.matte", .matting, defaults: ["birefnet-matte"], otherTiers: all,
                       params: ["outputs"], inputs: ["image": true]),
+        // Measured: first-click IoU SAM 2.1 0.755 vs EdgeTAM 0.537 (DEV/click-select-bench), at 0.1–0.25 s per image.
         OperationSpec("image.segment", .promptSegment,
-                      tiers: ["edgetam-segment": [.draft, .standard], "sam21-segment": [.best]],
-                      defaults: ["edgetam-segment", "sam21-segment"],
+                      tiers: ["edgetam-segment": [.draft], "sam21-segment": [.standard, .best]],
+                      defaults: ["sam21-segment", "edgetam-segment"],
                       params: ["count"], narrowed: ["count": ["type": "integer", "minimum": 1, "maximum": 1, "default": 1]],
                       inputs: ["image": true, "points": true]),
         OperationSpec("image.describe", .imageAnalysis, defaults: ["mage-vl"], otherTiers: all,
@@ -105,6 +113,9 @@ enum OperationTable {
     static let generativeFill: [QualityTier: [String]] = [
         .draft: ["klein-4b"], .standard: ["klein-4b", "qwen-image-edit"], .best: ["qwen-image-edit", "klein-4b"],
     ]
+
+    /// Upscale of `content: drawn`: NERVE at every tier.
+    static let drawnUpscale = ["nerve-upscale"]
 
     /// `restore`'s `kind` → the model that does it (when the request didn't name one).
     static let restoreModels: [String: [String]] = [
