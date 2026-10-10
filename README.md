@@ -113,7 +113,7 @@ The normalizer (`ImageNormalizer`, `RunPlan`) holds every model to the profile, 
 
 The engine passes the MES conformance suite. Against the live engine with real models (2026-10-09):
 - **Results:** 34 passed, 0 failed, 4 skipped. **Base 0.1 conforms, Image 0.1 conforms.** The report is in
-  [`docs/conformance/2026-10-09-live.md`](docs/conformance/2026-10-09-live.md).
+  [`docs/conformance/2026-10-10-live.md`](docs/conformance/2026-10-10-live.md) (re-run after R1b; the first run is `2026-10-09-live.md`).
 - **Skipped:** the paired-mode tests and output expiry, which don't apply to an open-mode engine with a one-hour TTL.
   `swift test` also runs paired mode against fakes.
 
