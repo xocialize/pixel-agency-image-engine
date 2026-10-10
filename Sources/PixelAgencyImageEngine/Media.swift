@@ -224,6 +224,52 @@ enum Media {
         return out
     }
 
+    /// Why an edit model's painting can't be used, or nil, checking each of `parts` (extend: one per new side; fill:
+    /// the mask) on its own, so a good side can't hide a bad one. Edit models fail at it in two ways (R1b): they keep
+    /// the magenta marker, as is or as a shaded purple surface, or they leave the area dark.
+    /// - `marker`: over a quarter of a part is purple-dominant (red and blue both well above green).
+    /// - `dark` (`checkDark`, for extend): a part is under half as bright as the picture along its edge.
+    static func paintingProblem(_ result: Pixels, canvas: Pixels, parts: [Mask], checkDark: Bool) -> String? {
+        let (w, h) = (canvas.width, canvas.height)
+        func luma(_ p: Pixels, _ i: Int) -> Double {
+            0.299 * Double(p.rgba[i * 4]) + 0.587 * Double(p.rgba[i * 4 + 1]) + 0.114 * Double(p.rgba[i * 4 + 2])
+        }
+        for part in parts {
+            var inside = 0, purple = 0, brightness = 0.0
+            for i in 0..<(w * h) where part.values[i] > 0 {
+                inside += 1
+                let (r, g, b) = (Int(result.rgba[i * 4]), Int(result.rgba[i * 4 + 1]), Int(result.rgba[i * 4 + 2]))
+                if r - g > 40 && b - g > 40 { purple += 1 }
+                brightness += luma(result, i)
+            }
+            guard inside > 0 else { continue }
+            if Double(purple) / Double(inside) > 0.25 { return "marker" }
+            guard checkDark else { continue }
+            // The picture's own pixels along this part: the band just outside it.
+            let outside = Mask(width: w, height: h, values: part.values.map { $0 > 0 ? 0 : 255 })
+            let band = seamBand(of: outside, width: max(8, max(w, h) / 48))
+            var edge = 0.0, n = 0
+            for i in 0..<(w * h) where band.values[i] > 0 && canvas.rgba[i * 4 + 3] > 0 { edge += luma(canvas, i); n += 1 }
+            if n > 0, brightness / Double(inside) < 0.5 * (edge / Double(n)) { return "dark" }
+        }
+        return nil
+    }
+
+    /// The new sides of a padded canvas, one mask each (left, right, top, bottom; corners go with left and right).
+    static func sides(width w: Int, height h: Int, left: Int, top: Int, right: Int, bottom: Int) -> [Mask] {
+        var masks: [Mask] = []
+        func side(_ inside: (Int, Int) -> Bool) {
+            var m = Mask(width: w, height: h)
+            for y in 0..<h { for x in 0..<w where inside(x, y) { m.values[y * w + x] = 255 } }
+            masks.append(m)
+        }
+        if left > 0 { side { x, _ in x < left } }
+        if right > 0 { side { x, _ in x >= w - right } }
+        if top > 0 { side { x, y in y < top && x >= left && x < w - right } }
+        if bottom > 0 { side { x, y in y >= h - bottom && x >= left && x < w - right } }
+        return masks
+    }
+
     /// Makes a generative result meet the original without a seam, leaving the original untouched.
     ///
     /// An edit model re-renders the whole picture, so its painted region continues *its* version of the rest, not the

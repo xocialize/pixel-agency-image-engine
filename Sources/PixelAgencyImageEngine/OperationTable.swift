@@ -49,20 +49,25 @@ enum OperationTable {
     ]
 
     static let specs: [OperationSpec] = [
+        // Measured (R1b, docs/TIERS.md): Z-Image Turbo leads on both prompt sets (IQA 0.915 / 0.903, hard-prompt recall
+        // 0.94, text spelled right) at 13.7 s; Z-Image (28 steps, 70 s) scored lower on both, so it isn't "best".
         OperationSpec("image.generate", .textToImage,
-                      tiers: ["klein-4b": [.draft], "z-image-turbo": [.standard], "z-image": [.best], "qwen-image-flash": [.standard, .best]],
+                      tiers: ["klein-4b": [.draft], "z-image-turbo": [.standard, .best], "z-image": [.standard],
+                              "qwen-image-flash": [.standard, .best]],
                       defaults: ["z-image-turbo", "klein-4b", "z-image"],
                       params: ["negative_prompt", "size", "aspect", "megapixels", "quality", "seed", "count", "output"],
                       narrowed: ["count": ["type": "integer", "minimum": 1, "maximum": 4, "default": 1], "output": output],
                       inputs: ["prompt": true]),
+        // Provisional (R1b, 2 photos): Klein 4B at every tier. Qwen-Image-Edit 2511 took ~5.2 min per 1024² job (Klein
+        // 15 s), barely applied one of two edits, and kept the extend marker on both photos. Offered, not a default.
         OperationSpec("image.edit", .imageEdit,
-                      tiers: ["klein-4b": [.draft, .standard], "qwen-image-edit": [.best]],
+                      tiers: ["klein-4b": all, "qwen-image-edit": [.best]],
                       defaults: ["klein-4b", "qwen-image-edit"],
                       params: ["strength", "quality", "seed", "size", "output"], narrowed: ["output": output],
                       inputs: ["images": true, "instruction": true]),
         // Fill: LaMa without a prompt; with one, an edit model paints it in (`ImageNormalizer.defaultModel`).
         OperationSpec("image.fill", .imageInpaint, .imageEdit,
-                      tiers: ["lama-inpaint": all, "klein-4b": [.draft, .standard], "qwen-image-edit": [.best]],
+                      tiers: ["lama-inpaint": all, "klein-4b": all, "qwen-image-edit": [.best]],
                       defaults: ["lama-inpaint"],
                       params: ["quality", "seed", "output"], narrowed: ["output": output],
                       inputs: ["image": true, "mask": true, "prompt": false]),
@@ -70,11 +75,12 @@ enum OperationTable {
         OperationSpec("image.erase", .imageInpaint, defaults: ["lama-inpaint"], otherTiers: all,
                       params: ["quality", "output"], narrowed: ["output": output],
                       inputs: ["image": true, "mask": true]),
-        // Extend is inpainting on a padded canvas (IMG-5). LaMa fills holes well but can't continue a scene past the
-        // border, so an edit model is the default and LaMa the draft.
-        OperationSpec("image.extend", .imageEdit, .imageInpaint,
-                      tiers: ["lama-inpaint": [.draft], "klein-4b": [.standard], "qwen-image-edit": [.best]],
-                      defaults: ["klein-4b", "qwen-image-edit", "lama-inpaint"],
+        // Extend is inpainting on a padded canvas (IMG-5): LaMa (MI-GAN at draft). Measured (R1b): fp32 LaMa continues
+        // busy photos coherently every time; Klein, shown the border to paint, rendered it as a purple surface or left
+        // it dark on 2 of 4 tries. With a prompt, an edit model paints the border (guarded, LaMa as fallback).
+        OperationSpec("image.extend", .imageInpaint, .imageEdit,
+                      tiers: ["lama-inpaint": all, "klein-4b": all, "qwen-image-edit": [.best]],
+                      defaults: ["lama-inpaint", "klein-4b", "qwen-image-edit"],
                       params: ["canvas", "quality", "seed", "output"], narrowed: ["output": output],
                       inputs: ["image": true, "prompt": false]),
         // Measured (R1b, docs/TIERS.md): photos, NERVE → RealPLKSR → HEART (best PSNR on 12 of 12 Commons rungs).
@@ -111,7 +117,7 @@ enum OperationTable {
 
     /// Fill with a prompt, by quality tier: the edit models that paint it, most preferred first.
     static let generativeFill: [QualityTier: [String]] = [
-        .draft: ["klein-4b"], .standard: ["klein-4b", "qwen-image-edit"], .best: ["qwen-image-edit", "klein-4b"],
+        .draft: ["klein-4b"], .standard: ["klein-4b", "qwen-image-edit"], .best: ["klein-4b", "qwen-image-edit"],
     ]
 
     /// Models not offered at all, with why: ones that take the engine process down (a Metal fault kills every

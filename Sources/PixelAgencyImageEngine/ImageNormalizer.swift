@@ -183,8 +183,8 @@ public struct ImageNormalizer: MediaEngine {
     }
 
     /// The default when a request names no model (Base §6 rule 2): each tier's preferred model (`OperationSpec.
-    /// preferred`), refined by the request's params: restore by `kind`, fill with a prompt to an edit model, upscale
-    /// of drawn content to NERVE. Only `candidates` (the tier's allowed, not named-only offers) can be returned.
+    /// preferred`), refined by the request's params: restore by `kind`, fill or extend with a prompt to an edit model,
+    /// upscale of drawn content to NERVE. Only `candidates` (the tier's allowed, not named-only offers) can be returned.
     public func defaultModel(for request: JobRequest, descriptor: Descriptor, kitChoice: ModelOffer,
                              candidates: [ModelOffer]) -> ModelOffer? {
         guard let spec = OperationTable.specs.first(where: { $0.operation == request.operation }) else { return nil }
@@ -193,7 +193,7 @@ public struct ImageNormalizer: MediaEngine {
         switch request.operation {
         case "image.restore":
             if let kind = request.params?["kind"]?.stringValue { preferred = OperationTable.restoreModels(kind: kind, tier: tier) }
-        case "image.fill":
+        case "image.fill", "image.extend":
             if case .text(let prompt)? = request.inputs?["prompt"], !prompt.trimmingCharacters(in: .whitespaces).isEmpty {
                 preferred = OperationTable.generativeFill[tier] ?? []
             }

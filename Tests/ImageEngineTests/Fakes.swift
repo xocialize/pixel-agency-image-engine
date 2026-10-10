@@ -83,8 +83,10 @@ final class FakeRunner: ModelRunner {
     let calls = Mutex<[RunWork]>([])
     let resident = Mutex<Set<String>>([])
     let delay: Duration
+    /// An edit model that returns its input, keeping the marker (as Qwen-Image-Edit did on some R1b extends).
+    let editKeepsMarker: Bool
 
-    init(delay: Duration = .milliseconds(30)) { self.delay = delay }
+    init(delay: Duration = .milliseconds(30), editKeepsMarker: Bool = false) { self.delay = delay; self.editKeepsMarker = editKeepsMarker }
 
     func residentPackages() async -> Set<String> { resident.withLock { $0 } }
 
@@ -106,6 +108,8 @@ final class FakeRunner: ModelRunner {
             let w = work.width ?? 1024, h = work.height ?? 1024
             let shade = CGFloat(work.seed % 251) / 255
             return .image(Self.solid(w, h, red: shade, green: 0.5, blue: 1 - shade))
+        case .imageEdit where editKeepsMarker:
+            return .image(first!)
         case .imageEdit:
             let (w, h) = size ?? (64, 64)
             return .image(Self.solid(max(16, w / 2), max(16, h / 2), red: 0.2, green: 0.8, blue: 0.2))   // models pick their own size

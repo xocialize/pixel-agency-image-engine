@@ -64,7 +64,7 @@ struct ImageEngineTests {
         #expect(klein.qualityTiers == [.draft] && klein.license.commercialUse == .yes && klein.license.spdx == "Apache-2.0")
         let fill = try #require(ops.first { $0.operation == "image.fill" })
         #expect(fill.models.first?.id == "lama-inpaint" && fill.models.contains { $0.id == "klein-4b" })
-        #expect(ops.first { $0.operation == "image.extend" }?.models.first?.id == "klein-4b")
+        #expect(ops.first { $0.operation == "image.extend" }?.models.first?.id == "lama-inpaint")
         let edit = try #require(ops.first { $0.operation == "image.edit" })
         #expect(edit.models.map(\.id) == ["klein-4b"])            // boogu is work in progress
         #expect(edit.inputs.first { $0.name == "images" }?.max == 4)
@@ -84,10 +84,10 @@ struct ImageEngineTests {
             let boogu = probe.descriptor("image.edit")?.models.first { $0.id == "boogu" }
             #expect(boogu?.namedOnly == true && boogu?.license.notice == "Work in progress: results may change between versions.")
 
-            // Unnamed at best quality: z-image, never the research model.
+            // Unnamed at best quality: the measured best (Z-Image Turbo), never the research model.
             let best = try await probe.succeed(JobRequest(operation: "image.generate", inputs: ["prompt": .text("a fox")],
                                                          params: ["quality": "best", "size": ["width": 256, "height": 256]]))
-            #expect(best.plan?.model.id == "z-image")
+            #expect(best.plan?.model.id == "z-image-turbo")
             // Named: it runs, and the plan carries its licence.
             let named = try await probe.succeed(JobRequest(operation: "image.generate", inputs: ["prompt": .text("a fox")],
                                                           params: ["size": ["width": 256, "height": 256]], model: "qwen-image-2.1"))
@@ -164,31 +164,37 @@ struct ImageEngineTests {
         }
     }
 
-    @Test("extend: an edit model continues the scene by default, LaMa at draft; the original's pixels are kept exactly")
+    @Test("extend: LaMa continues the picture by default; with a prompt an edit model paints the border; the original is kept exactly")
     func extend() async throws {
         try await withEngine { probe, runner in
             let canvas: MESValue = ["left": 16, "top": 0, "right": 16, "bottom": 8]
             let src = try DecodedImage(Fixtures.png())
-            let painted = try await probe.succeed(JobRequest(operation: "image.extend", inputs: ["image": image()], params: ["canvas": canvas, "seed": 5]))
+            let plain = try await probe.succeed(JobRequest(operation: "image.extend", inputs: ["image": image()], params: ["canvas": canvas]))
+            #expect(plain.plan?.model.id == "lama-inpaint" && plain.warnings.isEmpty)
+            #expect(plain.result?.effective["model_params"]?["variant"] == "lama")
+            let lama = try DecodedImage(try await probe.output(plain).1)
+            #expect(lama.width == 96 && lama.height == 56 && lama.pixel(0, 0) == [255, 0, 255, 255] && lama.pixel(16 + 10, 5) == src.pixel(10, 5))
+
+            let painted = try await probe.succeed(JobRequest(operation: "image.extend", inputs: ["image": image(), "prompt": .text("more forest")],
+                                                             params: ["canvas": canvas, "seed": 5]))
             #expect(painted.plan?.model.id == "klein-4b" && painted.result?.provenance.seed == 5)
             let (shown, seam) = runner.calls.withLock { ($0[$0.count - 2], $0[$0.count - 1]) }
             #expect(seam.route.capability == .imageInpaint && painted.result?.effective["model_params"]?["seam"] == "lama-inpaint")
-            let band = try DecodedImage(seam.inputs["mask"]![0].data)
-            #expect(band.pixel(15, 20)[0] == 255 && band.pixel(16, 20)[0] == 0 && band.pixel(0, 20)[0] == 0)   // 8 px wide, new side only
             #expect(shown.route.capability == .imageEdit && shown.width == 96 && shown.height == 48)   // 96×56 fitted to ×16
+            #expect(shown.spec.params["prompt"]?.stringValue?.hasPrefix("Replace the bright magenta areas at the left, right and bottom edges") == true)
+            #expect(shown.spec.params["prompt"]?.stringValue?.contains("showing more forest") == true)
             let marked = try DecodedImage(shown.inputs["images"]![0].data)
             #expect(marked.pixel(0, 0) == [255, 0, 255, 255] && marked.pixel(16 + 10, 5) == src.pixel(10, 5))
-            #expect(shown.spec.params["prompt"]?.stringValue?.hasPrefix("Replace the bright magenta areas at the left, right and bottom edges") == true)
+            let band = try DecodedImage(seam.inputs["mask"]![0].data)
+            #expect(band.pixel(15, 20)[0] == 255 && band.pixel(16, 20)[0] == 0 && band.pixel(0, 20)[0] == 0)   // 8 px wide, new side only
             let out = try DecodedImage(try await probe.output(painted).1)
             #expect(out.width == 96 && out.height == 56 && out.pixel(16 + 63, 47) == src.pixel(63, 47))
             #expect(out.pixel(0, 0) == [51, 204, 51, 255])                       // the new area is the model's
             #expect(out.pixel(12, 20) == [255, 0, 255, 255])                     // the seam band is LaMa's (the fake's magenta)
 
-            let draft = try await probe.succeed(JobRequest(operation: "image.extend", inputs: ["image": image(), "prompt": .text("more forest")],
+            let draft = try await probe.succeed(JobRequest(operation: "image.extend", inputs: ["image": image()],
                                                            params: ["canvas": canvas, "quality": "draft"]))
-            #expect(draft.plan?.model.id == "lama-inpaint" && draft.warnings.map(\.code) == ["prompt_ignored"])
-            let lama = try DecodedImage(try await probe.output(draft).1)
-            #expect(lama.pixel(0, 0) == [255, 0, 255, 255] && lama.pixel(16 + 10, 5) == src.pixel(10, 5))
+            #expect(draft.plan?.model.id == "lama-inpaint" && draft.result?.effective["model_params"]?["variant"] == "mi-gan")
         }
     }
 
@@ -204,8 +210,7 @@ struct ImageEngineTests {
             #expect(instruction.contains("magenta area with a snowy owl"))
             let best = try await probe.succeed(JobRequest(operation: "image.fill", inputs: ["image": image(), "mask": .one(.inline(mediaType: "image/png", data: soft)),
                                                                                          "prompt": .text("a snowy owl")], params: ["quality": "best"]))
-            // Best is Qwen-Image-Edit's tier; the fake catalog lacks it, so LaMa runs and says the prompt went unused.
-            #expect(best.plan?.model.id == "lama-inpaint" && best.warnings.map(\.code) == ["prompt_ignored"])
+            #expect(best.plan?.model.id == "klein-4b", "Klein paints at every tier (R1b)")
 
             let plain = try await probe.succeed(JobRequest(operation: "image.fill", inputs: ["image": image(), "mask": .one(.inline(mediaType: "image/png", data: soft))],
                                                            params: ["quality": "best"]))
@@ -282,7 +287,7 @@ struct ImageEngineTests {
             let generate = [try await model("image.generate", ["prompt": .text("x")], ["quality": "draft", "size": ["width": 64, "height": 64]]),
                             try await model("image.generate", ["prompt": .text("x")], ["size": ["width": 64, "height": 64]]),
                             try await model("image.generate", ["prompt": .text("x")], ["quality": "best", "size": ["width": 64, "height": 64]])]
-            #expect(generate == ["klein-4b", "z-image-turbo", "z-image"])
+            #expect(generate == ["klein-4b", "z-image-turbo", "z-image-turbo"], "Z-Image measured below Turbo (R1b)")
         }
     }
 
@@ -294,7 +299,7 @@ struct ImageEngineTests {
             _ = try await probe.succeed(JobRequest(operation: "image.erase", inputs: ["image": image(), "mask": .one(.inline(mediaType: "image/png", data: Fixtures.mask()))]))
             #expect(runner.resident.withLock { $0 } == ["fake.z-image-turbo", "fake.lama-inpaint"])
             // Z-Image (12 GB, heavy) evicts Z-Image Turbo (heavy); LaMa (small) stays.
-            _ = try await probe.succeed(JobRequest(operation: "image.generate", inputs: ["prompt": .text("x")], params: ["size": size, "quality": "best"]))
+            _ = try await probe.succeed(JobRequest(operation: "image.generate", inputs: ["prompt": .text("x")], params: ["size": size], model: "z-image"))
             #expect(runner.resident.withLock { $0 } == ["fake.z-image", "fake.lama-inpaint"])
         }
         var quick = Residency.Policy()
@@ -304,6 +309,20 @@ struct ImageEngineTests {
             #expect(runner.resident.withLock { $0 } == ["fake.siglip2-quality"])
             try await Task.sleep(for: .milliseconds(600))
             #expect(runner.resident.withLock { $0 }.isEmpty, "released after keep-warm")
+        }
+    }
+
+    @Test("An edit model that leaves the marker is retried once, then LaMa fills: magenta never reaches the output")
+    func markerFallback() async throws {
+        try await withEngine(runner: FakeRunner(editKeepsMarker: true)) { probe, runner in
+            let job = try await probe.succeed(JobRequest(operation: "image.extend", inputs: ["image": image(), "prompt": .text("more of the scene")],
+                                                         params: ["canvas": ["left": 16, "top": 0, "right": 16, "bottom": 0]]))
+            let steps = runner.calls.withLock { $0.suffix(3).map(\.route.capability) }
+            #expect(steps == [.imageEdit, .imageEdit, .imageInpaint])
+            #expect(job.warnings.map(\.code).contains("model_fallback"))
+            #expect(job.result?.effective["model_params"]?["fallback"] == "lama-inpaint")
+            let seeds = runner.calls.withLock { $0.suffix(3).prefix(2).map(\.seed) }
+            #expect(seeds[1] == seeds[0] + 1, "the retry uses the next seed")
         }
     }
 

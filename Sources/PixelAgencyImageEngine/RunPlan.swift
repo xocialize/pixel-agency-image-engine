@@ -251,7 +251,10 @@ struct RunPlan {
             let instruction = prompt.isEmpty
                 ? "Fill the bright magenta area so it blends seamlessly into the rest of the picture, as if nothing had been there. Keep everything else unchanged."
                 : "Replace the bright magenta area with \(prompt). Match the picture's lighting, perspective and style, and keep everything else unchanged."
-            let result = try await paint(original, region: mask, instruction: instruction)
+            if let result = try await paint(original, region: mask, instruction: instruction, prompt: prompt) {
+                return [try write(Media.composite(result: result, over: original, mask: mask), name: "image")]
+            }
+            let result = try await fallBack(original, hole: mask.hole)
             return [try write(Media.composite(result: result, over: original, mask: mask), name: "image")]
         }
         if !prompt.isEmpty {
@@ -263,6 +266,15 @@ struct RunPlan {
         let result = try image(try await invoke(route, params: [:], mode: mode,
                                                 inputs: ["image": [Media.modelImage(original)], "mask": [Media.modelImage(mask.hole)]]))
         return [try write(Media.composite(result: result, over: original, mask: mask), name: "image")]
+    }
+
+    /// The edit model left its region unpainted (the marker colour is still there, twice): LaMa fills it instead,
+    /// so the marker never reaches an output.
+    mutating func fallBack(_ canvas: Pixels, hole: Mask) async throws -> Pixels {
+        warn("model_fallback", "\(context.model.title) didn't paint the area usably twice; LaMa filled it instead.")
+        let lama = try await route(.imageInpaint, helper: true)
+        modelParams["fallback"] = .string(lama.id.rawValue)
+        return try image(try await invoke(lama, params: [:], inputs: ["image": [Media.modelImage(canvas)], "mask": [Media.modelImage(hole)]]))
     }
 
     mutating func extend() async throws -> [ProducedOutput] {
@@ -279,7 +291,13 @@ struct RunPlan {
             let instruction = "Replace the bright magenta \(edges.count > 1 ? "areas" : "area") at the \(named) "
                 + "\(edges.count > 1 ? "edges" : "edge") with a seamless continuation of the scene"
                 + (prompt.isEmpty ? "" : " showing \(prompt)") + ". Keep everything else unchanged."
-            let painted = Media.composite(result: try await paint(canvas, region: mask, instruction: instruction), over: canvas, mask: mask)
+            let sides = Media.sides(width: canvas.width, height: canvas.height, left: l, top: t, right: r, bottom: b)
+            guard let paintedRegion = try await paint(canvas, region: mask, instruction: instruction, prompt: prompt,
+                                                      parts: sides, checkDark: true) else {
+                let filled = try await fallBack(canvas, hole: mask)
+                return [try write(Media.composite(result: filled, over: canvas, mask: mask), name: "image")]
+            }
+            let painted = Media.composite(result: paintedRegion, over: canvas, mask: mask)
             // The edit model continued its own re-rendering of the picture, so its border can meet the original out of
             // step (a trunk a little to one side). LaMa bridges a thin band on the new side of the seam from both
             // sides' context; the original's pixels stay as they are.
@@ -302,18 +320,32 @@ struct RunPlan {
     }
 
     /// An edit model paints `region` (shown to it in magenta) as `instruction` says. The result is at the canvas's
-    /// size; the caller composites it with the mask, so only the region changes.
-    mutating func paint(_ canvas: Pixels, region: Mask, instruction: String) async throws -> Pixels {
+    /// size; the caller composites it with the mask, so only the region changes. Edit models sometimes keep the marker
+    /// (as is, or as a shaded purple surface) or leave the region dark (`Media.paintingProblem`), so such a result is
+    /// retried once with the next seed, and nil after that: the caller falls back.
+    mutating func paint(_ canvas: Pixels, region: Mask, instruction: String, prompt: String, parts: [Mask]? = nil,
+                        checkDark: Bool = false) async throws -> Pixels? {
         let route = try await route(.imageEdit)
         record(route)
         let fitted = route.envelope.fit(width: canvas.width, height: canvas.height)
             ?? route.envelope.clamp(width: canvas.width, height: canvas.height)
-        let base = seed(count: 1)
+        let base = seed(count: 2)
         let marked = Media.mark(canvas, region: region)
-        let result = try image(try await invoke(route, params: ["prompt": .string(instruction)], inputs: ["images": [Media.modelImage(marked)]],
-                                                seed: base, width: fitted.width, height: fitted.height))
-        seedUsed = base
-        return Media.harmonize(result.resized(canvas.width, canvas.height), toward: canvas, region: region)
+        // A prompt that asks for the marker's colour can't be checked for it.
+        let checkable = !["magenta", "pink", "fuchsia", "purple"].contains { prompt.lowercased().contains($0) }
+        for attempt in 0..<2 {
+            let result = try image(try await invoke(route, params: ["prompt": .string(instruction)], inputs: ["images": [Media.modelImage(marked)]],
+                                                    seed: base + UInt64(attempt), width: fitted.width, height: fitted.height))
+                .resized(canvas.width, canvas.height)
+            let problem = checkable ? Media.paintingProblem(result, canvas: canvas, parts: parts ?? [region], checkDark: checkDark) : nil
+            guard let problem else {
+                seedUsed = base + UInt64(attempt)
+                if attempt > 0 { modelParams["retries"] = .number(Double(attempt)) }
+                return Media.harmonize(result, toward: canvas, region: region)
+            }
+            modelParams["rejected"] = .string(problem)
+        }
+        return nil
     }
 
     /// `canvas` as {left, top, right, bottom}, or {size, anchor}, in pixels.
