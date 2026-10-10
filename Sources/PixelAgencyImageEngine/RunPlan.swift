@@ -15,6 +15,8 @@ struct RunPlan {
     var modelParams: [String: MESValue] = [:]
     /// The seed a generative step used, reported as the job's (Image §2).
     var seedUsed: UInt64?
+    /// Models this job admitted to memory (ENG-3), released when it ends.
+    var admitted: [RoutedModel] = []
 
     init(context: RunContext, spec: OperationSpec, normalizer: ImageNormalizer) {
         self.context = context; self.spec = spec; self.normalizer = normalizer
@@ -50,8 +52,10 @@ struct RunPlan {
 
     /// The model the engine kit chose, as the runtime's route, prepared (downloaded, loaded) before it runs. A helper
     /// step (`helper: true`, e.g. restore's defect detector) takes the runtime's default: permissive and production.
-    func route(_ capability: Capability, helper: Bool = false) async throws -> RoutedModel {
+    mutating func route(_ capability: Capability, helper: Bool = false) async throws -> RoutedModel {
         let route = try await normalizer.directory.route(capability, model: helper ? nil : ModelID(context.model.id))
+        await normalizer.residency.admit(route)                  // room first: one heavy model, and what fits
+        admitted.append(route)
         let relay = ProgressRelay(context.reporter)
         do {
             try await runner.prepare(route) { p in relay.send(.preparing, fraction: p.fraction, message: p.phase) }
@@ -61,6 +65,10 @@ struct RunPlan {
             throw error
         }
         return route
+    }
+
+    func releaseModels() async {
+        for route in admitted { await normalizer.residency.release(route) }
     }
 
     /// Runs one model invocation, reporting its progress as output `index` of `count`.

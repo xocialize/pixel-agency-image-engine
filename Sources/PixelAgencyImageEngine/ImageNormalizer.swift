@@ -21,17 +21,24 @@ public struct ImageNormalizer: MediaEngine {
     public struct Options: Sendable {
         /// Offer research and work-in-progress models (named-only). Off by default (Engines-PRD OQ-4).
         public var allowResearch = false
-        public init(allowResearch: Bool = false) { self.allowResearch = allowResearch }
+        /// Which models stay in memory (ENG-3).
+        public var residency = Residency.Policy()
+        public init(allowResearch: Bool = false, residency: Residency.Policy = .init()) {
+            self.allowResearch = allowResearch
+            self.residency = residency
+        }
     }
 
     let directory: any ImageModelDirectory & ModelRouter
     let runner: any ModelRunner
     let options: Options
+    public let residency: Residency
 
     public init(directory: any ImageModelDirectory & ModelRouter, runner: any ModelRunner, options: Options = Options()) {
         self.directory = directory
         self.runner = runner
         self.options = options
+        residency = Residency(runner: runner, router: directory, policy: options.residency)
     }
 
     // MARK: - Descriptors
@@ -210,7 +217,14 @@ public struct ImageNormalizer: MediaEngine {
                 throw MESError(.unknownOperation, "No plan for \(context.operation).")
             }
             var job = RunPlan(context: context, spec: spec, normalizer: self)
-            return try await job.run()
+            do {
+                let output = try await job.run()
+                await job.releaseModels()
+                return output
+            } catch {
+                await job.releaseModels()
+                throw error
+            }
         } catch {
             throw Self.mesError(error)
         }

@@ -90,7 +90,7 @@ final class FakeRunner: ModelRunner {
 
     func prepare(_ route: RoutedModel, progress: @escaping @Sendable (JobProgress) -> Void) async throws {
         progress(JobProgress(phase: "loading", fraction: 0.5))
-        resident.withLock { $0 = [route.packageID] }
+        resident.withLock { _ = $0.insert(route.packageID) }   // like the runtime: loaded models stay until evicted
     }
 
     func run(_ work: RunWork, progress: @escaping @Sendable (JobProgress) -> Void) async throws -> ImageServerModels.RunOutput {

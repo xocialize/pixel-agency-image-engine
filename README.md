@@ -43,12 +43,13 @@ the loopback interface. Models download into the shared models folder on first u
 | ↳ with a prompt | Klein 4B | Klein 4B | Qwen-Image-Edit 2511 |
 | `image.erase` | MI-GAN | **MI-GAN** | LaMa |
 | `image.extend` | MI-GAN | **Klein 4B** | Qwen-Image-Edit 2511 |
-| `image.upscale` | NERVE | **RealPLKSR** | HEART, SeedVR2, NACRE |
+| `image.upscale` (photo) | NERVE | **RealPLKSR** | HEART |
+| `image.upscale` (drawn) | NERVE | NERVE | NERVE |
 | `image.restore` | by `kind`: NAFNet (general), SCUNet / Restormer / DRUNet (denoise), Restormer (deblur), GFPGAN / RestoreFormer++ (faces); `scratches` runs defect detection, then LaMa on just the defects |||
 | `image.relight` | HVI-CIDNet |||
 | `image.colorize` | DDColor |||
 | `image.matte` | BiRefNet |||
-| `image.segment` | EdgeTAM | **EdgeTAM** | SAM 2.1 |
+| `image.segment` | EdgeTAM (named) | **SAM 2.1** | SAM 2.1 |
 | `image.describe` | Mage-VL |||
 | `image.score` | SigLIP2 quality |||
 

@@ -177,7 +177,9 @@ struct Suites {
             let (gt, ignore) = try BinaryMask.groundTruth(gtURL)
             let p = gt.deepestPoint
             let click: JSONValue = [["x": .number((Double(p.x) + 0.5) / Double(gt.width)), "y": .number((Double(p.y) + 0.5) / Double(gt.height)), "label": "include"]]
-            items.append((image, gt, ignore, click, name))
+            // The engine takes PNG, JPEG, HEIC, WebP and TIFF; some GrabCut images are BMP.
+            let input = image.pathExtension.lowercased() == "bmp" ? try prepare(try Raster(contentsOf: image), "grabcut-\(name).png") : image
+            items.append((input, gt, ignore, click, name))
         }
         for offer in bench.offers("image.segment") {
             await bench.run(suite: "segment-1click", operation: "image.segment", item: "warm-up",

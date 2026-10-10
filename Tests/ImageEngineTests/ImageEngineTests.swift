@@ -21,9 +21,9 @@ func config() -> EngineConfiguration {
 }
 
 /// Serves a normalizer over fakes on a free loopback port, connected with the conformance suite's probe.
-func withEngine(research: Bool = false, runner: FakeRunner = FakeRunner(), models: FakeModels = FakeModels(),
-                _ body: (Probe, FakeRunner) async throws -> Void) async throws {
-    let engine = ImageNormalizer(directory: models, runner: runner, options: .init(allowResearch: research))
+func withEngine(research: Bool = false, residency: Residency.Policy = .init(), runner: FakeRunner = FakeRunner(),
+                models: FakeModels = FakeModels(), _ body: (Probe, FakeRunner) async throws -> Void) async throws {
+    let engine = ImageNormalizer(directory: models, runner: runner, options: .init(allowResearch: research, residency: residency))
     let server = MESEngineServer(engine: engine, configuration: config())
     let (ports, continuation) = AsyncStream<Int>.makeStream()
     let app = try await server.makeApplication { port in continuation.yield(port) }
@@ -276,6 +276,27 @@ struct ImageEngineTests {
                             try await model("image.generate", ["prompt": .text("x")], ["size": ["width": 64, "height": 64]]),
                             try await model("image.generate", ["prompt": .text("x")], ["quality": "best", "size": ["width": 64, "height": 64]])]
             #expect(generate == ["klein-4b", "z-image-turbo", "z-image"])
+        }
+    }
+
+    @Test("Residency (ENG-3): one heavy model at a time, small ones stay, idle ones are released")
+    func residency() async throws {
+        try await withEngine { probe, runner in
+            let size: MESValue = ["width": 64, "height": 64]
+            _ = try await probe.succeed(JobRequest(operation: "image.generate", inputs: ["prompt": .text("x")], params: ["size": size]))
+            _ = try await probe.succeed(JobRequest(operation: "image.erase", inputs: ["image": image(), "mask": .one(.inline(mediaType: "image/png", data: Fixtures.mask()))]))
+            #expect(runner.resident.withLock { $0 } == ["fake.z-image-turbo", "fake.lama-inpaint"])
+            // Z-Image (12 GB, heavy) evicts Z-Image Turbo (heavy); LaMa (small) stays.
+            _ = try await probe.succeed(JobRequest(operation: "image.generate", inputs: ["prompt": .text("x")], params: ["size": size, "quality": "best"]))
+            #expect(runner.resident.withLock { $0 } == ["fake.z-image", "fake.lama-inpaint"])
+        }
+        var quick = Residency.Policy()
+        (quick.keepWarm, quick.bigKeepWarm, quick.sweepInterval) = (.milliseconds(150), .milliseconds(150), .milliseconds(50))
+        try await withEngine(residency: quick) { probe, runner in
+            _ = try await probe.succeed(JobRequest(operation: "image.score", inputs: ["image": image()]))
+            #expect(runner.resident.withLock { $0 } == ["fake.siglip2-quality"])
+            try await Task.sleep(for: .milliseconds(600))
+            #expect(runner.resident.withLock { $0 }.isEmpty, "released after keep-warm")
         }
     }
 
