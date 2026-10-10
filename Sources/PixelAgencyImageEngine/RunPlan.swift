@@ -227,12 +227,13 @@ struct RunPlan {
 
     // MARK: - Masks: fill, erase, extend
 
-    /// The inpainting package's variant for a large hole: MI-GAN below best, LaMa at best. LaMa's MLX port casts
-    /// large fills pink on colour images (seen at 512² and 1024², fp32 and bf16; its parity fixture is greyscale, so
-    /// colour was never checked), while MI-GAN fills them cleanly. LaMa still bridges thin bands (extend's seam,
-    /// scratch defects), which it does well.
+    /// The inpainting package's variant for a large hole: MI-GAN at draft (LaMa's fast sibling), LaMa at standard and
+    /// best. LaMa's pink cast on colour fills was the published bf16 weights, not the port; mlx-lama-swift 0.3.1 loads
+    /// fp32 weights and matches PyTorch within one 8-bit level in every hole pixel (AB-R-0451). What remains is
+    /// Big-LaMa's own limit: very large box holes (~65% of the frame and up) fade to a grey, blurry centre in PyTorch
+    /// too; mug-sized holes (~25–40% of a 768² frame) fill cleanly.
     mutating func inpaintMode() -> String? {
-        let lama = context.quality == .best
+        let lama = context.quality != .draft
         modelParams["variant"] = .string(lama ? "lama" : "mi-gan")
         return lama ? nil : "fast"
     }

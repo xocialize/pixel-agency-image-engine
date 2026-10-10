@@ -147,6 +147,9 @@ struct ImageEngineTests {
             #expect(general.plan?.model.id == "nafnet-restore")
             let denoise = try await probe.succeed(JobRequest(operation: "image.restore", inputs: ["image": image()], params: ["kind": "denoise"]))
             #expect(denoise.plan?.model.id == "scunet-denoise" && denoise.result?.provenance.model.id == "scunet-denoise")
+            let quick = try await probe.succeed(JobRequest(operation: "image.restore", inputs: ["image": image()],
+                                                           params: ["kind": "denoise", "quality": "draft"]))
+            #expect(quick.plan?.model.id == "nafnet-restore", "draft denoise is NAFNet: ~50× faster, 0.7 dB behind")
             let named = try await probe.succeed(JobRequest(operation: "image.restore", inputs: ["image": image()],
                                                            params: ["kind": "denoise"], model: "nafnet-restore"))
             #expect(named.plan?.model.id == "nafnet-restore")
@@ -210,7 +213,11 @@ struct ImageEngineTests {
             #expect(runner.calls.withLock { $0.last!.spec.mode } == nil)
             let erase = try await probe.succeed(JobRequest(operation: "image.erase", inputs: ["image": image(), "mask": .one(.inline(mediaType: "image/png", data: soft))],
                                                            params: ["quality": "standard"]))
-            #expect(erase.result?.effective["model_params"]?["variant"] == "mi-gan")
+            #expect(erase.result?.effective["model_params"]?["variant"] == "lama")       // LaMa-fp32 since 0.3.1 (AB-R-0451)
+            #expect(runner.calls.withLock { $0.last!.spec.mode } == nil)
+            let quick = try await probe.succeed(JobRequest(operation: "image.erase", inputs: ["image": image(), "mask": .one(.inline(mediaType: "image/png", data: soft))],
+                                                           params: ["quality": "draft"]))
+            #expect(quick.result?.effective["model_params"]?["variant"] == "mi-gan")
             let work = runner.calls.withLock { $0.last! }
             #expect(work.spec.mode == "fast")
             let hole = try DecodedImage(work.inputs["mask"]![0].data)
