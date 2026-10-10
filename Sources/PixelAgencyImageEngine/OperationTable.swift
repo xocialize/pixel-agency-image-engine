@@ -124,11 +124,18 @@ enum OperationTable {
     /// Upscale of `content: drawn`: NERVE at every tier.
     static let drawnUpscale = ["nerve-upscale"]
 
-    /// `restore`'s `kind` → the model that does it (when the request didn't name one).
-    static let restoreModels: [String: [String]] = [
-        "general": ["nafnet-restore"],
-        "denoise": ["scunet-denoise", "restormer-denoise", "drunet-denoise", "nafnet-restore"],
-        "deblur": ["restormer-motion", "restormer-defocus", "nafnet-restore"],
-        "faces": ["gfpgan-face", "restoreformer-face"],
-    ]
+    /// `restore`'s `kind` → the models that do it at `tier`, most preferred first (when the request named none).
+    /// Measured (R1b, docs/TIERS.md): denoise at σ 25, SCUNet 33.3 dB / NAFNet 32.6 / DRUNet 27.7 / Restormer-real
+    /// 27.0, NAFNet ~50× faster than SCUNet; SCUNet also leads on real noise (NIND). DRUNet needs a noise level the
+    /// vocabulary doesn't carry, so it's left to requests that name it. Deblur: Restormer-defocus improved SSIM on
+    /// blur where motion didn't; both beat their own benchmarks' baselines (+2.09 / +1.29 dB).
+    static func restoreModels(kind: String, tier: QualityTier) -> [String] {
+        switch kind {
+        case "general": ["nafnet-restore"]
+        case "denoise": tier == .draft ? ["nafnet-restore", "scunet-denoise"] : ["scunet-denoise", "nafnet-restore", "restormer-denoise"]
+        case "deblur": ["restormer-defocus", "restormer-motion", "nafnet-restore"]
+        case "faces": ["gfpgan-face", "restoreformer-face"]
+        default: []
+        }
+    }
 }

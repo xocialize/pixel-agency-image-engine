@@ -192,7 +192,7 @@ public struct ImageNormalizer: MediaEngine {
         var preferred: [String] = []
         switch request.operation {
         case "image.restore":
-            if let kind = request.params?["kind"]?.stringValue { preferred = OperationTable.restoreModels[kind] ?? [] }
+            if let kind = request.params?["kind"]?.stringValue { preferred = OperationTable.restoreModels(kind: kind, tier: tier) }
         case "image.fill":
             if case .text(let prompt)? = request.inputs?["prompt"], !prompt.trimmingCharacters(in: .whitespaces).isEmpty {
                 preferred = OperationTable.generativeFill[tier] ?? []
