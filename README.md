@@ -35,17 +35,20 @@ the loopback interface. Models download into the shared models folder on first u
 
 ## What it offers
 
+Measured on this Mac (ENG R1b): the evidence for every row is in [`docs/TIERS.md`](docs/TIERS.md).
+
 | Operation | Draft | Standard | Best |
 |---|---|---|---|
-| `image.generate` | FLUX.2 Klein 4B | **Z-Image Turbo** | Z-Image |
-| `image.edit` | **Klein 4B** | **Klein 4B** | Qwen-Image-Edit 2511 |
+| `image.generate` | FLUX.2 Klein 4B | **Z-Image Turbo** | Z-Image Turbo |
+| `image.edit` | Klein 4B | **Klein 4B** | Klein 4B (provisional) |
 | `image.fill` | MI-GAN | **LaMa** | LaMa |
-| ↳ with a prompt | Klein 4B | Klein 4B | Qwen-Image-Edit 2511 |
+| ↳ with a prompt | Klein 4B | **Klein 4B** | Klein 4B |
 | `image.erase` | MI-GAN | **LaMa** | LaMa |
-| `image.extend` | MI-GAN | **Klein 4B** | Qwen-Image-Edit 2511 |
+| `image.extend` | MI-GAN | **LaMa** | LaMa |
+| ↳ with a prompt | Klein 4B | **Klein 4B** | Klein 4B |
 | `image.upscale` (photo) | NERVE | **RealPLKSR** | HEART |
-| `image.upscale` (drawn) | NERVE | NERVE | NERVE |
-| `image.restore` | by `kind`: NAFNet (general), SCUNet / Restormer / DRUNet (denoise), Restormer (deblur), GFPGAN / RestoreFormer++ (faces); `scratches` runs defect detection, then LaMa on just the defects |||
+| `image.upscale` (drawn) | NERVE | **NERVE** | NERVE |
+| `image.restore` | by `kind`: NAFNet (general); denoise NAFNet at draft, SCUNet above; Restormer-defocus (deblur); GFPGAN (faces). `scratches` runs defect detection, then LaMa on just the defects |||
 | `image.relight` | HVI-CIDNet |||
 | `image.colorize` | DDColor |||
 | `image.matte` | BiRefNet |||
@@ -57,7 +60,8 @@ Bold is the default when a request names no model. MI-GAN and LaMa are one packa
 offer is LaMa's; `effective.model_params.variant` says which ran. MI-GAN takes draft, LaMa standard and best (its
 earlier pink cast on colour fills was the bf16 weights; mlx-lama-swift 0.3.1 loads fp32, `mlx-community/LaMa-fp32`,
 204 MB). Big-LaMa itself fades very large holes (~65% of the frame and up) to a grey, blurry centre; a generative fill
-suits those. Every offer carries its licence in MES terms (Base §10.2).
+suits those. Other models (Z-Image, Klein Base, Qwen-Image-Edit 2511, SeedVR2, Nacre, DRUNet, …) are offered and run
+when named. Qwen-Image Flash is not offered: it intermittently kills the engine (AB-T-0214). Every offer carries its licence in MES terms (Base §10.2).
 `commercial_use` is `true` only when every weight licence and the port's code licence are permissive.
 
 ### Research models (opt-in)
@@ -136,9 +140,11 @@ normalizer's rules rather than the models'.
 ## Not yet
 
 - **The menu-bar app and the sandbox** (ENG-9, ENG-11). This is the headless engine.
-- **Keep-warm and idle eviction** (ENG-3) are left to MLXServe's governor.
 - **Channel clearance** (ENG-14).
-- **Measured quality tiers** (R1b). The tier table is the PRD's sketch.
+- **A real edit benchmark**, before edit's best tier is final (docs/TIERS.md, Open).
+
+Residency (ENG-3) is in: one heavy model at a time, eviction when a load won't fit, and idle models released after 10
+minutes (3 at ≥ 20 GB). Evictions are logged.
 
 ## Licence
 
