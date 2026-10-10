@@ -105,8 +105,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/ForgeCore.git",
       "state" : {
-        "revision" : "019909fc52b15430d1f5f83ab777c4c35a4e864f",
-        "version" : "0.33.1"
+        "revision" : "cd907dd09b2ac2370fad981869102466b8e9f055",
+        "version" : "0.33.2"
       }
     },
     {

@@ -18,6 +18,7 @@ struct TierBench: AsyncParsableCommand {
     @Option(help: "Objects for segment.") var objects = 50
     @Option(help: "Only these models (comma-separated), for generate.") var models: String?
     @Option(help: "judge: a previous run whose generate outputs to judge.") var from: String?
+    @Flag(help: "generate: the hard prompt set (text in the image, counts, attribute binding).") var hard = false
 
     func run() async throws {
         setvbuf(stdout, nil, _IOLBF, 0)
@@ -26,7 +27,7 @@ struct TierBench: AsyncParsableCommand {
         let all = suites.contains("all")
         var footprints: [String: Double] = [:]
         let only = models.map { Set($0.split(separator: ",").map(String.init)) }
-        let suite = Suites(bench: bench, corpus: root, count: count, only: only)
+        let suite = Suites(bench: bench, corpus: root, count: count, only: only, hard: hard)
         if all || suites.contains("tiers") { await suite.tiers() }
         if all || suites.contains("singles") { try await suite.singles(&footprints) }
         if all || suites.contains("upscale") { try await suite.upscale(scale: 4, &footprints); try await suite.upscale(scale: 2, &footprints) }
@@ -49,6 +50,9 @@ struct Suites {
     let corpus: URL
     let count: Int
     let only: Set<String>?
+    let hard: Bool
+    var prompts: [(String, [[String]])] { hard ? Self.hardPrompts : Self.prompts }
+    var generateSuite: String { hard ? "generate-hard" : "generate" }
 
     var inputs: URL { bench.out.appendingPathComponent("inputs") }
 
@@ -211,16 +215,27 @@ struct Suites {
         ("three oranges and a lemon on a blue ceramic plate, studio product photo", [["orange"], ["lemon"], ["plate"]]),
     ]
 
+    /// Harder prompts, where distilled few-step models tend to slip: text in the image, counts, attribute binding.
+    /// Recall checks the describer's caption and tags for the words that must be there.
+    static let hardPrompts: [(String, [[String]])] = [
+        ("a wooden shop sign that says OPEN DAILY, photograph", [["open daily"]]),
+        ("a white coffee mug printed with the word HELLO in black letters", [["hello"]]),
+        ("a concert poster with the title SUMMER JAZZ NIGHT", [["summer jazz"]]),
+        ("three cats sitting on a red sofa", [["three", "3"], ["cat"], ["red"]]),
+        ("a blue cube on top of a yellow sphere, studio render", [["blue"], ["cube"], ["yellow"], ["sphere", "ball"]]),
+        ("five green apples in a row on a wooden table", [["five", "5"], ["green"], ["apple"]]),
+    ]
+
     /// Text to image at 1024², each default-routable model; judged afterwards by the engine's own score
     /// (SigLIP2 IQA) and by prompt-keyword recall in its description (Mage-VL).
     func generate(_ footprints: inout [String: Double]) async throws {
         let models = bench.offers("image.generate").filter { $0.namedOnly != true }.map(\.id).filter { only?.contains($0) ?? true }
         var outputs: [(index: Int, file: URL, keywords: [[String]], model: String, item: String)] = []
         for model in models {
-            await bench.run(suite: "generate", operation: "image.generate", item: "warm-up", inputs: ["prompt": .text(Self.prompts[0].0)],
+            await bench.run(suite: generateSuite, operation: "image.generate", item: "warm-up", inputs: ["prompt": .text(prompts[0].0)],
                             params: ["seed": 7, "size": ["width": 1024, "height": 1024]], model: model, warm: false, folder: "generate/warmup")
-            for (i, (prompt, keywords)) in Self.prompts.enumerated() {
-                let record = await bench.run(suite: "generate", operation: "image.generate", item: "p\(i)", inputs: ["prompt": .text(prompt)],
+            for (i, (prompt, keywords)) in prompts.enumerated() {
+                let record = await bench.run(suite: generateSuite, operation: "image.generate", item: "p\(i)", inputs: ["prompt": .text(prompt)],
                                              params: ["seed": .number(Double(100 + i)), "size": ["width": 1024, "height": 1024]],
                                              model: model, folder: "generate/\(model)")
                 if let path = record.outputs.first {
@@ -230,7 +245,7 @@ struct Suites {
             footprints[model] = bench.footprintGB()
         }
         try await judge(outputs)
-        try Sheet.make(outputs.map { ("\($0.model) \($0.item)", $0.file) }, columns: Self.prompts.count,
+        try Sheet.make(outputs.map { ("\($0.model) \($0.item)", $0.file) }, columns: prompts.count,
                        to: bench.out.appendingPathComponent("generate-sheet-\(models.joined(separator: "+").prefix(60)).png"))
     }
 
