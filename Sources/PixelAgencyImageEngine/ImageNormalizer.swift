@@ -49,7 +49,8 @@ public struct ImageNormalizer: MediaEngine {
     }
 
     func offered(_ info: ModelInfo) -> Bool {
-        info.state.problem == nil && (info.isDefaultRoutable || options.allowResearch)
+        info.state.problem == nil && OperationTable.quarantined[info.id.rawValue] == nil
+            && (info.isDefaultRoutable || options.allowResearch)
     }
 
     func descriptor(_ spec: OperationSpec, models: [ModelInfo]) -> Descriptor? {
@@ -104,6 +105,9 @@ public struct ImageNormalizer: MediaEngine {
     }
 
     static let imageTypes = ["image/png", "image/jpeg", "image/heic", "image/webp", "image/tiff"]
+
+    /// Models the engine won't offer, and why (`OperationTable.quarantined`).
+    public static var quarantined: [String: String] { OperationTable.quarantined }
 
     /// A model's licence in MES terms (Base §10.2). Commercial use follows the engine's licence classification:
     /// only models whose weights and code are all permissive allow it. Others ask for acceptance (ENG-14).

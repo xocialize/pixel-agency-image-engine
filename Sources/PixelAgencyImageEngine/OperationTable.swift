@@ -51,7 +51,7 @@ enum OperationTable {
     static let specs: [OperationSpec] = [
         OperationSpec("image.generate", .textToImage,
                       tiers: ["klein-4b": [.draft], "z-image-turbo": [.standard], "z-image": [.best], "qwen-image-flash": [.standard, .best]],
-                      defaults: ["z-image-turbo", "klein-4b", "z-image", "qwen-image-flash"],
+                      defaults: ["z-image-turbo", "klein-4b", "z-image"],
                       params: ["negative_prompt", "size", "aspect", "megapixels", "quality", "seed", "count", "output"],
                       narrowed: ["count": ["type": "integer", "minimum": 1, "maximum": 4, "default": 1], "output": output],
                       inputs: ["prompt": true]),
@@ -112,6 +112,13 @@ enum OperationTable {
     /// Fill with a prompt, by quality tier: the edit models that paint it, most preferred first.
     static let generativeFill: [QualityTier: [String]] = [
         .draft: ["klein-4b"], .standard: ["klein-4b", "qwen-image-edit"], .best: ["qwen-image-edit", "klein-4b"],
+    ]
+
+    /// Models not offered at all, with why: ones that take the engine process down (a Metal fault kills every
+    /// client's jobs, not just the one that hit it). Lift an entry when its package is fixed.
+    static let quarantined: [String: String] = [
+        "qwen-image-flash": "intermittent Metal fault (kIOGPUCommandBufferCallbackErrorInvalidResource) that kills the "
+            + "engine after 2–8 runs in one process (R1b, 2026-10-10; AB-T-0214)",
     ]
 
     /// Upscale of `content: drawn`: NERVE at every tier.

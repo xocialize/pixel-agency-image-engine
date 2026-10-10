@@ -42,6 +42,9 @@ struct ImageEngineCommand: AsyncParsableCommand {
         let modelStore = store.map { URL(fileURLWithPath: $0, isDirectory: true) } ?? ImageRuntime.defaultModelStore
         print("Registering models (models folder: \(modelStore.path))…")
         let runtime = await ImageRuntime.start(modelStore: modelStore, options: .init(allowResearch: allowResearch))
+        for (model, reason) in ImageNormalizer.quarantined.sorted(by: { $0.key < $1.key }) {
+            print("not offering \(model): \(reason)")
+        }
         let offered = await runtime.normalizer.descriptors()
         print("\(offered.count) operations, \(Set(offered.flatMap { $0.models.map(\.id) }).count) models offered"
               + (allowResearch ? " (research models named-only)" : ""))

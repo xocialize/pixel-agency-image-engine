@@ -16,6 +16,8 @@ struct TierBench: AsyncParsableCommand {
     @Option(help: "Where results go.") var out: String
     @Option(help: "Images per measured set.") var count = 6
     @Option(help: "Objects for segment.") var objects = 50
+    @Option(help: "Only these models (comma-separated), for generate.") var models: String?
+    @Option(help: "judge: a previous run whose generate outputs to judge.") var from: String?
 
     func run() async throws {
         setvbuf(stdout, nil, _IOLBF, 0)
@@ -23,7 +25,8 @@ struct TierBench: AsyncParsableCommand {
         let root = URL(fileURLWithPath: corpus, isDirectory: true)
         let all = suites.contains("all")
         var footprints: [String: Double] = [:]
-        let suite = Suites(bench: bench, corpus: root, count: count)
+        let only = models.map { Set($0.split(separator: ",").map(String.init)) }
+        let suite = Suites(bench: bench, corpus: root, count: count, only: only)
         if all || suites.contains("tiers") { await suite.tiers() }
         if all || suites.contains("singles") { try await suite.singles(&footprints) }
         if all || suites.contains("upscale") { try await suite.upscale(scale: 4, &footprints); try await suite.upscale(scale: 2, &footprints) }
@@ -31,6 +34,7 @@ struct TierBench: AsyncParsableCommand {
         if all || suites.contains("segment") { try await suite.segment(objects: objects, &footprints) }
         if all || suites.contains("generate") { try await suite.generate(&footprints) }
         if all || suites.contains("edits") { try await suite.edits(&footprints) }
+        if suites.contains("judge"), let from { try await suite.judge(from: URL(fileURLWithPath: from, isDirectory: true)) }
         let md = "# Tier bench — \(bench.info.name)\n\nRun \(ISO8601DateFormatter().string(from: Date())), engine \(engine).\n"
             + Summary.markdown(bench.records, footprints: footprints)
         try md.write(to: bench.out.appendingPathComponent("summary.md"), atomically: true, encoding: .utf8)
@@ -44,6 +48,7 @@ struct Suites {
     let bench: Bench
     let corpus: URL
     let count: Int
+    let only: Set<String>?
 
     var inputs: URL { bench.out.appendingPathComponent("inputs") }
 
@@ -209,7 +214,7 @@ struct Suites {
     /// Text to image at 1024², each default-routable model; judged afterwards by the engine's own score
     /// (SigLIP2 IQA) and by prompt-keyword recall in its description (Mage-VL).
     func generate(_ footprints: inout [String: Double]) async throws {
-        let models = bench.offers("image.generate").filter { $0.namedOnly != true }.map(\.id)
+        let models = bench.offers("image.generate").filter { $0.namedOnly != true }.map(\.id).filter { only?.contains($0) ?? true }
         var outputs: [(index: Int, file: URL, keywords: [[String]], model: String, item: String)] = []
         for model in models {
             await bench.run(suite: "generate", operation: "image.generate", item: "warm-up", inputs: ["prompt": .text(Self.prompts[0].0)],
@@ -224,7 +229,28 @@ struct Suites {
             }
             footprints[model] = bench.footprintGB()
         }
-        // Judge after generating, so the judges load once.
+        try await judge(outputs)
+        try Sheet.make(outputs.map { ("\($0.model) \($0.item)", $0.file) }, columns: Self.prompts.count,
+                       to: bench.out.appendingPathComponent("generate-sheet-\(models.joined(separator: "+").prefix(60)).png"))
+    }
+
+    /// Judges a previous run's generate outputs (copied in as generate records here).
+    func judge(from run: URL) async throws {
+        let lines = try String(contentsOf: run.appendingPathComponent("results.jsonl"), encoding: .utf8).split(separator: "\n")
+        var outputs: [(index: Int, file: URL, keywords: [[String]], model: String, item: String)] = []
+        for line in lines {
+            guard let record = try? JSONDecoder().decode(Record.self, from: Data(line.utf8)), record.suite == "generate",
+                  record.error == nil, let path = record.outputs.first, record.item.hasPrefix("p"), let i = Int(record.item.dropFirst()) else { continue }
+            bench.appendRecord(record)
+            outputs.append((bench.records.count - 1, run.appendingPathComponent(path), Self.prompts[i].1, record.model, record.item))
+        }
+        try await judge(outputs)
+        try Sheet.make(outputs.map { ("\($0.model) \($0.item)", $0.file) }, columns: Self.prompts.count,
+                       to: bench.out.appendingPathComponent("generate-sheet-judged.png"))
+    }
+
+    /// Scores each output with the engine's own judges: SigLIP2 IQA, and prompt-keyword recall in Mage-VL's description.
+    func judge(_ outputs: [(index: Int, file: URL, keywords: [[String]], model: String, item: String)]) async throws {
         for output in outputs {
             let scored = await bench.run(suite: "judge", operation: "image.score", item: "\(output.model)/\(output.item)",
                                          inputs: ["image": .file(output.file)], folder: "judge")
@@ -240,8 +266,6 @@ struct Suites {
             }
             bench.update(output.index, metrics: metrics)
         }
-        try Sheet.make(outputs.map { ("\($0.model) \($0.item)", $0.file) }, columns: Self.prompts.count,
-                       to: bench.out.appendingPathComponent("generate-sheet.png"))
     }
 
     /// Edit, generative fill, erase and extend per tier on real photos: time, the engine's IQA, and a contact sheet.
