@@ -64,8 +64,9 @@ Turbo (8 steps) and Qwen-Image 2.1 (40 steps), Mage-Flow, SenseNova U1, Ming, Bo
 operator accepting their terms (Base §10.2 `accepted_required`).
 
 They are offered **`named_only`** (Base §6 rule 2): they run only when a request names them, and default choice
-never picks one. Their offers say `commercial_use: false`, with the terms URL and the licence's notice, so a client
-can show it. A request with `policy.license: commercial-use` is refused `policy_unmet` if it names one.
+never picks one. Their offers say `commercial_use: false`, with the terms URL and a plain-language `notice`
+("Research licence (…): not for commercial use. Read the terms before you use or share results."; work-in-progress
+models add that results may change), so a client can show it. A request with `policy.license: commercial-use` is refused `policy_unmet` if it names one.
 
 ```bash
 mes run image.generate -i prompt="a lighthouse at dusk" --model qwen-image-2.1

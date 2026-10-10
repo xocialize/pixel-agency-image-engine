@@ -79,8 +79,10 @@ struct ImageEngineTests {
             let qwen = try #require(generate.models.first { $0.id == "qwen-image-2.1" })
             #expect(qwen.namedOnly == true && qwen.isDefault == nil)
             #expect(qwen.license.commercialUse == .no && qwen.license.acceptedRequired == true)
-            #expect(qwen.license.spdx == "LicenseRef-Qwen-Research" && qwen.license.notice == "Research use only.")
-            #expect(probe.descriptor("image.edit")?.models.first { $0.id == "boogu" }?.namedOnly == true)
+            #expect(qwen.license.spdx == "LicenseRef-Qwen-Research")
+            #expect(qwen.license.notice == "Research licence (LicenseRef-Qwen-Research): not for commercial use. Read the terms before you use or share results.")
+            let boogu = probe.descriptor("image.edit")?.models.first { $0.id == "boogu" }
+            #expect(boogu?.namedOnly == true && boogu?.license.notice == "Work in progress: results may change between versions.")
 
             // Unnamed at best quality: z-image, never the research model.
             let best = try await probe.succeed(JobRequest(operation: "image.generate", inputs: ["prompt": .text("a fox")],

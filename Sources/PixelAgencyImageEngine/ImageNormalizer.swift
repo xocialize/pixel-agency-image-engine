@@ -106,8 +106,20 @@ public struct ImageNormalizer: MediaEngine {
         let permissive = stamp.licenseClass == .permissive
         return MESCore.License(spdx: spdx, commercialUse: permissive ? .yes : .no,
                                termsURL: info.sourceRepo.isEmpty ? nil : "https://huggingface.co/\(info.sourceRepo)",
-                               notice: stamp.advisories.isEmpty ? nil : stamp.advisories.joined(separator: " "),
-                               acceptedRequired: permissive ? nil : true)
+                               notice: notice(info, spdx: spdx), acceptedRequired: permissive ? nil : true)
+    }
+
+    /// What a person should know before using a model's results, in plain words. (The runtime's own advisories are
+    /// log lines for the operator, not notices.)
+    static func notice(_ info: ModelInfo, spdx: String) -> String? {
+        var parts: [String] = []
+        switch info.license.licenseClass {
+        case .permissive: break
+        case .evalAcknowledged: parts.append("Evaluation licence (\(spdx)): for evaluation only, not for commercial use.")
+        default: parts.append("Research licence (\(spdx)): not for commercial use. Read the terms before you use or share results.")
+        }
+        if info.maturity == .wip { parts.append("Work in progress: results may change between versions.") }
+        return parts.isEmpty ? nil : parts.joined(separator: " ")
     }
 
     static func memoryClass(_ bytes: UInt64?) -> ModelOffer.MemoryClass? {
