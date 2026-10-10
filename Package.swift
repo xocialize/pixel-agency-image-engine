@@ -16,8 +16,8 @@ let package = Package(
         .executable(name: "pixel-agency-image-engine", targets: ["ImageEngineCLI"]),
     ],
     dependencies: [
-        // Local checkouts until media-engine-spec is published and ImageServerModels has a repo of its own.
-        .package(path: "../media-engine-spec"),
+        // MES by tag. ImageServerKit is a local checkout: the Image Server's repo is private.
+        .package(url: "https://github.com/xocialize/media-engine-spec.git", from: "0.1.0"),
         .package(path: "../ml(x)/ML[X]-Image-Server/Packages/ImageServerKit"),
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.5.0"),
     ],

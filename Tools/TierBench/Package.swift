@@ -9,7 +9,7 @@ let package = Package(
     name: "TierBench",
     platforms: [.macOS(.v26)],
     dependencies: [
-        .package(path: "../../../media-engine-spec"),
+        .package(url: "https://github.com/xocialize/media-engine-spec.git", from: "0.1.0"),
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.5.0"),
     ],
     targets: [
