@@ -72,6 +72,35 @@ enum OperationTable {
         ]
     }
 
+    /// Where `bit_depth: 16` can't run, stated in `image.upscale`'s schema (Base §6 rule 4: limits in the descriptor, not
+    /// found by failure), so a client checks a request before sending it. Each entry pins `output.bit_depth` to 8:
+    /// - for a `quality` with no 16-bit model (an absent quality is standard);
+    /// - for drawn content at a quality whose drawn route (`drawnUpscale`) has no 16-bit model.
+    /// The failing path is `output.bit_depth`, so a refusal is 422 `unsupported_parameter` (Image §1.2).
+    static func sixteenBitRules(deepTiers: Set<QualityTier>, drawnDeepTiers: Set<QualityTier>, params: [String]) -> [JSONValue] {
+        let eightBits: JSONValue = ["properties": ["output": ["properties": ["bit_depth": ["enum": [8]]]]]]
+        let withoutQuality: JSONValue = .array(params.filter { $0 != "quality" }.map { .string($0) })
+        func names(_ tiers: [QualityTier]) -> JSONValue { .array(tiers.map { .string($0.rawValue) }) }
+        let plain = QualityTier.allCases.filter { !deepTiers.contains($0) }
+        let drawn = QualityTier.allCases.filter { !drawnDeepTiers.contains($0) }
+        var rules: [JSONValue] = []
+        if !plain.isEmpty {
+            rules.append(["if": ["properties": ["quality": ["enum": names(plain)]], "required": ["quality"]], "then": eightBits])
+        }
+        if plain.contains(.standard) {
+            rules.append(["if": ["propertyNames": ["enum": withoutQuality]], "then": eightBits])
+        }
+        if !drawn.isEmpty {
+            rules.append(["if": ["properties": ["content": ["const": "drawn"], "quality": ["enum": names(drawn)]],
+                                 "required": ["content", "quality"]], "then": eightBits])
+        }
+        if drawn.contains(.standard) {
+            rules.append(["if": ["properties": ["content": ["const": "drawn"]], "required": ["content"],
+                                 "propertyNames": ["enum": withoutQuality]], "then": eightBits])
+        }
+        return rules
+    }
+
     static let specs: [OperationSpec] = [
         // Measured (R1b, docs/TIERS.md): Z-Image Turbo leads on both prompt sets (IQA 0.915 / 0.903, hard-prompt recall
         // 0.94, text spelled right) at 13.7 s; Z-Image (28 steps, 70 s) scored lower on both, so it isn't "best".

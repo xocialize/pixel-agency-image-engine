@@ -103,11 +103,21 @@ public struct ImageNormalizer: MediaEngine {
                        max: name == "images" ? 4 : 1)
         }
         let maxPixels = candidates.map(\.envelope.maxPixels).max() ?? 1 << 20
+        var params: [String: MESValue] = ["type": "object", "additionalProperties": false, "properties": .object(properties)]
+        if !deepModels.isEmpty {
+            let routable = offers.filter { $0.namedOnly != true }
+            let deepTiers = Set(routable.filter { deepModels.contains($0.id) }.flatMap(\.qualityTiers))
+            let drawnDeepTiers = Set(QualityTier.allCases.filter { tier in
+                (OperationTable.drawnUpscale[tier] ?? []).contains { id in deepModels.contains(id) && routable.contains { $0.id == id } }
+            })
+            params["allOf"] = .array(OperationTable.sixteenBitRules(deepTiers: deepTiers, drawnDeepTiers: drawnDeepTiers,
+                                                                     params: spec.params))
+        }
         return Descriptor(
             operation: spec.operation, profile: ImageProfile.id, profileVersion: ImageProfile.version,
             title: Self.titles[spec.operation] ?? spec.operation, summary: Self.summaries[spec.operation],
             inputs: inputs,
-            params: .object(["type": "object", "additionalProperties": false, "properties": .object(properties)]),
+            params: .object(params),
             outputs: outputs,
             limits: .init(maxMegapixels: Double(maxPixels) / 1_000_000, maxInputs: maxInputs, maxCount: spec.operation == "image.generate" ? 4 : 1),
             qualityTiers: OperationTable.all.filter(tiers.contains), models: offers, remote: .init(possible: false))
@@ -214,9 +224,15 @@ public struct ImageNormalizer: MediaEngine {
         }
         let tier = request.params?["quality"]?.stringValue.flatMap(QualityTier.init(rawValue:)) ?? .standard
         let policy = request.policy ?? Policy()
-        let candidates = descriptor.models.filter { $0.qualityTiers.contains(tier) && $0.namedOnly != true && policy.allows($0) }
-        guard candidates.contains(where: { deep.contains($0.id) }) else {
-            throw MESError(.unsupportedParameter, "No \(tier.rawValue)-quality upscaler keeps 16 bits; \(runsOn)", param: "output")
+        var candidates = descriptor.models.filter { $0.qualityTiers.contains(tier) && $0.namedOnly != true && policy.allows($0) }
+            .map(\.id)
+        // Drawn content keeps its route (AB-D-0124): 16 bits only where that route has a 16-bit model, never by
+        // switching drawn content to a photo model.
+        let drawn = request.params?["content"]?.stringValue == "drawn"
+        if drawn { candidates = (OperationTable.drawnUpscale[tier] ?? []).filter(candidates.contains) }
+        guard candidates.contains(where: deep.contains) else {
+            throw MESError(.unsupportedParameter, "No \(tier.rawValue)-quality \(drawn ? "drawn-content " : "")upscaler keeps 16 bits; \(runsOn)",
+                           param: "output")
         }
     }
 
@@ -241,8 +257,9 @@ public struct ImageNormalizer: MediaEngine {
             if request.params?["content"]?.stringValue == "drawn" { preferred = OperationTable.drawnUpscale[tier] ?? [] }
             // A 16-bit request runs on a model that keeps 16 bits (`validateBitDepth` made sure the tier has one).
             if request.params?["output"]?["bit_depth"]?.intValue == 16 {
-                preferred = (preferred + spec.preferred(at: tier) + candidates.map(\.id))
-                    .filter { options.sixteenBitUpscalers.contains($0) }
+                let pool = request.params?["content"]?.stringValue == "drawn" ? preferred
+                    : preferred + spec.preferred(at: tier) + candidates.map(\.id)
+                preferred = pool.filter { options.sixteenBitUpscalers.contains($0) }
             }
         default:
             break

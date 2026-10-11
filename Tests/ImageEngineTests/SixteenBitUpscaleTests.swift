@@ -55,6 +55,20 @@ struct SixteenBitUpscaleTests {
             let depth = op.params["properties"]?["output"]?["properties"]?["bit_depth"]?["enum"]
             #expect(depth == nil || depth == [8], "\(op.operation)")
         }
+
+        // Where 16 can't run is in the schema (Base §6 rule 4), so a client can check a request before sending it.
+        func allows(_ params: [String: MESValue]) -> Bool {
+            SchemaValidator().validate(.object(params), against: up.params).isEmpty
+        }
+        let sixteen: MESValue = ["bit_depth": 16]
+        #expect(allows(["quality": "standard", "output": sixteen]) && allows(["output": sixteen]), "standard has RealPLKSR")
+        #expect(!allows(["quality": "draft", "output": sixteen]) && !allows(["quality": "best", "output": sixteen]))
+        #expect(!allows(["content": "drawn", "output": sixteen]) && !allows(["content": "drawn", "quality": "standard", "output": sixteen]),
+                "drawn content keeps its NERVE route, which runs at 8 bits")
+        #expect(allows(["quality": "draft", "output": ["bit_depth": 8]]) && allows(["content": "drawn", "quality": "best"]))
+        let issue = try #require(SchemaValidator().validate(.object(["quality": "draft", "output": sixteen]), against: up.params).first)
+        #expect(issue.path == "$.output.bit_depth", "so the refusal is about output: \(issue.path)")
+        #expect(up8.params["allOf"] == nil, "no rule without a 16-bit model")
     }
 
     @Test("bit_depth 16 runs the 16-bit model end to end: raw 16 bits in, a 16-bit PNG or TIFF out at exactly ×scale")
@@ -95,10 +109,14 @@ struct SixteenBitUpscaleTests {
             #expect(eightBitModel.0 == 422 && eightBitModel.1 == "unsupported_parameter")
             let draft = try await submit("image.upscale", ["quality": "draft", "output": sixteen])
             #expect(draft.0 == 422 && draft.1 == "unsupported_parameter")
-            // Other operations don't offer 16 at all: the descriptor's schema refuses it (MESEngineKit reports
-            // out_of_limits there today; the spec says unsupported_parameter — a kit nit, AB-A-0158).
+            let best = try await submit("image.upscale", ["quality": "best", "output": sixteen])
+            #expect(best.0 == 422 && best.1 == "unsupported_parameter")
+            // Drawn content keeps its route: NERVE at standard, which runs at 8 bits (no switch to RealPLKSR).
+            let drawn = try await submit("image.upscale", ["content": "drawn", "quality": "standard", "output": sixteen])
+            #expect(drawn.0 == 422 && drawn.1 == "unsupported_parameter")
+            // Other operations don't offer 16 at all: the descriptor's schema refuses it (MES 0.1.3, AB-T-0231).
             let restore = try await submit("image.restore", ["output": sixteen])
-            #expect(restore.0 == 422)
+            #expect(restore.0 == 422 && restore.1 == "unsupported_parameter")
             // And 8 bits is untouched.
             let eight = try await submit("image.upscale", ["output": ["bit_depth": 8]])
             #expect(eight.0 == 201)

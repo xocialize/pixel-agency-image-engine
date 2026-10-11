@@ -126,9 +126,17 @@ The normalizer (`ImageNormalizer`, `RunPlan`) holds every model to the profile, 
   AB-A-0158); today that's RealPLKSR, the standard tier. The engine reads this from the registered manifests at start
   and names the models in the `bit_depth` description.
   - The input is read at 16 bits, sent to the model raw, and written as a 16-bit PNG or a lossless (ZIP) 16-bit TIFF.
+  - **Where 16 bits can't run is in the descriptor** (0.1.5; Base §6 rule 4). `image.upscale`'s `params` carry
+    `allOf` rules that pin `output.bit_depth` to 8:
+    - for a `quality` with no 16-bit model (an absent quality is standard);
+    - for drawn content whose route (NERVE at draft and standard, HEART at best) has no 16-bit model. Drawn content is
+      never switched to a photo model to get 16 bits.
+
+    A client checks its params against the schema (MESCore's `SchemaValidator`) before sending, so it never collects
+    refused jobs.
   - A request that can't be honoured is refused at submit with 422 `unsupported_parameter` (Image §1.2): JPEG, a
-    named 8-bit model, a tier with no 16-bit model, or any other operation. A client can then run its own restore
-    around an 8-bit step.
+    named 8-bit model, a tier or drawn route with no 16-bit model, or any other operation. A client can then run its
+    own restore around an 8-bit step.
   - On the G-6 set (AB-R-0491) the model's smooth-area flat-neighbour share sits at or below the 16-bit
     interpolation's, so there's no 8-bit staircase. What's left at ×8 contrast is RealPLKSR's own faint ×4 mosaic,
     the same at 8 and 16 bits.

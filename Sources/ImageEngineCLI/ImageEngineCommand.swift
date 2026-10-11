@@ -55,7 +55,7 @@ struct ImageEngineCommand: AsyncParsableCommand {
         print(deep.isEmpty ? "upscale runs at 8 bits" : "16-bit upscale (output.bit_depth 16): \(deep.joined(separator: ", "))")
 
         var config = EngineConfiguration(id: try Self.engineID(in: stateDir), name: "Pixel Agency Image Engine",
-                                         implementationName: "pixel-agency-image-engine", implementationVersion: "0.1.4",
+                                         implementationName: "pixel-agency-image-engine", implementationVersion: "0.1.5",
                                          spoolDirectory: spoolDir)
         config.stateDirectory = stateDir
         config.port = port
