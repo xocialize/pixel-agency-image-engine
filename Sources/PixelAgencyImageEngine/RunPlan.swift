@@ -124,8 +124,11 @@ struct RunPlan {
     }
 
     func image(_ value: RunOutputValue) throws -> Pixels {
-        guard case .image(let image) = value else { throw NormalizerError.engine("The model returned no image.") }
-        return try Media.pixels(image)
+        switch value {
+        // `.upscaled`: ForgeCore's still enhancer ran it (a generative tier behind the text guard).
+        case .image(let image), .upscaled(let image, _): return try Media.pixels(image)
+        default: throw NormalizerError.engine("The model returned no image.")
+        }
     }
 
     /// The seed: the request's, or a random one that survives JSON (≤ 2^53 − 1).
@@ -424,7 +427,10 @@ struct RunPlan {
         let scale = context.param("scale")?.intValue ?? 2
         let route = try await route(.imageUpscale)
         record(route)
-        var result = try image(try await invoke(route, params: ["scale": .number(Double(scale))], inputs: ["image": [Media.modelImage(input)]]))
+        let ran = try await invoke(route, params: ["scale": .number(Double(scale))], inputs: ["image": [Media.modelImage(input)]])
+        // What the enhancer reports it ran, e.g. VOSR2 behind the text guard, with the words it kept.
+        if case .upscaled(_, let model) = ran { modelParams["ran"] = .string(model) }
+        var result = try image(ran)
         let (w, h) = (input.width * scale, input.height * scale)
         if result.width != w || result.height != h { result = result.resized(w, h) }   // exactly ×scale (Image §3)
         effective["scale"] = .number(Double(scale))
