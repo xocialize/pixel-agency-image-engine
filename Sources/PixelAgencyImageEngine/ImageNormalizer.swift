@@ -184,7 +184,7 @@ public struct ImageNormalizer: MediaEngine {
 
     /// The default when a request names no model (Base §6 rule 2): each tier's preferred model (`OperationSpec.
     /// preferred`), refined by the request's params: restore by `kind`, fill or extend with a prompt to an edit model,
-    /// upscale of drawn content to NERVE, erase at best to the named remover. Only `candidates` (the tier's allowed, not named-only offers) can be returned.
+    /// upscale of drawn content by `OperationTable.drawnUpscale`, erase at best to the named remover. Only `candidates` (the tier's allowed, not named-only offers) can be returned.
     public func defaultModel(for request: JobRequest, descriptor: Descriptor, kitChoice: ModelOffer,
                              candidates: [ModelOffer]) -> ModelOffer? {
         guard let spec = OperationTable.specs.first(where: { $0.operation == request.operation }) else { return nil }
@@ -200,7 +200,7 @@ public struct ImageNormalizer: MediaEngine {
         case "image.erase":
             preferred = OperationTable.eraseByTier[tier] ?? []
         case "image.upscale":
-            if request.params?["content"]?.stringValue == "drawn" { preferred = OperationTable.drawnUpscale }
+            if request.params?["content"]?.stringValue == "drawn" { preferred = OperationTable.drawnUpscale[tier] ?? [] }
         default:
             break
         }

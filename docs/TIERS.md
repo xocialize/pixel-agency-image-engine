@@ -17,7 +17,7 @@ model.
 | `image.extend` (no prompt) | MI-GAN | **LaMa** | LaMa | LaMa continued busy photos coherently every time |
 | `image.extend` (prompt) | Klein 4B | **Klein 4B** | Klein 4B | Guarded per side; unguarded, Klein failed 2 of 4 |
 | `image.upscale` (photo) | NERVE | **RealPLKSR** | HEART | HEART best fidelity at ×2 and ×4; RealPLKSR best perceptual |
-| `image.upscale` (drawn) | NERVE | **NERVE** | NERVE | NERVE beats RealPLKSR on graphics (Forge bench) |
+| `image.upscale` (drawn) | NERVE | **NERVE** | HEART | Drawn ladder (AB-R-0486): HEART beats NERVE at ×4 and ×2; NERVE ties RealPLKSR at a fifth of its cost |
 | `image.upscale` (generative, by name) | | | VOSR2, Nacre | Behind ForgeCore's text-legibility guard (AB-D-0111), from 0.1.2; never a default |
 | `image.restore` (denoise) | NAFNet | **SCUNet** | SCUNet | SCUNet +0.7 dB at σ 25; NAFNet ~50× faster |
 | `image.restore` (deblur) | Restormer-defocus | **Restormer-defocus** | Restormer-defocus | Improves SSIM on blur; motion doesn't |
@@ -89,6 +89,35 @@ Earlier evidence (the Commons twelve-rung ladder, AB-R-0379) agrees on ranking:
 
 That's why the tiers are NERVE (fast), RealPLKSR (balanced and perceptual) and HEART (fidelity). SeedVR2 and Nacre
 stay offered by name: Nacre is a generative, provenance-clean route, not a tier.
+
+### Upscale, drawn content (`content: drawn`; the G-4 drawn ladder, AB-R-0486)
+
+**The set.** 75 licence-clean 768² images (`mlxengine-image/corpus/drawn-sr`, measurement only):
+- line art and diagrams (19);
+- text — slides, signs, infographics (16);
+- UI windows (12);
+- CG and anime-style art (28).
+
+Each image was degraded by bicubic, Lanczos and two JPEG qualities at ×4 and ×2.
+
+**Method.** References with strict loads, the AB-R-0379 harness. The MLX ports agree with them against the ground truth
+to ±0.04 dB at ×4. Scores are SSIMULACRA2 (higher is better), mean over the four rungs:
+
+| route | ×4 line / text / ui / cg | ×2 line / text / ui / cg |
+|---|---|---|
+| NERVE (the drawn route at draft and standard) | 25.1 / 7.8 / 4.2 / 31.2 | 59.0 / 49.0 / 44.6 / 57.8 |
+| RealPLKSR | 20.9 / 3.1 / 4.2 / 31.1 | 61.7 / 50.2 / 38.4 / 65.0 |
+| **HEART** (the drawn route at best) | **38.9 / 20.4 / 12.5 / 43.3** | **67.8 / 59.9 / 44.5 / 69.6** |
+
+**Reading the results.**
+- **HEART beats NERVE** on DISTS and SSIMULACRA2 together:
+  - at ×4, on every class;
+  - at ×2, on line, text and CG, with UI a tie.
+  - It loses nowhere.
+- **RealPLKSR ties NERVE at ×4** and loses on line and text, so NERVE keeps draft and standard.
+- **Text is the price.** At ×4, HEART makes 110 words illegible that the input read correctly, against NERVE's 61 (of
+  775). At ×2 it makes fewer, 100 against 134. Plain bicubic is the most legible of all at both scales, so for
+  text-dense pages a guard (or no upscale) beats any model.
 
 ### Restore (DIV2K 0811–0816, 768²)
 

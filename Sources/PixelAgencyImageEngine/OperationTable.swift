@@ -101,7 +101,8 @@ enum OperationTable {
         // Measured (R1b, docs/TIERS.md): photos, NERVE → RealPLKSR → HEART (best PSNR on 12 of 12 Commons rungs).
         // SeedVR2 measured worst of the learned models on photos. The generative stills routes, VOSR2 and Nacre, run
         // behind ForgeCore's text-legibility guard (the runtime's enhancer, AB-D-0111): offered at best, by name,
-        // never a default. Drawn content goes to NERVE at every tier (it beats RealPLKSR on graphics).
+        // never a default. Drawn content (`content: drawn`) goes by `drawnUpscale`: NERVE at draft and standard, HEART at
+        // best (the G-4 drawn ladder, AB-R-0486 / AB-D-0124).
         OperationSpec("image.upscale", .imageUpscale,
                       tiers: ["nerve-upscale": all, "realplksr-upscale": [.standard], "heart-upscale": [.best],
                               "seedvr2-upscale": [.best], "nacre-upscale": [.best], "vosr2-upscale": [.best]],
@@ -150,8 +151,13 @@ enum OperationTable {
             + "engine after 2–8 runs in one process (R1b, 2026-10-10; AB-T-0214)",
     ]
 
-    /// Upscale of `content: drawn`: NERVE at every tier.
-    static let drawnUpscale = ["nerve-upscale"]
+    /// Upscale of `content: drawn`, by quality tier, most preferred first. Measured on 75 drawn images (line art, text,
+    /// UI, CG / anime) at ×4 and ×2 (AB-R-0486): HEART beats NERVE on line, UI and CG at ×4 and on line, text and CG
+    /// at ×2 (SSIMULACRA2 +8 to +14), losing nowhere; NERVE ties RealPLKSR at a fifth of its cost. The price at ×4 on
+    /// text-dense images: HEART turns more legible words illegible (110 vs 61 of 775).
+    static let drawnUpscale: [QualityTier: [String]] = [
+        .draft: ["nerve-upscale"], .standard: ["nerve-upscale"], .best: ["heart-upscale", "nerve-upscale"],
+    ]
 
     /// `restore`'s `kind` → the models that do it at `tier`, most preferred first (when the request named none).
     /// Measured (R1b, docs/TIERS.md): denoise at σ 25, SCUNet 33.3 dB / NAFNet 32.6 / DRUNet 27.7 / Restormer-real

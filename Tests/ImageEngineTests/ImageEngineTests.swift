@@ -276,7 +276,7 @@ struct ImageEngineTests {
         #expect(grey(10) == 140, "outside the region the result is left as it was (the composite takes the original)")
     }
 
-    @Test("Each tier runs its measured default, whatever the catalog order; drawn content upscales with NERVE")
+    @Test("Each tier runs its measured default, whatever the catalog order; drawn content upscales with NERVE, HEART at best")
     func tierDefaults() async throws {
         try await withEngine { probe, _ in
             func model(_ op: String, _ inputs: [String: RequestInput], _ params: [String: MESValue]) async throws -> String? {
@@ -285,9 +285,12 @@ struct ImageEngineTests {
             let small = image(Fixtures.png(width: 32, height: 24))
             let upscale = [try await model("image.upscale", ["image": small], ["quality": "draft"]),
                            try await model("image.upscale", ["image": small], [:]),
-                           try await model("image.upscale", ["image": small], ["quality": "best"]),
-                           try await model("image.upscale", ["image": small], ["quality": "best", "content": "drawn"])]
-            #expect(upscale == ["nerve-upscale", "realplksr-upscale", "heart-upscale", "nerve-upscale"])
+                           try await model("image.upscale", ["image": small], ["quality": "best"])]
+            #expect(upscale == ["nerve-upscale", "realplksr-upscale", "heart-upscale"])
+            let drawn = [try await model("image.upscale", ["image": small], ["quality": "draft", "content": "drawn"]),
+                         try await model("image.upscale", ["image": small], ["content": "drawn"]),
+                         try await model("image.upscale", ["image": small], ["quality": "best", "content": "drawn"])]
+            #expect(drawn == ["nerve-upscale", "nerve-upscale", "heart-upscale"], "the G-4 drawn ladder (AB-R-0486)")
             let points: RequestInput = .one(.data([["x": 0.5, "y": 0.5, "label": "include"]]))
             // Segment's vocabulary has no `quality` (Image §5): its default is the standard tier's model.
             #expect(try await model("image.segment", ["image": image(), "points": points], [:]) == "sam21-segment")

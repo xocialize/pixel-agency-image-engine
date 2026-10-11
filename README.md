@@ -57,7 +57,7 @@ Measured on this Mac (ENG R1b): the evidence for every row is in [`docs/TIERS.md
 | `image.extend` | MI-GAN | **LaMa** | LaMa |
 | ↳ with a prompt | Klein 4B | **Klein 4B** | Klein 4B |
 | `image.upscale` (photo) | NERVE | **RealPLKSR** | HEART |
-| `image.upscale` (drawn) | NERVE | **NERVE** | NERVE |
+| `image.upscale` (drawn) | NERVE | **NERVE** | HEART |
 | `image.restore` | by `kind`: NAFNet (general); denoise NAFNet at draft, SCUNet above; Restormer-defocus (deblur); GFPGAN (faces). `scratches` runs defect detection, then LaMa on just the defects |||
 | `image.relight` | HVI-CIDNet |||
 | `image.colorize` | DDColor |||
