@@ -18,6 +18,7 @@ model.
 | `image.extend` (prompt) | Klein 4B | **Klein 4B** | Klein 4B | Guarded per side; unguarded, Klein failed 2 of 4 |
 | `image.upscale` (photo) | NERVE | **RealPLKSR** | HEART | HEART best fidelity at ×2 and ×4; RealPLKSR best perceptual |
 | `image.upscale` (drawn) | NERVE | **NERVE** | NERVE | NERVE beats RealPLKSR on graphics (Forge bench) |
+| `image.upscale` (generative, by name) | | | VOSR2, Nacre | Behind ForgeCore's text-legibility guard (AB-D-0111), from 0.1.2; never a default |
 | `image.restore` (denoise) | NAFNet | **SCUNet** | SCUNet | SCUNet +0.7 dB at σ 25; NAFNet ~50× faster |
 | `image.restore` (deblur) | Restormer-defocus | **Restormer-defocus** | Restormer-defocus | Improves SSIM on blur; motion doesn't |
 | `image.restore` (general / faces) | NAFNet / GFPGAN | **NAFNet / GFPGAN** | same | Not separately measured |
