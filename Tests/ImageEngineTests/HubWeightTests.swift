@@ -13,9 +13,9 @@ import Testing
 @Suite("Default offers download from the hub", .serialized)
 struct HubWeightTests {
     /// Offers whose packages download their own weights inside `load()` and declare no weight sources, so nothing
-    /// can check them before they run (mlx-image-runtime's `DownloadCheck.opaque`). A new one has to be added here on
-    /// purpose.
-    static let selfFetching: Set<String> = ["nafnet-restore", "ddcolor-colorize", "lama-inpaint"]
+    /// can check them before they run (mlx-image-runtime's `DownloadCheck.opaque`). Empty since NAFNet, DDColor and
+    /// LaMa declared theirs (AB-T-0222); a new one has to be added here on purpose.
+    static let selfFetching: Set<String> = []
 
     @Test("Every model offered by default resolves its first download on the hub",
           .enabled("needs huggingface.co") { await Hub.reachable() })

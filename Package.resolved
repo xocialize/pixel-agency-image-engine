@@ -1,5 +1,5 @@
 {
-  "originHash" : "e8b1287ef1cd80591c88d4253d9e70571d024428fd8d6ab9d8ce78aa83037e93",
+  "originHash" : "a735aedd8377c459e1e9913e6ded8ac14bb4ecfb09ea7ee5d00a78ba8b7647b4",
   "pins" : [
     {
       "identity" : "anima-mlx-swift",
@@ -258,8 +258,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-ddcolor-swift.git",
       "state" : {
-        "revision" : "cc4afae5adb52380c8aeaf6f58d8b1b763946a38",
-        "version" : "0.2.0"
+        "revision" : "0bf684108316260a42c5c59db52e936c6a9336b6",
+        "version" : "0.3.0"
       }
     },
     {
@@ -330,8 +330,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-image-runtime.git",
       "state" : {
-        "revision" : "eeb8fe2b414697f86d0109c246082a08abfefd96",
-        "version" : "0.3.1"
+        "revision" : "34bda641b9a9adc1d66a1ef5c08f1d9810824abc",
+        "version" : "0.3.3"
       }
     },
     {
@@ -339,8 +339,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-lama-swift.git",
       "state" : {
-        "revision" : "cbeae4cf4c0a0ab34cd56fd7ea69260be36a0a58",
-        "version" : "0.3.1"
+        "revision" : "f085b8f4fddf6320a347e0e3ecb28fad20959b53",
+        "version" : "0.4.0"
       }
     },
     {
@@ -357,8 +357,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-nafnet-swift.git",
       "state" : {
-        "revision" : "24975cf80d6785f36f0b46fe9e7f265119c8ce74",
-        "version" : "0.4.0"
+        "revision" : "06e2bbe07748ea29363310659ab1b3a288111769",
+        "version" : "0.5.0"
       }
     },
     {

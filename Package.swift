@@ -17,8 +17,8 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/xocialize/media-engine-spec.git", from: "0.1.0"),
-        // ≥ 0.3.1: Z-Image's quant tiers download the published snapshot, and download failures name the repo (AB-T-0221).
-        .package(url: "https://github.com/xocialize/mlx-image-runtime.git", from: "0.3.1"),
+        // ≥ 0.3.3: every default offer's weights are the engine's to download, sized on the hub first (AB-T-0221/0222).
+        .package(url: "https://github.com/xocialize/mlx-image-runtime.git", from: "0.3.3"),
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.5.0"),
     ],
     targets: [
