@@ -1,5 +1,5 @@
 {
-  "originHash" : "9c7b03c62863c6282fc91ff85d15f6113fcbc53dc77924da7a71c154062af6c6",
+  "originHash" : "3d0d0fc923dfc6c7eae27d51c92ded9cbdc25f243789489715c3ea9205b43426",
   "pins" : [
     {
       "identity" : "anima-mlx-swift",
@@ -87,8 +87,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/flux2-klein-swift.git",
       "state" : {
-        "revision" : "d8a9fa2b5dc6c3c336bf05d504708377ef26d5c4",
-        "version" : "0.8.0"
+        "revision" : "96113ddb1d592640c331011bbdf122ef7fad35dd",
+        "version" : "0.8.1"
       }
     },
     {
@@ -330,8 +330,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-image-runtime.git",
       "state" : {
-        "revision" : "68d35ab3945c208daaf4e226b72f6e6af48074ee",
-        "version" : "0.3.7"
+        "revision" : "8176f5cfaa4c986512072582ba20ff8f405f66b7",
+        "version" : "0.3.8"
       }
     },
     {
@@ -501,8 +501,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/qwen-image-edit-swift.git",
       "state" : {
-        "revision" : "ef65fbff96d14941e197af6f0d1bc09db8d3d210",
-        "version" : "0.9.2"
+        "revision" : "63b3c6864f5caec2d70052d696afcb531c7c986f",
+        "version" : "0.9.3"
       }
     },
     {
@@ -816,8 +816,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/z-image-swift.git",
       "state" : {
-        "revision" : "e5b841794d34197e83288308874fd779043b8faa",
-        "version" : "0.5.3"
+        "revision" : "eadca879078601d6787ad9e9ee7759def8bdcd56",
+        "version" : "0.5.4"
       }
     }
   ],
