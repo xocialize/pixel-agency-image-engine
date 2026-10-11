@@ -1,6 +1,8 @@
 import ForgeCore
 import Foundation
 import ImageServerModels
+import MLXServeCore
+import MLXToolKit
 
 /// The model runtime behind the normalizer: ML[X] Image Server's engine half (ForgeCore's tiers and the generative
 /// packages, one heavy model resident at a time under MLXServe's memory governor). Keep it alive while the engine
@@ -39,8 +41,24 @@ public final class ImageRuntime {
         // ForgeCore's still enhancer, as ML[X] Image Server runs it: a generative upscale (VOSR2, Nacre) runs behind
         // the text-legibility guard, never bare (AB-D-0111), and reports what ran.
         let enhancer = EngineImageEnhancer(service: forge)
+        var options = options
+        options.sixteenBitUpscalers.formUnion(await sixteenBitUpscalers(service))
         let normalizer = ImageNormalizer(directory: service, runner: EngineRunner(engine: service.engine, enhancer: enhancer),
                                          options: options)
         return ImageRuntime(normalizer: normalizer, service: service, forge: forge)
+    }
+
+    /// The registered upscale models whose package keeps 16 bits end to end: its `imageUpscale` surface declares
+    /// `.rawRGBA16` (MLXToolKit contract 1.52.0, AB-A-0158). Read from the manifests the engine registered, so a
+    /// package release that adopts the boundary is offered at 16 bits with no change here.
+    static func sixteenBitUpscalers(_ service: ImageEngineService) async -> Set<String> {
+        var ids: Set<String> = []
+        for model in await service.registeredModels() where model.capabilities.contains(.imageUpscale) {
+            guard let manifest = await service.engine.manifest(for: PackageID(model.packageID)) else { continue }
+            if manifest.surfaces.contains(where: { $0.capability == .imageUpscale && $0.acceptsRawRGBA16 }) {
+                ids.insert(model.id.rawValue)
+            }
+        }
+        return ids
     }
 }

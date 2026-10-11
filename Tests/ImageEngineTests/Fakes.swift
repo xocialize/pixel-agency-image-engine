@@ -117,6 +117,11 @@ final class FakeRunner: ModelRunner {
         case .imageInpaint:
             let (w, h) = size ?? (64, 64)
             return .image(Self.solid(w, h, red: 1, green: 0, blue: 1))
+        case .imageUpscale where first?.format == .rawRGBA16:
+            // A 16-bit package (RealPLKSR ≥ 0.2.0) answers `.rawRGBA16` with a gradient finer than 8 bits.
+            let (w, h) = size ?? (64, 64)
+            let scale = work.spec.params["scale"]?.intValue ?? 4
+            return .image(Self.deepRamp(w * scale - 2, h * scale - 2))   // off by a little
         case .imageUpscale:
             let (w, h) = size ?? (64, 64)
             let scale = work.spec.params["scale"]?.intValue ?? 4
@@ -142,6 +147,7 @@ final class FakeRunner: ModelRunner {
     func machineFit(_ route: RoutedModel) async -> MemoryFit? { nil }
 
     static func size(of image: MLXToolKit.Image) -> (Int, Int)? {
+        if image.format == .rawRGBA16 || image.format == .rawBGRA8, let w = image.width, let h = image.height { return (w, h) }
         guard let source = CGImageSourceCreateWithData(image.data as CFData, nil),
               let cg = CGImageSourceCreateImageAtIndex(source, 0, nil) else { return nil }
         return (cg.width, cg.height)
@@ -153,6 +159,18 @@ final class FakeRunner: ModelRunner {
         ctx.setFillColor(red: red, green: green, blue: blue, alpha: 1)
         ctx.fill(CGRect(x: 0, y: 0, width: w, height: h))
         return MLXToolKit.Image(format: .png, data: png(ctx.makeImage()!), width: w, height: h)
+    }
+
+    /// `.rawRGBA16`, opaque, red stepping 7 sixteen-bit levels per pixel (~1/37 of an 8-bit step).
+    static func deepRamp(_ w: Int, _ h: Int) -> MLXToolKit.Image {
+        var words = [UInt16](repeating: UInt16.max, count: w * h * 4)
+        for y in 0..<h {
+            for x in 0..<w {
+                let i = (y * w + x) * 4
+                words[i] = UInt16(min(65_535, 20_000 + x * 7)); words[i + 1] = UInt16(30_000 + y % 100); words[i + 2] = 40_000
+            }
+        }
+        return .rawRGBA16(data: words.withUnsafeBytes { Data($0) }, width: w, height: h)
     }
 
     static func greyMatte(_ w: Int, _ h: Int) -> Matte {

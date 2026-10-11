@@ -44,6 +44,52 @@ struct Pixels: Sendable {
     func resized(_ w: Int, _ h: Int) -> Pixels { w == width && h == height ? self : Pixels(cgImage, width: w, height: h) }
 }
 
+/// Pixels at 16 bits (Gigapixel gap G-6, AB-A-0158): sRGB, 16 bits per channel, premultiplied RGBA, top row first —
+/// MLXToolKit's `.rawRGBA16` layout. Only the upscale route works in them, when a request asks for `bit_depth: 16` and
+/// the model keeps 16 bits; every other rule still runs on 8-bit `Pixels`.
+struct DeepPixels: Sendable {
+    let width: Int
+    let height: Int
+    var rgba: [UInt16]
+
+    static let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder16Little.rawValue
+
+    init(width: Int, height: Int, rgba: [UInt16]? = nil) {
+        self.width = width; self.height = height
+        self.rgba = rgba ?? [UInt16](repeating: 0, count: width * height * 4)
+    }
+
+    /// Draws `image` into a new 16-bit buffer of `width` × `height` (its own size by default), converting to sRGB.
+    init(_ image: CGImage, width: Int? = nil, height: Int? = nil) {
+        let (w, h) = (width ?? image.width, height ?? image.height)
+        self.init(width: w, height: h)
+        rgba.withUnsafeMutableBytes { buffer in
+            let ctx = CGContext(data: buffer.baseAddress, width: w, height: h, bitsPerComponent: 16, bytesPerRow: w * 8,
+                                space: Pixels.sRGB, bitmapInfo: Self.bitmapInfo)!
+            ctx.interpolationQuality = .high
+            ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+        }
+    }
+
+    var cgImage: CGImage {
+        var copy = rgba
+        return copy.withUnsafeMutableBytes { buffer in
+            CGContext(data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 16, bytesPerRow: width * 8,
+                      space: Pixels.sRGB, bitmapInfo: Self.bitmapInfo)!.makeImage()!
+        }
+    }
+
+    /// Whether any pixel is less than fully opaque.
+    var hasTransparency: Bool { stride(from: 3, to: rgba.count, by: 4).contains { rgba[$0] < UInt16.max } }
+
+    func resized(_ w: Int, _ h: Int) -> DeepPixels { w == width && h == height ? self : DeepPixels(cgImage, width: w, height: h) }
+
+    /// Whether any colour value is off the 8-bit grid — i.e. the pixels really carry more than 8 bits.
+    var carriesMoreThanEightBits: Bool {
+        rgba.indices.contains { $0 % 4 != 3 && rgba[$0] % 257 != 0 }
+    }
+}
+
 /// An 8-bit grey mask, top row first. White (255) = change.
 struct Mask: Sendable {
     let width: Int
@@ -89,6 +135,19 @@ enum Media {
 
     /// Loads an input upright (EXIF orientation applied, Image §1.4) and in sRGB (§1.3).
     static func load(_ url: URL) throws -> Loaded {
+        let (image, converted) = try upright(url)
+        return Loaded(pixels: Pixels(image), colorConverted: converted)
+    }
+
+    /// `load` at 16 bits, for the upscale route's `bit_depth: 16`. ImageIO decodes a 16-bit TIFF or PNG at 16 bits on
+    /// the upright (thumbnail-with-transform) path too (AB-D-0125's probe); an 8-bit input is widened exactly.
+    static func loadDeep(_ url: URL) throws -> (pixels: DeepPixels, colorConverted: Bool) {
+        let (image, converted) = try upright(url)
+        return (DeepPixels(image), converted)
+    }
+
+    /// The decoded image, upright, and whether it carried a profile other than sRGB.
+    static func upright(_ url: URL) throws -> (CGImage, colorConverted: Bool) {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
               let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
               let w = props[kCGImagePropertyPixelWidth] as? Int, let h = props[kCGImagePropertyPixelHeight] as? Int else {
@@ -102,7 +161,7 @@ enum Media {
         let name = image.colorSpace?.name as String?
         let converted = image.colorSpace?.model == .rgb && name != (CGColorSpace.sRGB as String)
             && !(props[kCGImagePropertyProfileName] as? String ?? "sRGB").localizedCaseInsensitiveContains("sRGB")
-        return Loaded(pixels: Pixels(image), colorConverted: converted)
+        return (image, converted)
     }
 
     /// Loads a mask as 8-bit grey at `width` × `height`; says whether it had to be resampled (warn `mask_resampled`).
@@ -116,22 +175,43 @@ enum Media {
 
     /// A model's image output as pixels.
     static func pixels(_ image: MLXToolKit.Image) throws -> Pixels {
+        Pixels(try cgImage(image))
+    }
+
+    /// A model's image output at 16 bits: `.rawRGBA16` as it is, anything else widened.
+    static func deepPixels(_ image: MLXToolKit.Image) throws -> DeepPixels {
+        if image.format == .rawRGBA16, let w = image.width, let h = image.height, image.bytesPerRow ?? w * 8 == w * 8,
+           image.data.count >= w * h * 8 {
+            return DeepPixels(width: w, height: h, rgba: image.data.withUnsafeBytes { Array($0.bindMemory(to: UInt16.self).prefix(w * h * 4)) })
+        }
+        return DeepPixels(try cgImage(image))
+    }
+
+    /// A model's image output, decoded by its format.
+    static func cgImage(_ image: MLXToolKit.Image) throws -> CGImage {
         switch image.format {
         case .png, .jpeg:
             guard let source = CGImageSourceCreateWithData(image.data as CFData, nil),
                   let cg = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
                 throw NormalizerError.engine("The model returned an unreadable image.")
             }
-            return Pixels(cg)
+            return cg
         case .rawBGRA8:
             guard let w = image.width, let h = image.height else { throw NormalizerError.engine("A raw image without a size.") }
             let row = image.bytesPerRow ?? w * 4
             var copy = image.data
-            let cg = copy.withUnsafeMutableBytes { buffer in
+            return copy.withUnsafeMutableBytes { buffer in
                 CGContext(data: buffer.baseAddress, width: w, height: h, bitsPerComponent: 8, bytesPerRow: row, space: Pixels.sRGB,
                           bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue)!.makeImage()!
             }
-            return Pixels(cg)
+        case .rawRGBA16:
+            guard let w = image.width, let h = image.height else { throw NormalizerError.engine("A raw image without a size.") }
+            let row = image.bytesPerRow ?? w * 8
+            var copy = image.data
+            return copy.withUnsafeMutableBytes { buffer in
+                CGContext(data: buffer.baseAddress, width: w, height: h, bitsPerComponent: 16, bytesPerRow: row, space: Pixels.sRGB,
+                          bitmapInfo: DeepPixels.bitmapInfo)!.makeImage()!
+            }
         }
     }
 
@@ -149,17 +229,24 @@ enum Media {
         MLXToolKit.Image(format: .png, data: encode(pixels.cgImage, mediaType: "image/png"), width: pixels.width, height: pixels.height)
     }
 
+    /// 16-bit pixels as the raw `.rawRGBA16` image a 16-bit-capable package takes (contract 1.52.0).
+    static func modelImage(_ pixels: DeepPixels) -> MLXToolKit.Image {
+        .rawRGBA16(data: pixels.rgba.withUnsafeBytes { Data($0) }, width: pixels.width, height: pixels.height)
+    }
+
     static func modelImage(_ mask: Mask) -> MLXToolKit.Image {
         MLXToolKit.Image(format: .png, data: encode(mask.cgImage, mediaType: "image/png"), width: mask.width, height: mask.height)
     }
 
-    /// Encodes as PNG or JPEG, tagged sRGB (Image §1.3), upright with no orientation flag (§1.4).
+    /// Encodes as PNG, JPEG or TIFF, tagged sRGB (Image §1.3), upright with no orientation flag (§1.4). PNG and TIFF keep
+    /// a 16-bit image's 16 bits; TIFF is ZIP-compressed (lossless), as Desktop's Master deliverable is.
     static func encode(_ image: CGImage, mediaType: String) -> Data {
-        let type: UTType = mediaType == "image/jpeg" ? .jpeg : .png
+        let type: UTType = mediaType == "image/jpeg" ? .jpeg : mediaType == "image/tiff" ? .tiff : .png
         let out = NSMutableData()
         let dest = CGImageDestinationCreateWithData(out, type.identifier as CFString, 1, nil)!
         var props: [CFString: Any] = [:]
         if type == .jpeg { props[kCGImageDestinationLossyCompressionQuality] = 0.92 }
+        if type == .tiff { props[kCGImagePropertyTIFFDictionary] = [kCGImagePropertyTIFFCompression: 8] }
         CGImageDestinationAddImage(dest, image, props as CFDictionary)
         CGImageDestinationFinalize(dest)
         return out as Data
@@ -190,6 +277,19 @@ enum Media {
             guard a < 255 else { continue }
             for c in 0..<3 { out.rgba[i * 4 + c] = UInt8((Int(output.rgba[i * 4 + c]) * a + 127) / 255) }
             out.rgba[i * 4 + 3] = UInt8(a)
+        }
+        return out
+    }
+
+    /// `reapplyAlpha` at 16 bits.
+    static func reapplyAlpha(_ output: DeepPixels, from input: DeepPixels) -> DeepPixels {
+        let alpha = input.resized(output.width, output.height)
+        var out = output
+        for i in 0..<(output.width * output.height) {
+            let a = UInt32(alpha.rgba[i * 4 + 3])
+            guard a < 65535 else { continue }
+            for c in 0..<3 { out.rgba[i * 4 + c] = UInt16((UInt32(output.rgba[i * 4 + c]) * a + 32767) / 65535) }
+            out.rgba[i * 4 + 3] = UInt16(a)
         }
         return out
     }

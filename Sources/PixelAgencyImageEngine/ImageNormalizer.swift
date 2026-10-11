@@ -23,15 +23,19 @@ public struct ImageNormalizer: MediaEngine {
         public var allowResearch = false
         /// Which models stay in memory (ENG-3).
         public var residency = Residency.Policy()
-        public init(allowResearch: Bool = false, residency: Residency.Policy = .init()) {
+        /// Upscale models whose package keeps 16 bits end to end (it declares `.rawRGBA16`, MLXToolKit contract 1.52.0).
+        /// `ImageRuntime.start` reads it from the registered manifests; `output.bit_depth: 16` runs only on these.
+        public var sixteenBitUpscalers: Set<String> = []
+        public init(allowResearch: Bool = false, residency: Residency.Policy = .init(), sixteenBitUpscalers: Set<String> = []) {
             self.allowResearch = allowResearch
             self.residency = residency
+            self.sixteenBitUpscalers = sixteenBitUpscalers
         }
     }
 
     let directory: any ImageModelDirectory & ModelRouter
     let runner: any ModelRunner
-    let options: Options
+    public let options: Options
     public let residency: Residency
 
     public init(directory: any ImageModelDirectory & ModelRouter, runner: any ModelRunner, options: Options = Options()) {
@@ -72,9 +76,13 @@ public struct ImageNormalizer: MediaEngine {
         var tiers = Set(offers.filter { $0.namedOnly != true }.flatMap(\.qualityTiers))
         if tiers.isEmpty { tiers = Set(offers.flatMap(\.qualityTiers)) }
 
+        // 16 bits (AB-A-0158): offered on upscale when a model it offers keeps them.
+        let deepModels = spec.operation == "image.upscale"
+            ? offers.map(\.id).filter { options.sixteenBitUpscalers.contains($0) } : []
         var properties: [String: MESValue] = [:]
         for (order, name) in spec.params.enumerated() {
-            guard case .object(var schema)? = spec.narrowed[name] ?? ImageProfile.vocabularySchema(name, operation: spec.operation)
+            let narrowed = name == "output" && !deepModels.isEmpty ? OperationTable.deepOutput(models: deepModels) : spec.narrowed[name]
+            guard case .object(var schema)? = narrowed ?? ImageProfile.vocabularySchema(name, operation: spec.operation)
             else { continue }
             schema["x-mes-ui"] = .object(Self.hints(name, order: order))
             properties[name] = .object(schema)
@@ -89,7 +97,8 @@ public struct ImageNormalizer: MediaEngine {
         }
         let outputs = profile.outputs.sorted { $0.key < $1.key }.map { name, io in
             OutputSpec(name: name, kind: io.kind,
-                       mediaTypes: io.kind == .data ? ["application/json"] : io.kind == .mask ? ["image/png"] : ["image/png", "image/jpeg"],
+                       mediaTypes: io.kind == .data ? ["application/json"] : io.kind == .mask ? ["image/png"]
+                           : deepModels.isEmpty ? ["image/png", "image/jpeg"] : ["image/png", "image/jpeg", "image/tiff"],
                        min: spec.operation == "image.matte" ? 0 : 1,
                        max: name == "images" ? 4 : 1)
         }
@@ -176,9 +185,38 @@ public struct ImageNormalizer: MediaEngine {
 
     public func validate(_ request: JobRequest, descriptor: Descriptor) throws {
         try ImageProfileRules.validate(request, descriptor: descriptor)
+        try validateBitDepth(request, descriptor: descriptor)
         if let size = request.params?["size"], let w = size["width"]?.intValue, let h = size["height"]?.intValue,
            let max = descriptor.limits?.maxMegapixels, Double(w * h) > max * 1_000_000 {
             throw MESError(.outOfLimits, "\(w)×\(h) is over \(descriptor.operation)'s \(max) megapixels.", param: "size")
+        }
+    }
+
+    /// `output.bit_depth: 16` (Image §1.2, AB-A-0158): honoured only as PNG or TIFF, and only on a model that keeps 16 bits
+    /// — the named one, or else one the requested tier can default to. Anything else is 422 `unsupported_parameter`, at
+    /// submit, so a client (Pixel Agency Desktop) can fall back to its own 16-bit restore around an 8-bit step.
+    func validateBitDepth(_ request: JobRequest, descriptor: Descriptor) throws {
+        guard let output = request.params?["output"], output["bit_depth"]?.intValue == 16 else { return }
+        let deep = descriptor.models.map(\.id).filter { options.sixteenBitUpscalers.contains($0) }
+        guard descriptor.operation == "image.upscale", !deep.isEmpty else {
+            throw MESError(.unsupportedParameter, "\(descriptor.operation) runs at 8 bits on this engine.", param: "output")
+        }
+        let type = output["media_type"]?.stringValue ?? "image/png"
+        guard type == "image/png" || type == "image/tiff" else {
+            throw MESError(.unsupportedParameter, "16 bits needs image/png or image/tiff, not \(type).", param: "output")
+        }
+        let runsOn = "16 bits runs on \(deep.joined(separator: ", "))."
+        if let named = request.model {
+            guard deep.contains(named) else {
+                throw MESError(.unsupportedParameter, "\(named) runs at 8 bits; \(runsOn)", param: "output")
+            }
+            return
+        }
+        let tier = request.params?["quality"]?.stringValue.flatMap(QualityTier.init(rawValue:)) ?? .standard
+        let policy = request.policy ?? Policy()
+        let candidates = descriptor.models.filter { $0.qualityTiers.contains(tier) && $0.namedOnly != true && policy.allows($0) }
+        guard candidates.contains(where: { deep.contains($0.id) }) else {
+            throw MESError(.unsupportedParameter, "No \(tier.rawValue)-quality upscaler keeps 16 bits; \(runsOn)", param: "output")
         }
     }
 
@@ -201,6 +239,11 @@ public struct ImageNormalizer: MediaEngine {
             preferred = OperationTable.eraseByTier[tier] ?? []
         case "image.upscale":
             if request.params?["content"]?.stringValue == "drawn" { preferred = OperationTable.drawnUpscale[tier] ?? [] }
+            // A 16-bit request runs on a model that keeps 16 bits (`validateBitDepth` made sure the tier has one).
+            if request.params?["output"]?["bit_depth"]?.intValue == 16 {
+                preferred = (preferred + spec.preferred(at: tier) + candidates.map(\.id))
+                    .filter { options.sixteenBitUpscalers.contains($0) }
+            }
         default:
             break
         }

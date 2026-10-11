@@ -1,5 +1,5 @@
 {
-  "originHash" : "111e7e6edaaa5f04fa6932f4124459dbcd9306b58beb3ff065f01c3b6624e711",
+  "originHash" : "fc4c07571ecf766a0116001535aa6e4bc2da1fe3a739eedd7a519e5a865fa52b",
   "pins" : [
     {
       "identity" : "anima-mlx-swift",
@@ -105,8 +105,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/ForgeCore.git",
       "state" : {
-        "revision" : "b39c9aeb6d2dc4529197eadca9c6898559c88194",
-        "version" : "0.34.1"
+        "revision" : "af671ed32bdc26c3eafe346061731be264e78086",
+        "version" : "0.35.0"
       }
     },
     {
@@ -114,8 +114,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/ForgeOptimizerKit.git",
       "state" : {
-        "revision" : "fb15cc878785a85c857a61c41761d148b1453eae",
-        "version" : "0.23.0"
+        "revision" : "c9b5f5d193aad5ca5910014711d1e8c5577bdd80",
+        "version" : "0.24.0"
       }
     },
     {
@@ -285,8 +285,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-engine-swift.git",
       "state" : {
-        "revision" : "46b134a3e2f01fe4079707ebe2d675b82d90dc93",
-        "version" : "0.66.0"
+        "revision" : "aba512f37c8228adce4cac682583acea612bd6f7",
+        "version" : "0.67.0"
       }
     },
     {
@@ -384,8 +384,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-realesrgan-swift",
       "state" : {
-        "revision" : "f28e58a5393513f526e8f8dca66fcd2db8fdb13d",
-        "version" : "0.7.0"
+        "revision" : "5f84e0d845e6b2c6e8d18a88e979cb54b8ff6fb6",
+        "version" : "0.8.1"
       }
     },
     {
@@ -393,8 +393,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-realplksr-swift.git",
       "state" : {
-        "revision" : "ff2e7f3b330fb18563741d2c8edb997624e6fa48",
-        "version" : "0.1.2"
+        "revision" : "80fa6306e74a3e216fdb027d60c9a4c6d4a2f41c",
+        "version" : "0.2.0"
       }
     },
     {
@@ -447,8 +447,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-seedvr2-swift.git",
       "state" : {
-        "revision" : "c6d91863c2d4af79a65f183774e569513037f055",
-        "version" : "0.10.0"
+        "revision" : "92ce47312dcdfde31f1c685c8e2799937eb16e9e",
+        "version" : "0.10.1"
       }
     },
     {

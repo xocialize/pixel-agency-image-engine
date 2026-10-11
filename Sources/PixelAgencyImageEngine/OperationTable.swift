@@ -57,6 +57,21 @@ enum OperationTable {
         "properties": ["media_type": ["enum": ["image/png", "image/jpeg"]], "bit_depth": ["enum": [8]]],
     ]
 
+    /// `image.upscale`'s `output` when a model it offers keeps 16 bits (G-6, AB-A-0158): TIFF too, and `bit_depth: 16` as
+    /// PNG or TIFF. A 16-bit request runs only on those models (`ImageNormalizer.validate` refuses it otherwise with 422
+    /// `unsupported_parameter`, Image §1.2), so the description names them.
+    static func deepOutput(models: [String]) -> JSONValue {
+        [
+            "type": "object", "additionalProperties": false,
+            "properties": [
+                "media_type": ["enum": ["image/png", "image/jpeg", "image/tiff"]],
+                "bit_depth": ["enum": [8, 16],
+                              "description": .string("16 (PNG or TIFF) keeps a 16-bit image's depth through the model; it runs on "
+                                  + models.joined(separator: ", ") + ".")],
+            ],
+        ]
+    }
+
     static let specs: [OperationSpec] = [
         // Measured (R1b, docs/TIERS.md): Z-Image Turbo leads on both prompt sets (IQA 0.915 / 0.903, hard-prompt recall
         // 0.94, text spelled right) at 13.7 s; Z-Image (28 steps, 70 s) scored lower on both, so it isn't "best".

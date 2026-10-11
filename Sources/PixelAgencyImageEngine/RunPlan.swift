@@ -100,6 +100,14 @@ struct RunPlan {
         return loaded.pixels
     }
 
+    /// `load` at 16 bits (the upscale route's `bit_depth: 16`).
+    mutating func loadDeep(_ name: String) throws -> DeepPixels {
+        guard let url = context.input(name)?.fileURL else { throw NormalizerError.input("Input '\(name)' is missing.") }
+        let loaded = try Media.loadDeep(url)
+        if loaded.colorConverted { warn(ImageProfile.WarningCode.colorConverted, "'\(name)' was converted to sRGB.", param: name) }
+        return loaded.pixels
+    }
+
     mutating func loadMask(_ name: String, for image: Pixels) throws -> Mask {
         guard let url = context.input(name)?.fileURL else { throw NormalizerError.input("Input '\(name)' is missing.") }
         let (mask, resampled) = try Media.loadMask(url, width: image.width, height: image.height)
@@ -107,14 +115,31 @@ struct RunPlan {
         return mask
     }
 
-    /// The requested output format (PNG unless `output.media_type` asks for JPEG).
+    /// The requested output format (PNG unless `output.media_type` asks for JPEG, or TIFF where offered).
     var outputType: String { context.param("output")?["media_type"]?.stringValue ?? "image/png" }
+    /// The requested bit depth (Image §1.2): 8 unless `output.bit_depth` asks for 16, which only upscale offers.
+    var bitDepth: Int { context.param("output")?["bit_depth"]?.intValue ?? 8 }
+
+    static func fileExtension(_ mediaType: String) -> String {
+        switch mediaType {
+        case "image/jpeg": "jpg"
+        case "image/tiff": "tiff"
+        default: "png"
+        }
+    }
 
     func write(_ pixels: Pixels, name: String, kind: MESCore.Kind = .image, index: Int = 0) throws -> ProducedOutput {
         let type = kind == .mask ? "image/png" : outputType
-        let url = context.outputDirectory.appendingPathComponent("\(name)-\(index).\(type == "image/jpeg" ? "jpg" : "png")")
+        let url = context.outputDirectory.appendingPathComponent("\(name)-\(index).\(Self.fileExtension(type))")
         try Media.encode(pixels.cgImage, mediaType: type).write(to: url)
         return .file(url, name: name, kind: kind, mediaType: type, width: pixels.width, height: pixels.height)
+    }
+
+    /// `write` at 16 bits: a 16-bit PNG or TIFF.
+    func write(_ pixels: DeepPixels, name: String, index: Int = 0) throws -> ProducedOutput {
+        let url = context.outputDirectory.appendingPathComponent("\(name)-\(index).\(Self.fileExtension(outputType))")
+        try Media.encode(pixels.cgImage, mediaType: outputType).write(to: url)
+        return .file(url, name: name, kind: .image, mediaType: outputType, width: pixels.width, height: pixels.height)
     }
 
     func write(_ mask: Mask, name: String, index: Int = 0) throws -> ProducedOutput {
@@ -423,6 +448,7 @@ struct RunPlan {
     // MARK: - Processing
 
     mutating func upscale() async throws -> [ProducedOutput] {
+        if bitDepth == 16 { return try await upscaleDeep() }
         let input = try load("image")
         let scale = context.param("scale")?.intValue ?? 2
         let route = try await route(.imageUpscale)
@@ -435,6 +461,39 @@ struct RunPlan {
         if result.width != w || result.height != h { result = result.resized(w, h) }   // exactly ×scale (Image §3)
         effective["scale"] = .number(Double(scale))
         return [try write(keepAlpha(result, input: input), name: "image")]
+    }
+
+    /// `upscale` at 16 bits (G-6, AB-A-0158): the input loaded at 16 bits goes to the model as `.rawRGBA16` and the
+    /// model's 16-bit result is written as a 16-bit PNG or TIFF. `validateBitDepth` admitted the job only for a model
+    /// that keeps 16 bits; should one still answer in 8, the output says so (`bit_depth_reduced`) rather than passing
+    /// an 8-bit staircase off as 16-bit detail.
+    mutating func upscaleDeep() async throws -> [ProducedOutput] {
+        let input = try loadDeep("image")
+        let scale = context.param("scale")?.intValue ?? 2
+        let route = try await route(.imageUpscale)
+        guard normalizer.options.sixteenBitUpscalers.contains(route.id.rawValue) else {
+            throw MESError(.unsupportedParameter, "\(route.id.rawValue) runs at 8 bits.", param: "output")
+        }
+        record(route)
+        let ran = try await invoke(route, params: ["scale": .number(Double(scale))], inputs: ["image": [Media.modelImage(input)]])
+        if case .upscaled(_, let model) = ran { modelParams["ran"] = .string(model) }
+        let answered: MLXToolKit.Image
+        switch ran {
+        case .image(let image), .upscaled(let image, _): answered = image
+        default: throw NormalizerError.engine("The model returned no image.")
+        }
+        var result = try Media.deepPixels(answered)
+        if answered.format != .rawRGBA16 && !result.carriesMoreThanEightBits {
+            warn("bit_depth_reduced", "\(route.id.rawValue) answered at 8 bits; the 16-bit file carries 8-bit precision.", param: "output")
+        }
+        let (w, h) = (input.width * scale, input.height * scale)
+        if result.width != w || result.height != h { result = result.resized(w, h) }   // exactly ×scale (Image §3)
+        if input.hasTransparency, !result.hasTransparency {
+            warn(ImageProfile.WarningCode.alphaReapplied, "The model can't carry alpha; the input's was re-applied.")
+            result = Media.reapplyAlpha(result, from: input)
+        }
+        effective["scale"] = .number(Double(scale))
+        return [try write(result, name: "image")]
     }
 
     mutating func restore() async throws -> [ProducedOutput] {
