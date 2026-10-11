@@ -17,9 +17,10 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/xocialize/media-engine-spec.git", from: "0.1.0"),
-        // ≥ 0.3.4: Mage-Flow Edit Turbo at int8, content filter off (AB-D-0122), erases by name (AB-T-0220); ≥ 0.3.3
-        // made every default offer's weights the engine's to download (AB-T-0221/0222).
-        .package(url: "https://github.com/xocialize/mlx-image-runtime.git", from: "0.3.4"),
+        // ≥ 0.3.7: the restore fleet reads the weights the engine downloaded instead of fetching a second copy
+        // (AB-A-0112); ≥ 0.3.4: Mage-Flow Edit Turbo at int8, content filter off (AB-D-0122), erases by name
+        // (AB-T-0220); ≥ 0.3.3 made every default offer's weights the engine's to download (AB-T-0221/0222).
+        .package(url: "https://github.com/xocialize/mlx-image-runtime.git", from: "0.3.7"),
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.5.0"),
     ],
     targets: [

@@ -1,5 +1,5 @@
 {
-  "originHash" : "009ff2ea501de73ab9298456548ad73422030d63daba02b253b725009c75f890",
+  "originHash" : "9c7b03c62863c6282fc91ff85d15f6113fcbc53dc77924da7a71c154062af6c6",
   "pins" : [
     {
       "identity" : "anima-mlx-swift",
@@ -240,8 +240,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-bopbtl-swift.git",
       "state" : {
-        "revision" : "e5d45c0fe5946ff99ff6503713331a2558da1f0c",
-        "version" : "0.2.0"
+        "revision" : "2b3f2f5283be144174d5e8ff19beacae7c999679",
+        "version" : "0.2.1"
       }
     },
     {
@@ -249,8 +249,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-cidnet-swift.git",
       "state" : {
-        "revision" : "d6ce05d53c56231c6bfabde15c0c66beeb03e7ca",
-        "version" : "0.1.0"
+        "revision" : "c79822a68fcf20eb9c2077504089395b91985229",
+        "version" : "0.1.1"
       }
     },
     {
@@ -267,8 +267,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-drunet-swift.git",
       "state" : {
-        "revision" : "9bf3751536c523358be6666775de76e1572b6d46",
-        "version" : "0.1.0"
+        "revision" : "334502169ade9a10f96e01e19be64b1c866f309b",
+        "version" : "0.1.1"
       }
     },
     {
@@ -312,8 +312,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-gfpgan-swift.git",
       "state" : {
-        "revision" : "1058a0b2cd450a63dc37a1e2e66738c6e9410f1d",
-        "version" : "0.2.0"
+        "revision" : "2913dfad00206b86894db9d4b4f8a2c7f61967ce",
+        "version" : "0.2.1"
       }
     },
     {
@@ -330,8 +330,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-image-runtime.git",
       "state" : {
-        "revision" : "37464653007292e976b355f92dc95c430ad2fb95",
-        "version" : "0.3.4"
+        "revision" : "68d35ab3945c208daaf4e226b72f6e6af48074ee",
+        "version" : "0.3.7"
       }
     },
     {
@@ -402,8 +402,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-restoreformer-swift.git",
       "state" : {
-        "revision" : "6c4c347a5ed54bf6ad43d420879fabf69db74aeb",
-        "version" : "0.2.0"
+        "revision" : "c0a0106e118b4578889d22524af7c702b73fac7c",
+        "version" : "0.2.1"
       }
     },
     {
@@ -411,8 +411,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-restormer-swift.git",
       "state" : {
-        "revision" : "dd691429439b6996915f00ba3205c29b79aeec8d",
-        "version" : "0.1.0"
+        "revision" : "c1972f28a1f86b1b36d2d683d3a324cbe6c9083f",
+        "version" : "0.1.1"
       }
     },
     {
@@ -429,8 +429,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-scunet-swift.git",
       "state" : {
-        "revision" : "dfc7f888f6bbfe76c02315ea8a5ff0b574d9a3a0",
-        "version" : "0.1.1"
+        "revision" : "011046f5c83ceae6f775275c95f43dcea9d640a5",
+        "version" : "0.1.2"
       }
     },
     {
