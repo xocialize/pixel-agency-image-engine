@@ -1,5 +1,5 @@
 {
-  "originHash" : "3d0d0fc923dfc6c7eae27d51c92ded9cbdc25f243789489715c3ea9205b43426",
+  "originHash" : "111e7e6edaaa5f04fa6932f4124459dbcd9306b58beb3ff065f01c3b6624e711",
   "pins" : [
     {
       "identity" : "anima-mlx-swift",
@@ -249,8 +249,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-cidnet-swift.git",
       "state" : {
-        "revision" : "c79822a68fcf20eb9c2077504089395b91985229",
-        "version" : "0.1.1"
+        "revision" : "dc566dfdcedc24744558945fcf3bcdb9cb245b6f",
+        "version" : "0.1.2"
       }
     },
     {
@@ -330,8 +330,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-image-runtime.git",
       "state" : {
-        "revision" : "8176f5cfaa4c986512072582ba20ff8f405f66b7",
-        "version" : "0.3.8"
+        "revision" : "bb42dbc40979c38372f0a26c4d4ecf5660e46cc2",
+        "version" : "0.3.9"
       }
     },
     {
