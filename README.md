@@ -35,7 +35,10 @@ the loopback interface. Models download into the shared models folder on first u
 | `--store <dir>` | The models folder. Default `~/Library/Application Support/MLXEngine/Models`, shared with ML[X] apps (ENG-13). |
 | `--port`, `--host`, `--spool`, `--state`, `--ttl`, `--no-advertise` | As named. The engine id persists in `--state`. |
 
-`MLXIMG_WEIGHTS_ROOT` points the runtime at local weight snapshots instead of downloading.
+`MLXIMG_WEIGHTS_ROOT` points the runtime at local weight snapshots instead of downloading. It also changes Z-Image's
+quant: with a local snapshot the DiT runs bf16 (about 20.5 GB resident), and without one the runtime downloads
+`mlx-community/Z-Image-Turbo-bf16` and quantizes the DiT to int4 on load (about 11.9 GB). The R1b tier measurements
+used bf16 snapshots.
 
 ## What it offers
 
@@ -127,7 +130,9 @@ mes-conformance engine http://127.0.0.1:17610/mes/v0
 
 `swift test` runs the suite against the normalizer over a fake catalog and runner (no MLX). The fake answers like
 real packages do, with sizes a little off, alpha dropped and mattes at their own resolution, so the tests prove the
-normalizer's rules rather than the models'.
+normalizer's rules rather than the models'. With network access it also registers the real catalog into an empty
+models folder and lists, on the hub, everything each default offer would download, without downloading (AB-T-0221);
+offline, that test is skipped.
 
 ## Layout
 

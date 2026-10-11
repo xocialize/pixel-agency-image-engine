@@ -1,5 +1,5 @@
 {
-  "originHash" : "a31840adb7cc997fe5a8e12f67c2ec858c7339fd4a7ae82376ea06b8e1546527",
+  "originHash" : "e8b1287ef1cd80591c88d4253d9e70571d024428fd8d6ab9d8ce78aa83037e93",
   "pins" : [
     {
       "identity" : "anima-mlx-swift",
@@ -330,8 +330,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-image-runtime.git",
       "state" : {
-        "revision" : "a73763e7ba9f7a0f8a75fad3c6e94b8c53f10cef",
-        "version" : "0.3.0"
+        "revision" : "eeb8fe2b414697f86d0109c246082a08abfefd96",
+        "version" : "0.3.1"
       }
     },
     {
@@ -816,8 +816,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/z-image-swift.git",
       "state" : {
-        "revision" : "3b93473b825fb5f48a9883cdaef1e6115e8950de",
-        "version" : "0.5.2"
+        "revision" : "e5b841794d34197e83288308874fd779043b8faa",
+        "version" : "0.5.3"
       }
     }
   ],

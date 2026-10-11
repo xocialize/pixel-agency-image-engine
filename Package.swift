@@ -17,7 +17,8 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/xocialize/media-engine-spec.git", from: "0.1.0"),
-        .package(url: "https://github.com/xocialize/mlx-image-runtime.git", from: "0.3.0"),
+        // ≥ 0.3.1: Z-Image's quant tiers download the published snapshot, and download failures name the repo (AB-T-0221).
+        .package(url: "https://github.com/xocialize/mlx-image-runtime.git", from: "0.3.1"),
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.5.0"),
     ],
     targets: [
@@ -40,6 +41,8 @@ let package = Package(
             .product(name: "MESConformance", package: "media-engine-spec"),
             .product(name: "ImageServerModels", package: "mlx-image-runtime"),
             .product(name: "ImageServerAPI", package: "mlx-image-runtime"),
+            // The real catalog, for the hub check of every default offer's first download.
+            .product(name: "ImageServerCatalog", package: "mlx-image-runtime"),
         ]),
     ]
 )

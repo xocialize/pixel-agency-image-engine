@@ -331,5 +331,11 @@ struct ImageEngineTests {
         #expect((ImageNormalizer.mesError(APIError.conflict("license_not_allowed", "no")) as? MESError)?.code == MESErrorCode.policyUnmet.rawValue)
         #expect((ImageNormalizer.mesError(APIError.unavailable("down")) as? MESError)?.code == MESErrorCode.noCapacity.rawValue)
         #expect((ImageNormalizer.mesError(NormalizerError.input("bad")) as? MESError)?.code == MESErrorCode.inputInvalid.rawValue)
+        // A download failure keeps the repo it failed on (AB-T-0221).
+        let download = WeightDownloadError(model: "z-image-turbo",
+                                           sources: [.init(role: "snapshot", repo: "mlx-community/Z-Image-Turbo-4bit", bytes: nil)],
+                                           underlying: URLError(.notConnectedToInternet))
+        let mapped = ImageNormalizer.mesError(download) as? MESError
+        #expect(mapped?.code == MESErrorCode.engineError.rawValue && mapped?.message.contains("mlx-community/Z-Image-Turbo-4bit") == true)
     }
 }

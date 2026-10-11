@@ -230,7 +230,12 @@ public struct ImageNormalizer: MediaEngine {
                 throw error
             }
         } catch {
-            throw Self.mesError(error)
+            let failure = Self.mesError(error)
+            // The job record carries the error; the operator's log names it too (a download failure names its repo).
+            if let failure = failure as? MESError {
+                print("job \(context.jobID) (\(context.operation), \(context.model.id)) failed: \(failure.code): \(failure.message)")
+            }
+            throw failure
         }
     }
 
