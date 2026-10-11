@@ -99,11 +99,12 @@ enum OperationTable {
                       params: ["canvas", "quality", "seed", "output"], narrowed: ["output": output],
                       inputs: ["image": true, "prompt": false]),
         // Measured (R1b, docs/TIERS.md): photos, NERVE → RealPLKSR → HEART (best PSNR on 12 of 12 Commons rungs).
-        // SeedVR2 measured worst of the learned models on photos, and Nacre is a generative route: offered, never a
-        // default. Drawn content goes to NERVE at every tier (it beats RealPLKSR on graphics), so NERVE serves all.
+        // SeedVR2 measured worst of the learned models on photos. The generative stills routes, VOSR2 and Nacre, run
+        // behind ForgeCore's text-legibility guard (the runtime's enhancer, AB-D-0111): offered at best, by name,
+        // never a default. Drawn content goes to NERVE at every tier (it beats RealPLKSR on graphics).
         OperationSpec("image.upscale", .imageUpscale,
                       tiers: ["nerve-upscale": all, "realplksr-upscale": [.standard], "heart-upscale": [.best],
-                              "seedvr2-upscale": [.best], "nacre-upscale": [.best]],
+                              "seedvr2-upscale": [.best], "nacre-upscale": [.best], "vosr2-upscale": [.best]],
                       defaults: ["realplksr-upscale", "heart-upscale", "nerve-upscale"],
                       params: ["scale", "content", "quality", "output"], narrowed: ["output": output],
                       inputs: ["image": true]),

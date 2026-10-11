@@ -1,3 +1,4 @@
+import ForgeCore
 import Foundation
 import ImageServerModels
 
@@ -35,7 +36,11 @@ public final class ImageRuntime {
         try? FileManager.default.createDirectory(at: modelStore, withIntermediateDirectories: true)
         let (service, forge) = await ImageEngineService.bootstrap(storeRoot: modelStore, catalog: catalog,
                                                                   allowRestricted: true)
-        let normalizer = ImageNormalizer(directory: service, runner: EngineRunner(engine: service.engine), options: options)
+        // ForgeCore's still enhancer, as ML[X] Image Server runs it: a generative upscale (VOSR2, Nacre) runs behind
+        // the text-legibility guard, never bare (AB-D-0111), and reports what ran.
+        let enhancer = EngineImageEnhancer(service: forge)
+        let normalizer = ImageNormalizer(directory: service, runner: EngineRunner(engine: service.engine, enhancer: enhancer),
+                                         options: options)
         return ImageRuntime(normalizer: normalizer, service: service, forge: forge)
     }
 }

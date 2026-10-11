@@ -23,10 +23,13 @@ let package = Package(
         // Mage-Flow Edit Turbo at int8, content filter off (AB-D-0122), erases by name (AB-T-0220); ≥ 0.3.3 made
         // every default offer's weights the engine's to download (AB-T-0221/0222).
         .package(url: "https://github.com/xocialize/mlx-image-runtime.git", from: "0.3.9"),
+        // ForgeCore's still enhancer: generative upscales behind the text-legibility guard (AB-D-0111).
+        .package(url: "https://github.com/xocialize/ForgeCore.git", from: "0.34.1"),
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.5.0"),
     ],
     targets: [
         .target(name: "PixelAgencyImageEngine", dependencies: [
+            .product(name: "ForgeCore", package: "ForgeCore"),
             .product(name: "MESCore", package: "media-engine-spec"),
             .product(name: "MESEngineCore", package: "media-engine-spec"),
             .product(name: "ImageServerModels", package: "mlx-image-runtime"),

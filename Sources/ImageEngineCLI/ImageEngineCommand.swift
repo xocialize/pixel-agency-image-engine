@@ -53,7 +53,7 @@ struct ImageEngineCommand: AsyncParsableCommand {
               + (allowResearch ? " (research models named-only)" : ""))
 
         var config = EngineConfiguration(id: try Self.engineID(in: stateDir), name: "Pixel Agency Image Engine",
-                                         implementationName: "pixel-agency-image-engine", implementationVersion: "0.1.1",
+                                         implementationName: "pixel-agency-image-engine", implementationVersion: "0.1.2",
                                          spoolDirectory: spoolDir)
         config.stateDirectory = stateDir
         config.port = port
