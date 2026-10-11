@@ -376,6 +376,108 @@ enum Media {
         }
         return out
     }
+
+    // MARK: - Erase by name
+
+    /// The mask's non-black pixels' bounding box, or nil when it is all black.
+    static func bounds(of mask: Mask) -> Box? {
+        var (x0, y0, x1, y1) = (mask.width, mask.height, -1, -1)
+        for y in 0..<mask.height {
+            for x in 0..<mask.width where mask.values[y * mask.width + x] > 0 {
+                x0 = min(x0, x); x1 = max(x1, x); y0 = min(y0, y); y1 = max(y1, y)
+            }
+        }
+        return x1 < 0 ? nil : Box(x: x0, y: y0, width: x1 - x0 + 1, height: y1 - y0 + 1)
+    }
+
+    /// The square an edit model erases in: centred on `region`, 2.5× its long side for context, at least 1024 px (or
+    /// the short side) and at most the short side, inside the picture. The removal gate cropped the short side and
+    /// worked at 1024², so a 1024² input gets exactly that; a large photo gets a tighter square, so the result isn't
+    /// upscaled into a soft patch. nil when the region is longer than the short side: no square holds it.
+    static func square(around region: Box, width: Int, height: Int) -> Box? {
+        let short = min(width, height), long = max(region.width, region.height)
+        guard long <= short else { return nil }
+        let side = min(short, max(min(1024, short), Int((Double(long) * 2.5).rounded())))
+        let (cx, cy) = (region.x + region.width / 2, region.y + region.height / 2)
+        return Box(x: min(max(cx - side / 2, 0), width - side), y: min(max(cy - side / 2, 0), height - side), width: side, height: side)
+    }
+
+    static func crop(_ image: Pixels, _ box: Box) -> Pixels {
+        var out = Pixels(width: box.width, height: box.height)
+        for row in 0..<box.height {
+            let src = ((box.y + row) * image.width + box.x) * 4
+            out.rgba.replaceSubrange(row * box.width * 4..<(row + 1) * box.width * 4, with: image.rgba[src..<src + box.width * 4])
+        }
+        return out
+    }
+
+    static func crop(_ mask: Mask, _ box: Box) -> Mask {
+        var out = Mask(width: box.width, height: box.height)
+        for row in 0..<box.height {
+            let src = (box.y + row) * mask.width + box.x
+            out.values.replaceSubrange(row * box.width..<(row + 1) * box.width, with: mask.values[src..<src + box.width])
+        }
+        return out
+    }
+
+    /// `image` with `patch` written over it at `box`'s origin.
+    static func paste(_ patch: Pixels, into image: Pixels, at box: Box) -> Pixels {
+        var out = image
+        for row in 0..<patch.height {
+            let dst = ((box.y + row) * image.width + box.x) * 4
+            out.rgba.replaceSubrange(dst..<dst + patch.width * 4, with: patch.rgba[row * patch.width * 4..<(row + 1) * patch.width * 4])
+        }
+        return out
+    }
+
+    /// `image` with a pure red outline `thickness` px wide, centred on `box`'s edges: how the removal gate showed Mage-VL
+    /// which object to name (the fal/prithiv convention, 7 px at 1024²).
+    static func outline(_ image: Pixels, box: Box, thickness: Int) -> Pixels {
+        var out = image
+        let half = thickness / 2
+        func fill(_ x0: Int, _ y0: Int, _ x1: Int, _ y1: Int) {
+            for y in max(0, y0)...min(image.height - 1, y1) {
+                for x in max(0, x0)...min(image.width - 1, x1) {
+                    let i = (y * image.width + x) * 4
+                    out.rgba[i] = 255; out.rgba[i + 1] = 0; out.rgba[i + 2] = 0; out.rgba[i + 3] = 255
+                }
+            }
+        }
+        let (x1, y1) = (box.x + box.width - 1, box.y + box.height - 1)
+        fill(box.x - half, box.y - half, x1 + half, box.y + half)             // top
+        fill(box.x - half, y1 - half, x1 + half, y1 + half)                   // bottom
+        fill(box.x - half, box.y - half, box.x + half, y1 + half)             // left
+        fill(x1 - half, box.y - half, x1 + half, y1 + half)                   // right
+        return out
+    }
+
+    /// The mean absolute difference between `a` and `b` (0–255, over RGB) where `mask` is non-black.
+    static func meanDifference(_ a: Pixels, _ b: Pixels, within mask: Mask) -> Double {
+        var total = 0, n = 0
+        for i in 0..<(mask.width * mask.height) where mask.values[i] > 0 {
+            for c in 0..<3 { total += abs(Int(a.rgba[i * 4 + c]) - Int(b.rgba[i * 4 + c])) }
+            n += 1
+        }
+        return n == 0 ? 0 : Double(total) / Double(n * 3)
+    }
+}
+
+/// A pixel rectangle, top row first.
+struct Box: Equatable, Sendable {
+    var x: Int, y: Int, width: Int, height: Int
+
+    /// Grown by `margin` on every side, kept inside a `width` × `height` picture.
+    func grown(by margin: Int, within w: Int, _ h: Int) -> Box {
+        let (x0, y0) = (max(0, x - margin), max(0, y - margin))
+        let (x1, y1) = (min(w, x + width + margin), min(h, y + height + margin))
+        return Box(x: x0, y: y0, width: x1 - x0, height: y1 - y0)
+    }
+
+    /// Scaled by `k` about the origin (a crop resized to the model's side).
+    func scaled(_ k: Double) -> Box {
+        Box(x: Int((Double(x) * k).rounded()), y: Int((Double(y) * k).rounded()),
+            width: max(1, Int((Double(width) * k).rounded())), height: max(1, Int((Double(height) * k).rounded())))
+    }
 }
 
 /// Failures the normalizer reports (mapped to MES errors by the engine).

@@ -39,6 +39,13 @@ func withEngine(research: Bool = false, residency: Residency.Policy = .init(), r
 
 func image(_ data: Data = Fixtures.png()) -> RequestInput { .one(.inline(mediaType: "image/png", data: data)) }
 
+extension DecodedImage {
+    /// How many pixels match `test` (RGBA).
+    func pixels(where test: ([UInt8]) -> Bool) -> Int {
+        (0..<height).reduce(0) { n, y in n + (0..<width).filter { test(pixel($0, y)) }.count }
+    }
+}
+
 @Suite("Pixel Agency Image Engine", .serialized)
 struct ImageEngineTests {
     @Test("Conformance: every applicable BASE and IMAGE test passes against the normalizer")
@@ -66,7 +73,7 @@ struct ImageEngineTests {
         #expect(fill.models.first?.id == "lama-inpaint" && fill.models.contains { $0.id == "klein-4b" })
         #expect(ops.first { $0.operation == "image.extend" }?.models.first?.id == "lama-inpaint")
         let edit = try #require(ops.first { $0.operation == "image.edit" })
-        #expect(edit.models.map(\.id) == ["klein-4b"])            // boogu is work in progress
+        #expect(edit.models.map(\.id) == ["klein-4b", "mage-flow-edit-turbo"])            // boogu is work in progress
         #expect(edit.inputs.first { $0.name == "images" }?.max == 4)
         let upscale = try #require(ops.first { $0.operation == "image.upscale" })
         #expect(upscale.params["properties"]?["content"]?["enum"] == ["photo", "drawn"])
@@ -288,6 +295,10 @@ struct ImageEngineTests {
                             try await model("image.generate", ["prompt": .text("x")], ["size": ["width": 64, "height": 64]]),
                             try await model("image.generate", ["prompt": .text("x")], ["quality": "best", "size": ["width": 64, "height": 64]])]
             #expect(generate == ["klein-4b", "z-image-turbo", "z-image-turbo"], "Z-Image measured below Turbo (R1b)")
+            let masked: [String: RequestInput] = ["image": image(), "mask": .one(.inline(mediaType: "image/png", data: Fixtures.mask()))]
+            let erase = [try await model("image.erase", masked, ["quality": "draft"]), try await model("image.erase", masked, [:]),
+                         try await model("image.erase", masked, ["quality": "best"])]
+            #expect(erase == ["lama-inpaint", "lama-inpaint", "mage-flow-edit-turbo"], "Mage erases by name at best (R2)")
         }
     }
 
@@ -323,6 +334,51 @@ struct ImageEngineTests {
             #expect(job.result?.effective["model_params"]?["fallback"] == "lama-inpaint")
             let seeds = runner.calls.withLock { $0.suffix(3).prefix(2).map(\.seed) }
             #expect(seeds[1] == seeds[0] + 1, "the retry uses the next seed")
+        }
+    }
+
+    @Test("erase by name (AB-T-0220): Mage-VL names what's in the red box, the editor removes it by name, black-mask pixels stay exact")
+    func eraseByName() async throws {
+        try await withEngine { probe, runner in
+            let erase = try #require(probe.descriptor("image.erase"))
+            #expect(erase.models.map(\.id) == ["lama-inpaint", "mage-flow-edit-turbo"])     // only named removers, not Klein
+            #expect(erase.models.first?.isDefault == true)
+            let src = try DecodedImage(Fixtures.png())
+            let job = try await probe.succeed(JobRequest(operation: "image.erase",
+                                                         inputs: ["image": image(), "mask": .one(.inline(mediaType: "image/png", data: Fixtures.mask()))],
+                                                         model: "mage-flow-edit-turbo"))
+            let (named, removed) = runner.calls.withLock { ($0[$0.count - 2], $0[$0.count - 1]) }
+            #expect(named.route.capability == .imageAnalysis && named.route.id == "mage-vl")
+            let boxed = try DecodedImage(named.inputs["image"]![0].data)
+            #expect(boxed.width == 512 && boxed.height == 512)                 // 48² square, up to Mage's 512 floor
+            #expect(boxed.pixels(where: { $0 == [255, 0, 0, 255] }) > 0, "a red box shows the namer the region")
+            #expect(removed.route.id == "mage-flow-edit-turbo" && removed.width == 512 && removed.height == 512)
+            #expect(job.result?.provenance.seed == Int(removed.seed))                  // erase takes no seed; the job reports it
+            #expect(removed.spec.params["prompt"]?.stringValue == "Remove the red mug and its shadow and reflection. Keep everything else unchanged.")
+            let unmarked = try DecodedImage(removed.inputs["images"]![0].data)
+            #expect(unmarked.pixels(where: { $0 == [255, 0, 0, 255] }) == 0, "the editor sees the picture unmarked")
+            #expect(job.result?.effective["model_params"]?["named"] == "red mug")
+            #expect(job.result?.effective["model_params"]?["namer"] == "mage-vl")
+            let out = try DecodedImage(try await probe.output(job).1)
+            #expect(out.width == 64 && out.height == 48)
+            #expect((0..<48).allSatisfy { y in (0..<32).allSatisfy { x in out.pixel(x, y) == src.pixel(x, y) } }, "Image §1.7")
+            #expect(out.pixel(48, 24) != src.pixel(48, 24))                     // the masked half is the editor's
+        }
+    }
+
+    @Test("erase by name: an object handed back is retried with the next seed, then LaMa erases it")
+    func eraseHandedBack() async throws {
+        try await withEngine(runner: FakeRunner(editKeepsMarker: true)) { probe, runner in
+            let job = try await probe.succeed(JobRequest(operation: "image.erase",
+                                                         inputs: ["image": image(), "mask": .one(.inline(mediaType: "image/png", data: Fixtures.mask()))],
+                                                         model: "mage-flow-edit-turbo"))
+            let steps = runner.calls.withLock { $0.suffix(4).map(\.route.capability) }
+            #expect(steps == [.imageAnalysis, .imageEdit, .imageEdit, .imageInpaint])
+            let seeds = runner.calls.withLock { $0.suffix(3).prefix(2).map(\.seed) }
+            #expect(seeds[1] == seeds[0] + 1)
+            #expect(job.warnings.contains { $0.code == "model_fallback" && $0.message.contains("handed the object back twice") })
+            #expect(job.result?.effective["model_params"]?["fallback"] == "lama-inpaint")
+            #expect(job.result?.effective["model_params"]?["rejected"] == "object left")
         }
     }
 

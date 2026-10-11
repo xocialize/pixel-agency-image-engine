@@ -247,6 +247,9 @@ struct RunPlan {
         let original = try load("image")
         let mask = try loadMask("mask", for: original)
         let prompt = context.input("prompt")?.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if spec.operation == "image.erase", await generative() {
+            return [try write(Media.composite(result: try await eraseByName(original, mask: mask), over: original, mask: mask), name: "image")]
+        }
         if spec.operation == "image.fill", await generative() {
             let instruction = prompt.isEmpty
                 ? "Fill the bright magenta area so it blends seamlessly into the rest of the picture, as if nothing had been there. Keep everything else unchanged."
@@ -270,11 +273,60 @@ struct RunPlan {
 
     /// The edit model left its region unpainted (the marker colour is still there, twice): LaMa fills it instead,
     /// so the marker never reaches an output.
-    mutating func fallBack(_ canvas: Pixels, hole: Mask) async throws -> Pixels {
-        warn("model_fallback", "\(context.model.title) didn't paint the area usably twice; LaMa filled it instead.")
+    mutating func fallBack(_ canvas: Pixels, hole: Mask, because: String? = nil) async throws -> Pixels {
+        warn("model_fallback", "\(context.model.title) \(because ?? "didn't paint the area usably twice"); LaMa filled it instead.")
         let lama = try await route(.imageInpaint, helper: true)
         modelParams["fallback"] = .string(lama.id.rawValue)
         return try image(try await invoke(lama, params: [:], inputs: ["image": [Media.modelImage(canvas)], "mask": [Media.modelImage(hole)]]))
+    }
+
+    /// Erase with an edit model, by name (AB-T-0220; the removal gate's named route, AB-R-0464). Edit models ignore
+    /// marks (Mage erases a red box and keeps magenta) but remove an object they are told the name of. So:
+    /// - a square around the region (`Media.square`), at the model's side;
+    /// - Mage-VL names what's inside a red box drawn round the region;
+    /// - the edit model removes "the <name> and its shadow and reflection" from the unmarked square;
+    /// - the square goes back into the picture, its tone matched at the seam.
+    /// The caller composites through the client's mask (Image §1.7), so a shadow outside the mask stays. An object
+    /// handed back (`Erase.handedBack`) is retried once with the next seed; after that LaMa erases it.
+    mutating func eraseByName(_ original: Pixels, mask: Mask) async throws -> Pixels {
+        let hole = mask.hole
+        guard let region = Media.bounds(of: hole) else { return original }
+        guard let square = Media.square(around: region, width: original.width, height: original.height) else {
+            return try await fallBack(original, hole: hole, because: "needs the area to fit in a square inside the picture")
+        }
+        // The namer first: it's small and stays warm, and the editor then takes the heavy slot (ENG-3).
+        let namer = try await route(.imageAnalysis, helper: true)
+        let editor = try await route(.imageEdit)
+        record(editor)
+        let maxSide = Int(Double(editor.envelope.maxPixels).squareRoot()) / 16 * 16
+        let side = max(512, min(maxSide, square.width / 16 * 16))
+        let k = Double(side) / Double(square.width)
+        let input = Media.crop(original, square).resized(side, side)
+        let local = Box(x: region.x - square.x, y: region.y - square.y, width: region.width, height: region.height).scaled(k)
+            .grown(by: Int((0.045 * Double(side)).rounded()), within: side, side)
+        let boxed = Media.outline(input, box: local, thickness: max(3, side * 7 / 1024))
+        guard case .text(let reply) = try await invoke(namer, params: ["prompt": .string(Erase.namePrompt)],
+                                                       inputs: ["image": [Media.modelImage(boxed)]]) else {
+            throw NormalizerError.engine("The namer returned no text.")
+        }
+        let name = Erase.objectName(reply)
+        modelParams["namer"] = .string(namer.id.rawValue)
+        modelParams["named"] = .string(name)
+        let before = Media.crop(original, square), squareHole = Media.crop(hole, square)
+        let base = seed(count: 2)
+        for attempt in 0..<2 {
+            let result = try image(try await invoke(editor, params: ["prompt": .string(Erase.instruction(name))],
+                                                    inputs: ["images": [Media.modelImage(input)]], seed: base + UInt64(attempt),
+                                                    width: side, height: side))
+                .resized(square.width, square.height)
+            guard Media.meanDifference(result, before, within: squareHole) < Erase.handedBack else {
+                seedUsed = base + UInt64(attempt)
+                if attempt > 0 { modelParams["retries"] = .number(Double(attempt)) }
+                return Media.paste(Media.harmonize(result, toward: before, region: squareHole), into: original, at: square)
+            }
+            modelParams["rejected"] = "object left"
+        }
+        return try await fallBack(original, hole: hole, because: "handed the object back twice")
     }
 
     mutating func extend() async throws -> [ProducedOutput] {
@@ -518,6 +570,34 @@ final class ProgressRelay: Sendable {
     }
 }
 typealias RunOutputValue = ImageServerModels.RunOutput
+
+/// Erasing by name (AB-T-0220): the removal gate's question to Mage-VL, its instruction to the editor, and how a
+/// handed-back object is recognised.
+enum Erase {
+    static let namePrompt = "What is the object inside the red box? Reply with only a short noun phrase of one to four words "
+        + "that names it, with no other text."
+
+    static func instruction(_ name: String) -> String {
+        "Remove the \(name) and its shadow and reflection. Keep everything else unchanged."
+    }
+
+    /// Below this mean change inside the mask (0–255 over RGB), the editor handed the object back. Calibrated on the
+    /// removal gate's 287 Edit-Turbo outputs: it catches 19 of the 21 objects left in place and flags 8 of the 266
+    /// removals, each of which costs one retry.
+    static let handedBack = 18.0
+
+    /// The namer's reply as a noun phrase: its first line, without quotes, a full stop or a leading article. A reply
+    /// that isn't one (empty, or over six words) names nothing in particular.
+    static func objectName(_ reply: String) -> String {
+        var name = reply.trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: .newlines).first ?? ""
+        name = name.trimmingCharacters(in: CharacterSet(charactersIn: " .!\"'`*"))
+        for article in ["a ", "an ", "the "] where name.lowercased().hasPrefix(article) {
+            name = String(name.dropFirst(article.count))
+        }
+        let words = name.split(separator: " ").count
+        return words == 0 || words > 6 ? "object" : name
+    }
+}
 
 /// Asking a vision-language model for a library description, and reading its answer.
 enum Describe {

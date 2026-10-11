@@ -13,7 +13,7 @@ model.
 | `image.edit` | Klein 4B | **Klein 4B** | Klein 4B | Provisional: Qwen-Image-Edit 2511 is ~20× slower and failed one of two edits |
 | `image.fill` (no prompt) | MI-GAN | **LaMa** | LaMa | LaMa fp32 (mlx-lama-swift ≥ 0.3.1) |
 | `image.fill` (prompt) | Klein 4B | **Klein 4B** | Klein 4B | Paints the prompt; guarded, LaMa fallback |
-| `image.erase` | MI-GAN | **LaMa** | LaMa | as fill |
+| `image.erase` | MI-GAN | **LaMa** | Mage-Flow Edit Turbo, by name | Removal gate (R2): Mage +3.5 dB in the hole, 10× LaMa's time |
 | `image.extend` (no prompt) | MI-GAN | **LaMa** | LaMa | LaMa continued busy photos coherently every time |
 | `image.extend` (prompt) | Klein 4B | **Klein 4B** | Klein 4B | Guarded per side; unguarded, Klein failed 2 of 4 |
 | `image.upscale` (photo) | NERVE | **RealPLKSR** | HEART | HEART best fidelity at ×2 and ×4; RealPLKSR best perceptual |
@@ -43,7 +43,9 @@ Not offered:
   - Quality is scored against ground truth where the corpus has it.
 - **Corpora** (measurement only, never shipped; `mlxengine-image/corpus`):
   - DIV2K validation HR (upscale, restore);
-  - GrabCut (segment).
+  - GrabCut (segment);
+  - the removal gate's prepared set (erase; `mlxengine-image/WIP/removal-gate/data/prepared`): CORNE-Val (Apache,
+    evaluation only) and RemovalBench (CC-BY-4.0).
 - **Raw summaries and the generate contact sheets:** [`docs/tiers/`](tiers/). Sheets built from DIV2K photos are
   kept out of the repo (research-only licence).
 
@@ -136,6 +138,57 @@ the engine, so SAM 2.1 is the default. Segment's vocabulary has no `quality`, so
   - The maroon side measured 27 against an edge of 86, so it is now rejected. The slight tint (56) passes.
 - **Edit is provisional.** Two photos aren't an edit benchmark. Qwen-Image-Edit stays offered by name, and should be
   re-measured with a proper edit set (instruction-following and identity preservation) before it can be a default.
+
+### Erase (removal gate subset S, R2)
+
+Measured 2026-10-11 on this Mac with a release build. The engine downloaded Mage-Flow Edit Turbo (int8) on first
+use. Run: `tier-bench erase --gate <prepared>` (bench/r2-erase).
+
+**Data.** The removal gate's subset S (AB-R-0463): 60 crops at 1024², the largest regions plus a seeded random fill.
+Each crop has a real or rendered object-absent photo as ground truth.
+
+**Masks.** Every arm erases each crop twice:
+- with the object mask dilated 1.5% (`_objd`), the mask a client sends;
+- on the 43 CORNE crops, also with the effect mask (object plus shadow and reflection), the mask a shadow-aware
+  selection would send.
+
+**How the composite works.** The engine composites through the mask (Image §1.7). So with the object mask, a
+shadow outside it stays whatever the model does, and `ring` is the same for every arm.
+
+**Metrics.**
+- **Hole PSNR:** PSNR (dB) on luma inside the request's mask, against the ground truth.
+- **Box:** PSNR and SSIM over the object's box grown 4.5%: the fill and its surroundings.
+- **Ring:** mean absolute error (0–255) in the shadow band, which is the effect region minus the object.
+- **Left:** inside the object's core, the output stayed closer to the object than half-way to the truth.
+- **Fallback:** the share of jobs where Mage handed the object back twice and LaMa erased it instead.
+
+| Mask | Arm | Hole PSNR | Box PSNR / SSIM | Ring | Left | Fallback | Warm time |
+|---|---|---|---|---|---|---|---|
+| object (60) | MI-GAN (draft) | 15.51 | 17.81 / 0.767 | 36.4 | 3.3% | — | 0.16 s |
+| object (60) | LaMa (standard) | 16.13 | 18.31 / 0.782 | 36.4 | 5.0% | — | 0.42 s |
+| object (60) | **Mage-Flow Edit Turbo, by name** | **19.66** | **20.42 / 0.791** | 36.4 | **1.7%** | 8.3% | 4.14 s |
+| effect (43) | MI-GAN (draft) | 18.32 | 21.17 / 0.827 | 19.2 | 0% | — | 0.16 s |
+| effect (43) | LaMa (standard) | 19.36 | 22.17 / **0.856** | 17.3 | 0% | — | 0.42 s |
+| effect (43) | **Mage-Flow Edit Turbo, by name** | **20.82** | **23.52** / 0.848 | **13.8** | 2.3% | 4.7% | 4.17 s |
+
+**Reading the results.**
+- **Mage fills the hole far closer to the truth.** With object masks it is +3.5 dB over LaMa. The contact sheet
+  (kept locally; CORNE is evaluation-only) shows why: it rebuilds what was behind the object, such as the flower pot
+  behind a tricycle or the sofa behind a laptop, where LaMa smears.
+- **With effect masks it also removes the most shadow:** ring 13.8 against 17.3.
+- **Hand-backs and fallbacks.** Mage handed the object back twice on 5 of 60 crops. The engine then erased those with
+  LaMa, which is where the gate's ashtray goes. That leaves 1 object of 60 in place, against LaMa's 3.
+- **Cost.** About 10× LaMa's time, and the engine's footprint is 22 GB (25 GB peak) with Edit Turbo int8, Mage-VL
+  and LaMa resident. LaMa's is about 0.2 GB.
+
+**Tiers.**
+- Mage-Flow Edit Turbo takes **best**; LaMa stays standard (the default) and MI-GAN draft.
+- Mage as standard too is the operator's call: the quality case is there, but it makes the default erase 10× slower
+  and about 20 GB heavier.
+- The gate's own best configuration pasted Mage's result back through a box, which removed shadows outside the
+  object mask. The Image profile forbids that (§1.7), so here shadows go only when the client's mask covers them:
+  the shadow-aware mask expander (AB-T-0220 item 2) is how that gain reaches an object mask.
+- Mage-Flow's content filter is off (AB-D-0122). It refused a benign photo in the gate.
 
 ### Single-model operations (1024²)
 

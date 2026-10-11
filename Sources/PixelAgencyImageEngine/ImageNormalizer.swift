@@ -54,7 +54,7 @@ public struct ImageNormalizer: MediaEngine {
     }
 
     func descriptor(_ spec: OperationSpec, models: [ModelInfo]) -> Descriptor? {
-        let candidates = models.filter { !Set($0.capabilities).isDisjoint(with: spec.capabilities) && offered($0) }
+        let candidates = models.filter { spec.serves($0.id.rawValue, capabilities: $0.capabilities) && offered($0) }
         guard !candidates.isEmpty, let profile = ImageProfile.operations.operations[spec.operation] else { return nil }
         let defaultID = spec.defaults.first { id in candidates.contains { $0.id.rawValue == id && $0.isDefaultRoutable } }
             ?? candidates.first { $0.isDefaultRoutable }?.id.rawValue
@@ -184,7 +184,7 @@ public struct ImageNormalizer: MediaEngine {
 
     /// The default when a request names no model (Base §6 rule 2): each tier's preferred model (`OperationSpec.
     /// preferred`), refined by the request's params: restore by `kind`, fill or extend with a prompt to an edit model,
-    /// upscale of drawn content to NERVE. Only `candidates` (the tier's allowed, not named-only offers) can be returned.
+    /// upscale of drawn content to NERVE, erase at best to the named remover. Only `candidates` (the tier's allowed, not named-only offers) can be returned.
     public func defaultModel(for request: JobRequest, descriptor: Descriptor, kitChoice: ModelOffer,
                              candidates: [ModelOffer]) -> ModelOffer? {
         guard let spec = OperationTable.specs.first(where: { $0.operation == request.operation }) else { return nil }
@@ -197,6 +197,8 @@ public struct ImageNormalizer: MediaEngine {
             if case .text(let prompt)? = request.inputs?["prompt"], !prompt.trimmingCharacters(in: .whitespaces).isEmpty {
                 preferred = OperationTable.generativeFill[tier] ?? []
             }
+        case "image.erase":
+            preferred = OperationTable.eraseByTier[tier] ?? []
         case "image.upscale":
             if request.params?["content"]?.stringValue == "drawn" { preferred = OperationTable.drawnUpscale }
         default:

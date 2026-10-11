@@ -59,6 +59,7 @@ actor FakeModels: ImageModelDirectory, ModelRouter {
         model("z-image", [.textToImage], guidance: 4, gb: 12),
         model("qwen-image-2.1", [.textToImage], license: research, guidance: 1, gb: 30),
         model("boogu", [.imageEdit], maturity: .wip, guidance: 4, gb: 20),
+        model("mage-flow-edit-turbo", [.imageEdit], guidance: 1, maxPixels: 1024 * 1024, maxInputs: 3, gb: 14),
         model("lama-inpaint", [.imageInpaint]),
         model("realplksr-upscale", [.imageUpscale]),
         model("nerve-upscale", [.imageUpscale]),
@@ -126,6 +127,8 @@ final class FakeRunner: ModelRunner {
         case .matting, .promptSegment, .defectDetect:
             let (w, h) = size ?? (64, 64)
             return .matte(Self.greyMatte(max(8, w / 2), max(8, h / 2)), score: 0.9)
+        case .imageAnalysis where work.spec.params["prompt"]?.stringValue?.contains("red box") == true:
+            return .text("A red mug.\nIt sits on the table.")                 // erase by name: the namer's reply
         case .imageAnalysis:
             return .text(#"Sure! {"caption": "A test card.", "alt_text": "A test card.", "tags": ["Test", "Card"]}"#)
         case .imageQualityScore:

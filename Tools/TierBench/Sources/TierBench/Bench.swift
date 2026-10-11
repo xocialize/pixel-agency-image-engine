@@ -18,6 +18,8 @@ struct Record: Codable {
     var warnings: [String] = []
     var outputs: [String] = []
     var error: String?
+    /// The job's `effective.model_params` (what ran, and why: a fallback, a rejected attempt, an erased name).
+    var modelParams: JSONValue?
 }
 
 /// A running engine, driven the way a client drives it.
@@ -68,6 +70,7 @@ final class Bench: @unchecked Sendable {
             record.model = job.plan?.model.id ?? record.model
             record.runMs = job.result?.provenance.timings.runMs ?? 0
             record.warnings = job.warnings.map(\.code)
+            record.modelParams = job.result?.effective["model_params"]
             guard job.outcome == .succeeded else {
                 record.error = job.error.map { "\($0.code): \($0.message)" } ?? "\(job.state.rawValue)"
                 throw BenchError(record.error!)

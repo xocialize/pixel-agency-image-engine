@@ -35,6 +35,9 @@ the loopback interface. Models download into the shared models folder on first u
 | `--store <dir>` | The models folder. Default `~/Library/Application Support/MLXEngine/Models`, shared with ML[X] apps (ENG-13). |
 | `--port`, `--host`, `--spool`, `--state`, `--ttl`, `--no-advertise` | As named. The engine id persists in `--state`. |
 
+Mage-Flow's content filter is off by default (mlx-image-runtime 0.3.4, AB-D-0122); `MLXIMG_MAGE_CONTENT_FILTER=1`
+turns it on, and a refusal then fails the job with the filter's verdict.
+
 `MLXIMG_WEIGHTS_ROOT` points the runtime at local weight snapshots instead of downloading. It also changes Z-Image's
 quant: with a local snapshot the DiT runs bf16 (about 20.5 GB resident), and without one the runtime downloads
 `mlx-community/Z-Image-Turbo-bf16` and quantizes the DiT to int4 on load (about 11.9 GB). The R1b tier measurements
@@ -50,7 +53,7 @@ Measured on this Mac (ENG R1b): the evidence for every row is in [`docs/TIERS.md
 | `image.edit` | Klein 4B | **Klein 4B** | Klein 4B (provisional) |
 | `image.fill` | MI-GAN | **LaMa** | LaMa |
 | ↳ with a prompt | Klein 4B | **Klein 4B** | Klein 4B |
-| `image.erase` | MI-GAN | **LaMa** | LaMa |
+| `image.erase` | MI-GAN | **LaMa** | Mage-Flow Edit Turbo, by name |
 | `image.extend` | MI-GAN | **LaMa** | LaMa |
 | ↳ with a prompt | Klein 4B | **Klein 4B** | Klein 4B |
 | `image.upscale` (photo) | NERVE | **RealPLKSR** | HEART |
@@ -67,7 +70,11 @@ Bold is the default when a request names no model. MI-GAN and LaMa are one packa
 offer is LaMa's; `effective.model_params.variant` says which ran. MI-GAN takes draft, LaMa standard and best (its
 earlier pink cast on colour fills was the bf16 weights; mlx-lama-swift 0.3.1 loads fp32, `mlx-community/LaMa-fp32`,
 204 MB). Big-LaMa itself fades very large holes (~65% of the frame and up) to a grey, blurry centre; a generative fill
-suits those. Other models (Z-Image, Klein Base, Qwen-Image-Edit 2511, Mage-Flow and Mage-Flow Edit, SeedVR2, Nacre,
+suits those. Erase at best runs Mage-Flow Edit Turbo by name: Mage-VL names the object inside a red box, Mage removes
+"the <name> and its shadow and reflection", and the result goes back through the mask, so pixels outside it stay
+exactly as they were (Image §1.7). It retries once if Mage hands the object back, then falls back to LaMa
+(`model_fallback`). On the removal gate it fills 3.5 dB closer to the truth than LaMa, at 4.1 s against 0.42 s
+([TIERS.md](docs/TIERS.md#erase-removal-gate-subset-s-r2)). Other models (Z-Image, Klein Base, Qwen-Image-Edit 2511, Mage-Flow and Mage-Flow Edit, SeedVR2, Nacre,
 DRUNet, …) are offered and run when named. Qwen-Image Flash is not offered: it intermittently kills the engine (AB-T-0214). Every offer carries its licence in MES terms (Base §10.2).
 `commercial_use` is `true` only when every weight licence and the port's code licence are permissive.
 

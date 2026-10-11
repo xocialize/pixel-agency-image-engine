@@ -8,7 +8,7 @@ struct TierBench: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "tier-bench",
         abstract: "Measure the Image Engine's quality tiers end to end (ENG R1b).",
-        discussion: "Runs against a running engine. Suites: tiers, upscale, restore, segment, generate, edits, singles, or all.")
+        discussion: "Runs against a running engine. Suites: tiers, upscale, restore, segment, generate, edits, singles, erase, or all.")
 
     @Argument(help: "Suites to run.") var suites: [String] = ["all"]
     @Option(help: "The engine's base URL.") var engine = "http://127.0.0.1:17610/mes/v0"
@@ -17,7 +17,11 @@ struct TierBench: AsyncParsableCommand {
     @Option(help: "Where results go.") var out: String
     @Option(help: "Images per measured set.") var count = 6
     @Option(help: "Objects for segment.") var objects = 50
-    @Option(help: "Only these models (comma-separated), for generate.") var models: String?
+    @Option(help: "Only these models (comma-separated): generate by model id; erase by arm (mi-gan, lama, or an edit model's id).")
+    var models: String?
+    @Option(help: "erase: the removal gate's prepared set (manifest.json and its crops). Default: $TIERBENCH_GATE, else <corpus>/removal-gate/prepared.")
+    var gate: String?
+    @Option(help: "erase: how many of the gate's subset S (60) to run.") var eraseItems = 60
     @Option(help: "judge: a previous run whose generate outputs to judge.") var from: String?
     @Flag(help: "generate: the hard prompt set (text in the image, counts, attribute binding).") var hard = false
 
@@ -36,6 +40,11 @@ struct TierBench: AsyncParsableCommand {
         if all || suites.contains("segment") { try await suite.segment(objects: objects, &footprints) }
         if all || suites.contains("generate") { try await suite.generate(&footprints) }
         if all || suites.contains("edits") { try await suite.edits(&footprints) }
+        let gateDir = URL(fileURLWithPath: gate ?? ProcessInfo.processInfo.environment["TIERBENCH_GATE"]
+            ?? root.appendingPathComponent("removal-gate/prepared").path, isDirectory: true)
+        if suites.contains("erase") || (all && FileManager.default.fileExists(atPath: gateDir.appendingPathComponent("manifest.json").path)) {
+            try await suite.erase(gate: gateDir, items: eraseItems, &footprints)
+        }
         if suites.contains("judge"), let from { try await suite.judge(from: URL(fileURLWithPath: from, isDirectory: true)) }
         let md = "# Tier bench — \(bench.info.name)\n\nRun \(ISO8601DateFormatter().string(from: Date())), engine \(engine).\n"
             + Summary.markdown(bench.records, footprints: footprints)

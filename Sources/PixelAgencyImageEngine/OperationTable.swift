@@ -25,6 +25,14 @@ struct OperationSpec: Sendable {
     let inputs: [String: Bool]
     /// Further capabilities a plan may use (e.g. restore's scratches use defect detection and inpainting).
     let helpers: [Capability]
+    /// Capabilities whose models are offered only when listed here (erase offers only the edit models that remove by
+    /// name, not every editor).
+    let restricted: [Capability: Set<String>]
+
+    /// Whether a model with `capabilities` is offered for this operation.
+    func serves(_ id: String, capabilities modelCapabilities: [Capability]) -> Bool {
+        modelCapabilities.contains { capabilities.contains($0) && (restricted[$0]?.contains(id) ?? true) }
+    }
 
     /// The models to prefer at `tier` when a request names none: `defaults` in order, those that serve the tier.
     func preferred(at tier: QualityTier) -> [String] {
@@ -33,9 +41,10 @@ struct OperationSpec: Sendable {
 
     init(_ operation: String, _ capabilities: Capability..., tiers: [String: [QualityTier]] = [:], defaults: [String] = [],
          otherTiers: [QualityTier] = [.standard], params: [String], narrowed: [String: JSONValue] = [:],
-         inputs: [String: Bool], helpers: [Capability] = []) {
+         inputs: [String: Bool], helpers: [Capability] = [], restricted: [Capability: Set<String>] = [:]) {
         self.operation = operation; self.capabilities = capabilities; self.tiers = tiers; self.defaults = defaults
         self.otherTiers = otherTiers; self.params = params; self.narrowed = narrowed; self.inputs = inputs; self.helpers = helpers
+        self.restricted = restricted
     }
 }
 
@@ -71,10 +80,16 @@ enum OperationTable {
                       defaults: ["lama-inpaint"],
                       params: ["quality", "seed", "output"], narrowed: ["output": output],
                       inputs: ["image": true, "mask": true, "prompt": false]),
-        // Erase is prompt-less inpainting (IMG-5): LaMa, or MI-GAN at draft.
-        OperationSpec("image.erase", .imageInpaint, defaults: ["lama-inpaint"], otherTiers: all,
+        // Erase is prompt-less removal (IMG-5): MI-GAN at draft, LaMa at standard, and at best Mage-Flow Edit Turbo by name
+        // (`eraseByTier`; `RunPlan.eraseByName`: Mage-VL names the object, Mage removes it, composited through the mask).
+        // Measured (R2, docs/TIERS.md, removal gate subset S): Mage +3.5 dB in the hole over LaMa with object masks, and
+        // the lowest shadow ring with effect masks, at 4.1 s against 0.42 s.
+        OperationSpec("image.erase", .imageInpaint, .imageEdit,
+                      tiers: ["lama-inpaint": all, "mage-flow-edit-turbo": [.best]],
+                      defaults: ["lama-inpaint"],
                       params: ["quality", "output"], narrowed: ["output": output],
-                      inputs: ["image": true, "mask": true]),
+                      inputs: ["image": true, "mask": true], helpers: [.imageAnalysis],
+                      restricted: [.imageEdit: namedRemovers]),
         // Extend is inpainting on a padded canvas (IMG-5): LaMa (MI-GAN at draft). Measured (R1b): fp32 LaMa continues
         // busy photos coherently every time; Klein, shown the border to paint, rendered it as a purple surface or left
         // it dark on 2 of 4 tries. With a prompt, an edit model paints the border (guarded, LaMa as fallback).
@@ -114,6 +129,13 @@ enum OperationTable {
         OperationSpec("image.score", .imageQualityScore, defaults: ["siglip2-quality"], otherTiers: all,
                       params: [], inputs: ["image": true]),
     ]
+
+    /// Edit models that erase by name (`RunPlan.eraseByName`): the removal gate measured Mage's (AB-R-0464).
+    static let namedRemovers: Set<String> = ["mage-flow-edit-turbo"]
+
+    /// Erase, by quality tier, when the request names no model: the named remover at best (R2, TIERS.md). LaMa keeps
+    /// every tier for requests that name it, so "LaMa at best" stays LaMa.
+    static let eraseByTier: [QualityTier: [String]] = [.best: ["mage-flow-edit-turbo"]]
 
     /// Fill with a prompt, by quality tier: the edit models that paint it, most preferred first.
     static let generativeFill: [QualityTier: [String]] = [
