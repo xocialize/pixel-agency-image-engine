@@ -1,5 +1,5 @@
 {
-  "originHash" : "107b1995b72b5bcabde9d9ceae7441e6c70ccc417fa2c41cfdec6152cae0f330",
+  "originHash" : "a31840adb7cc997fe5a8e12f67c2ec858c7339fd4a7ae82376ea06b8e1546527",
   "pins" : [
     {
       "identity" : "anima-mlx-swift",
@@ -96,8 +96,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/flux2-vae-mlx-swift",
       "state" : {
-        "revision" : "0de9b339279bb8f030fa64b631fc090a254396fe",
-        "version" : "0.3.0"
+        "revision" : "699662d62e47bee82aa4acd4882328988bd32ea4",
+        "version" : "0.3.1"
       }
     },
     {
@@ -105,8 +105,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/ForgeCore.git",
       "state" : {
-        "revision" : "cd907dd09b2ac2370fad981869102466b8e9f055",
-        "version" : "0.33.2"
+        "revision" : "b39c9aeb6d2dc4529197eadca9c6898559c88194",
+        "version" : "0.34.1"
       }
     },
     {
@@ -114,8 +114,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/ForgeOptimizerKit.git",
       "state" : {
-        "revision" : "7bc45c7c4ce19feb77c3a73a0827611d1c728e4f",
-        "version" : "0.22.0"
+        "revision" : "fb15cc878785a85c857a61c41761d148b1453eae",
+        "version" : "0.23.0"
       }
     },
     {
@@ -168,8 +168,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mage-flow-swift.git",
       "state" : {
-        "revision" : "0bfd186afc63a42255f43ca433451f80a7c66822",
-        "version" : "0.9.0"
+        "revision" : "eee8c412120ea639d0ccf4fe83ace97a16be620b",
+        "version" : "0.9.1"
       }
     },
     {
@@ -330,8 +330,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-image-runtime.git",
       "state" : {
-        "revision" : "4d1ef5f763eb43ae0fffc51230f6503d8a4e3a75",
-        "version" : "0.1.1"
+        "revision" : "a73763e7ba9f7a0f8a75fad3c6e94b8c53f10cef",
+        "version" : "0.3.0"
       }
     },
     {
@@ -492,8 +492,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-vosr-swift.git",
       "state" : {
-        "revision" : "acb96ab829ff0162d0b2292c222297068e7c7a33",
-        "version" : "0.2.0"
+        "revision" : "4009e3a78a0dfa38a96f124c542229766d39bc88",
+        "version" : "0.2.1"
       }
     },
     {
@@ -501,8 +501,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/qwen-image-edit-swift.git",
       "state" : {
-        "revision" : "12b64fde2125b3f5e0fdc971e9fd21616ccef28c",
-        "version" : "0.9.1"
+        "revision" : "ef65fbff96d14941e197af6f0d1bc09db8d3d210",
+        "version" : "0.9.2"
       }
     },
     {

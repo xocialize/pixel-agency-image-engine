@@ -64,14 +64,14 @@ Bold is the default when a request names no model. MI-GAN and LaMa are one packa
 offer is LaMa's; `effective.model_params.variant` says which ran. MI-GAN takes draft, LaMa standard and best (its
 earlier pink cast on colour fills was the bf16 weights; mlx-lama-swift 0.3.1 loads fp32, `mlx-community/LaMa-fp32`,
 204 MB). Big-LaMa itself fades very large holes (~65% of the frame and up) to a grey, blurry centre; a generative fill
-suits those. Other models (Z-Image, Klein Base, Qwen-Image-Edit 2511, SeedVR2, Nacre, DRUNet, …) are offered and run
-when named. Qwen-Image Flash is not offered: it intermittently kills the engine (AB-T-0214). Every offer carries its licence in MES terms (Base §10.2).
+suits those. Other models (Z-Image, Klein Base, Qwen-Image-Edit 2511, Mage-Flow and Mage-Flow Edit, SeedVR2, Nacre,
+DRUNet, …) are offered and run when named. Qwen-Image Flash is not offered: it intermittently kills the engine (AB-T-0214). Every offer carries its licence in MES terms (Base §10.2).
 `commercial_use` is `true` only when every weight licence and the port's code licence are permissive.
 
 ### Research models (opt-in)
 
 With `--allow-research`, research-licensed and work-in-progress models are offered too. That covers Qwen-Image 2.1
-Turbo (8 steps) and Qwen-Image 2.1 (40 steps), Mage-Flow, SenseNova U1, Ming, Boogu and the like. The flag is the
+Turbo (8 steps) and Qwen-Image 2.1 (40 steps), SenseNova U1, Ming, Boogu and the like. The flag is the
 operator accepting their terms (Base §10.2 `accepted_required`).
 
 They are offered **`named_only`** (Base §6 rule 2): they run only when a request names them, and default choice
