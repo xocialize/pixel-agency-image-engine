@@ -52,8 +52,10 @@ struct RunPlan {
 
     /// The model the engine kit chose, as the runtime's route, prepared (downloaded, loaded) before it runs. A helper
     /// step (`helper: true`, e.g. restore's defect detector) takes the runtime's default: permissive and production.
-    mutating func route(_ capability: Capability, helper: Bool = false) async throws -> RoutedModel {
-        let route = try await normalizer.directory.route(capability, model: helper ? nil : ModelID(context.model.id))
+    /// `named` routes that model instead (the creative upscale's editor, its Realistic VOSR2).
+    mutating func route(_ capability: Capability, helper: Bool = false, named: String? = nil) async throws -> RoutedModel {
+        let model = named.map { ModelID($0) } ?? (helper ? nil : ModelID(context.model.id))
+        let route = try await normalizer.directory.route(capability, model: model)
         await normalizer.residency.admit(route)                  // room first: one heavy model, and what fits
         admitted.append(route)
         let relay = ProgressRelay(context.reporter)
@@ -448,19 +450,37 @@ struct RunPlan {
     // MARK: - Processing
 
     mutating func upscale() async throws -> [ProducedOutput] {
+        // The creative upscale (G-5, AB-D-0126): Realistic at creativity 0, Creative above.
+        if let creative = Creative.Request(context.extensions) {
+            let input = try load("image")
+            let scale = context.param("scale")?.intValue ?? 2
+            guard creative.creativity > 0 else {
+                if !creative.prompt.isEmpty { warn("prompt_ignored", "Realistic (creativity 0) takes no prompt.", param: Creative.name) }
+                let result = try await upscaled(input, scale: scale, named: Creative.realistic)
+                effective["scale"] = .number(Double(scale))
+                return [try write(keepAlpha(result, input: input), name: "image")]
+            }
+            return try await creativeUpscale(creative, input: input, scale: scale)
+        }
         if bitDepth == 16 { return try await upscaleDeep() }
         let input = try load("image")
         let scale = context.param("scale")?.intValue ?? 2
-        let route = try await route(.imageUpscale)
+        let result = try await upscaled(input, scale: scale)
+        effective["scale"] = .number(Double(scale))
+        return [try write(keepAlpha(result, input: input), name: "image")]
+    }
+
+    /// `input` upscaled by the routed model (or `named`), exactly ×scale (Image §3).
+    mutating func upscaled(_ input: Pixels, scale: Int, named: String? = nil) async throws -> Pixels {
+        let route = try await route(.imageUpscale, named: named)
         record(route)
         let ran = try await invoke(route, params: ["scale": .number(Double(scale))], inputs: ["image": [Media.modelImage(input)]])
         // What the enhancer reports it ran, e.g. VOSR2 behind the text guard, with the words it kept.
         if case .upscaled(_, let model) = ran { modelParams["ran"] = .string(model) }
         var result = try image(ran)
         let (w, h) = (input.width * scale, input.height * scale)
-        if result.width != w || result.height != h { result = result.resized(w, h) }   // exactly ×scale (Image §3)
-        effective["scale"] = .number(Double(scale))
-        return [try write(keepAlpha(result, input: input), name: "image")]
+        if result.width != w || result.height != h { result = result.resized(w, h) }
+        return result
     }
 
     /// `upscale` at 16 bits (G-6, AB-A-0158): the input loaded at 16 bits goes to the model as `.rawRGBA16` and the

@@ -120,7 +120,16 @@ public struct ImageNormalizer: MediaEngine {
             params: .object(params),
             outputs: outputs,
             limits: .init(maxMegapixels: Double(maxPixels) / 1_000_000, maxInputs: maxInputs, maxCount: spec.operation == "image.generate" ? 4 : 1),
-            qualityTiers: OperationTable.all.filter(tiers.contains), models: offers, remote: .init(possible: false))
+            qualityTiers: OperationTable.all.filter(tiers.contains), models: offers,
+            extensions: spec.operation == "image.upscale" && creativeAvailable(models) ? [Creative.spec] : nil,
+            remote: .init(possible: false))
+    }
+
+    /// The creative upscale's models are here: its editor (Mage-Flow-Edit-Turbo, for image edits) and its Realistic
+    /// (VOSR2).
+    func creativeAvailable(_ models: [ModelInfo]) -> Bool {
+        models.contains { $0.id.rawValue == Creative.editor && $0.capabilities.contains(.imageEdit) && offered($0) }
+            && models.contains { $0.id.rawValue == Creative.realistic && offered($0) }
     }
 
     static let imageTypes = ["image/png", "image/jpeg", "image/heic", "image/webp", "image/tiff"]
@@ -196,6 +205,10 @@ public struct ImageNormalizer: MediaEngine {
     public func validate(_ request: JobRequest, descriptor: Descriptor) throws {
         try ImageProfileRules.validate(request, descriptor: descriptor)
         try validateBitDepth(request, descriptor: descriptor)
+        // The creative upscale runs at 8 bits: Mage and VOSR2 are 8-bit models (AB-T-0230).
+        if request.extensions?[Creative.name] != nil, request.params?["output"]?["bit_depth"]?.intValue == 16 {
+            throw MESError(.unsupportedParameter, "The creative upscale runs at 8 bits.", param: "output")
+        }
         if let size = request.params?["size"], let w = size["width"]?.intValue, let h = size["height"]?.intValue,
            let max = descriptor.limits?.maxMegapixels, Double(w * h) > max * 1_000_000 {
             throw MESError(.outOfLimits, "\(w)×\(h) is over \(descriptor.operation)'s \(max) megapixels.", param: "size")

@@ -1,5 +1,5 @@
 {
-  "originHash" : "d1ab63b85b6c9a8f8b5a714bf4417b56803a619df11388f21af3d57c0d1f9b17",
+  "originHash" : "0aaa01d7c52fd07817a606be119d33d6a4eff47e9be9792a540f86b78953b6c3",
   "pins" : [
     {
       "identity" : "anima-mlx-swift",
@@ -168,8 +168,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mage-flow-swift.git",
       "state" : {
-        "revision" : "eee8c412120ea639d0ccf4fe83ace97a16be620b",
-        "version" : "0.9.1"
+        "revision" : "1d8ea261b777ad6844b5f5cc91e2a77adaa4fd6c",
+        "version" : "0.10.0"
       }
     },
     {
@@ -330,8 +330,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-image-runtime.git",
       "state" : {
-        "revision" : "bb42dbc40979c38372f0a26c4d4ecf5660e46cc2",
-        "version" : "0.3.9"
+        "revision" : "9628a1416ce012f0e9f77501d477b291ff48328f",
+        "version" : "0.4.1"
       }
     },
     {
@@ -537,8 +537,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/sensenova-u1-swift.git",
       "state" : {
-        "revision" : "1bbf43fc7326161dc6af03cfeaf51253dc524ee8",
-        "version" : "0.5.0"
+        "revision" : "9d201244055a3904e2e04f6ff65ca7f5cad1fec4",
+        "version" : "0.5.1"
       }
     },
     {

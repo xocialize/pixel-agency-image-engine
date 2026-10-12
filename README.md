@@ -141,6 +141,24 @@ The normalizer (`ImageNormalizer`, `RunPlan`) holds every model to the profile, 
     interpolation's, so there's no 8-bit staircase. What's left at ×8 contrast is RealPLKSR's own faint ×4 mosaic,
     the same at 8 and 16 bits.
 
+- **Creative upscale (G-5, 0.2.0).** `image.upscale` declares the extension `x-pixelagency.creative` (Base §6.2):
+  `{prompt, creativity 0–1 (default 0.5), protect_faces, protect_text}`. A request without it is the plain upscale,
+  unchanged. Measured in mlxengine-todo `CREATIVE-UPSCALE-EVAL.md` (AB-R-0497, AB-D-0126).
+  - **Creativity 0 is Realistic:** VOSR2 at ×scale, behind the text guard. A prompt is ignored, with `prompt_ignored`.
+  - **Above 0 is Creative:**
+    1. The quality tier's model makes the precision base at exactly ×scale.
+    2. Mage-Flow-Edit-Turbo runs over tiles of at most 1024² at the target size. Each tile starts from the base partly
+       noised, at σ = 0.85 + 0.10 × creativity, and gets a fixed instruction plus ` Style: {prompt}`. The prompt
+       describes the look; every tile sees it.
+    3. The tiles are cross-faded.
+    4. Colour and tone are locked to the base: C − G(C) + G(base).
+    5. Faces (Vision) and text lines Vision reads with certainty are blended back from the base. Certain words that
+       still read differently are reported as `text_altered`.
+  - `effective.model_params` records the base model, the editor, `initSigma`, the tile count, the faces kept and the
+    text check.
+  - Limits: 8 bits only (`output.bit_depth: 16` is 422 `unsupported_parameter`), and at most 32 MP of output.
+  - Needs mlx-image-runtime ≥ 0.4.1, which passes `initSigma` to Mage, and mage-flow-swift ≥ 0.10.0.
+
 ## Conformance
 
 The engine passes the MES conformance suite. Against the live engine with real models (2026-10-09):
