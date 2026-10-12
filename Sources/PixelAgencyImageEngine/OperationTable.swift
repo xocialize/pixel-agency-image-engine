@@ -197,11 +197,10 @@ enum OperationTable {
     ]
 
     /// Models not offered at all, with why: ones that take the engine process down (a Metal fault kills every
-    /// client's jobs, not just the one that hit it). Lift an entry when its package is fixed.
-    static let quarantined: [String: String] = [
-        "qwen-image-flash": "intermittent Metal fault (kIOGPUCommandBufferCallbackErrorInvalidResource) that kills the "
-            + "engine after 2–8 runs in one process (R1b, 2026-10-10; AB-T-0214)",
-    ]
+    /// client's jobs, not just the one that hit it). Lift an entry when its package is fixed. Empty since 0.2.7:
+    /// qwen-image-flash's Metal fault was mlx freeing a conv pad value mid-flight, fixed in mlx-exact-conv-swift 0.1.1
+    /// (AB-T-0214).
+    static let quarantined: [String: String] = [:]
 
     /// Upscale of `content: drawn`, by quality tier, most preferred first. Measured on 75 drawn images (line art, text,
     /// UI, CG / anime) at ×4 and ×2 (AB-R-0486): HEART beats NERVE on line, UI and CG at ×4 and on line, text and CG

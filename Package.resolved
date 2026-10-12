@@ -168,8 +168,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mage-flow-swift.git",
       "state" : {
-        "revision" : "434b850b0cc18485220166651f3f331fb01f9209",
-        "version" : "0.11.0"
+        "revision" : "31f3ba055f9278396300306d613ebfea97f6ed7e",
+        "version" : "0.11.1"
       }
     },
     {
@@ -294,8 +294,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-exact-conv-swift",
       "state" : {
-        "revision" : "26096a792c0c32eda48eb97bc4dadd56dc5c7cc0",
-        "version" : "0.1.0"
+        "revision" : "885f79331f84a6299440ac7f09823d9bafce7460",
+        "version" : "0.1.1"
       }
     },
     {
@@ -492,8 +492,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-vosr-swift.git",
       "state" : {
-        "revision" : "c18503010d8efcdc55e10c7301ff5fbb2978acd5",
-        "version" : "0.3.0"
+        "revision" : "f85595f398d64ef421966abd1a55703add07cb7e",
+        "version" : "0.3.1"
       }
     },
     {
@@ -501,8 +501,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/qwen-image-edit-swift.git",
       "state" : {
-        "revision" : "63b3c6864f5caec2d70052d696afcb531c7c986f",
-        "version" : "0.9.3"
+        "revision" : "0f13389ae613590124420da9ece42a1ee739658e",
+        "version" : "0.9.4"
       }
     },
     {

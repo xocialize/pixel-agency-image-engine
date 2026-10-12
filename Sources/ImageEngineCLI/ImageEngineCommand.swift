@@ -58,7 +58,7 @@ struct ImageEngineCommand: AsyncParsableCommand {
               : "16-bit restore (output.bit_depth 16): \(deepRestore.joined(separator: ", "))")
 
         var config = EngineConfiguration(id: try Self.engineID(in: stateDir), name: "Pixel Agency Image Engine",
-                                         implementationName: "pixel-agency-image-engine", implementationVersion: "0.2.6",
+                                         implementationName: "pixel-agency-image-engine", implementationVersion: "0.2.7",
                                          spoolDirectory: spoolDir)
         config.stateDirectory = stateDir
         config.port = port

@@ -26,7 +26,6 @@ model.
 | `image.matte`, `relight`, `colorize`, `describe`, `score` | one model each | | | Timed only |
 
 Not offered:
-- **Qwen-Image Flash** is quarantined. It kills the engine process intermittently (AB-T-0214).
 - **Research models** are offered only with `--allow-research`, and then named-only.
 
 ## Method
@@ -60,7 +59,7 @@ Not offered:
 | **Z-Image Turbo** (8 steps) | 13.7 s | 0.915 | **0.903** | **0.944** | Spelled all three texts right; miscounted apples (six for five) |
 | Z-Image (28 steps) | 70.4 s | 0.895 | 0.880 | 0.778 | Junk text on the sign, garbled poster layout; stylized look |
 | Klein 4B Base (28 steps) | 80.0 s | 0.914 | 0.902 | 0.944 | "OPENDALY"; dark, moody renders |
-| Qwen-Image Flash | 15.9 s | 0.935 (n = 2) | — | — | Quarantined (AB-T-0214) |
+| Qwen-Image Flash | 15.9 s | 0.935 (n = 2) | — | — | Offered, not a default; quarantined until 0.2.7 (AB-T-0214) |
 
 - **IQA:** the engine's own `image.score` (SigLIP2, 0–1).
 - **Recall:** the share of each prompt's required words (texts, counts, colours, objects) found in `image.describe`'s
@@ -256,8 +255,11 @@ Desktop's Optimizer scaling runs on engines (D-20). Its tiers map onto MES quali
 - **Residency (ENG-3).** Models from earlier jobs piled up until a large load failed in Metal and killed the engine.
   The engine now keeps one heavy model at a time, evicts when a load won't fit, and releases idle models after 10
   minutes (3 at ≥ 20 GB). See `Residency.swift`.
-- **Qwen-Image Flash** aborts the process intermittently (Metal "Invalid Resource" after 2–8 runs). It is quarantined
-  until fixed (AB-T-0214).
+- **Qwen-Image Flash** aborted the process intermittently (Metal "Invalid Resource" after 2–8 runs), and so did
+  VOSR2 after Mage-Flow jobs. The cause was mlx's conv channel-pad helpers freeing their zero fill value before the
+  GPU read it; with the 2 GiB cache cap the buffer went straight back to the OS. MLXExactConv's exact path padded one
+  channel to reach one of those helpers. Fixed in mlx-exact-conv-swift 0.1.1, and Flash is offered again from 0.2.7
+  (AB-T-0214).
 - **LaMa's pink fills** came from the bf16 weight file. Fixed in mlx-lama-swift 0.3.1 (fp32), which ForgeCore 0.33.2
   requires (AB-R-0451).
 - **Edit models don't reliably paint a marked region** on busy photos, hence the paint guard.
