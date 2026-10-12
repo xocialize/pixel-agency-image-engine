@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import ImageIO
+import ImageServerCatalog
 import ImageServerModels
 @testable import MESConformance
 import MESCore
@@ -131,6 +132,73 @@ struct SixteenBitUpscaleTests {
             let reply = try await probe.wire.json("POST", "jobs", request)
             #expect(reply.status == 422)
         }
+    }
+
+    /// Wave 2 (AB-T-0229, ForgeCore 0.36.0): NERVE and HEART keep 16 bits too.
+    static let wave2: Set<String> = ["realplksr-upscale", "nerve-upscale", "heart-upscale"]
+
+    /// Every quality and drawn route, by the descriptor's schema alone (what Pixel Agency Desktop checks before sending).
+    static func expectSixteenBitsEverywhere(_ up: Descriptor, sourceLocation: SourceLocation = #_sourceLocation) {
+        func allows(_ params: [String: MESValue]) -> Bool {
+            SchemaValidator().validate(.object(params), against: up.params).isEmpty
+        }
+        let sixteen: MESValue = ["media_type": "image/tiff", "bit_depth": 16]
+        #expect(allows(["output": sixteen]) && allows(["content": "drawn", "output": sixteen]), sourceLocation: sourceLocation)
+        for quality: MESValue in ["draft", "standard", "best"] {
+            #expect(allows(["quality": quality, "output": sixteen]), "\(quality)", sourceLocation: sourceLocation)
+            #expect(allows(["content": "drawn", "quality": quality, "output": sixteen]), "drawn \(quality)",
+                    sourceLocation: sourceLocation)
+        }
+        // JSON Schema's allOf must be non-empty: with nothing pinned to 8 bits there are no rules at all.
+        #expect(up.params["allOf"] == nil, sourceLocation: sourceLocation)
+    }
+
+    @Test("with NERVE, RealPLKSR and HEART at 16 bits, every quality and drawn content allow bit_depth 16 and no allOf is left")
+    func everyTierAtSixteenBits() async throws {
+        let ops = await ImageNormalizer(directory: FakeModels(), runner: FakeRunner(),
+                                        options: .init(sixteenBitUpscalers: Self.wave2)).descriptors()
+        let up = try #require(ops.first { $0.operation == "image.upscale" })
+        let description = try #require(up.params["properties"]?["output"]?["properties"]?["bit_depth"]?["description"]?.stringValue)
+        #expect(Self.wave2.allSatisfy(description.contains), "\(description)")
+        Self.expectSixteenBitsEverywhere(up)
+    }
+
+    @Test("at 16 bits each quality runs its own model — NERVE at draft, RealPLKSR at standard, HEART at best — and drawn content keeps its route")
+    func eachTierRunsItsOwnModelAtSixteenBits() async throws {
+        try await withEngine(sixteenBit: Self.wave2) { probe, runner in
+            let cases: [(MESValue?, MESValue, String)] = [
+                (nil, "draft", "nerve-upscale"), (nil, "standard", "realplksr-upscale"), (nil, "best", "heart-upscale"),
+                ("drawn", "draft", "nerve-upscale"), ("drawn", "standard", "nerve-upscale"), ("drawn", "best", "heart-upscale"),
+            ]
+            for (content, quality, model) in cases {
+                var params: [String: MESValue] = ["scale": 4, "quality": quality,
+                                                  "output": ["media_type": "image/png", "bit_depth": 16]]
+                if let content { params["content"] = content }
+                let job = try await probe.succeed(JobRequest(
+                    operation: "image.upscale", inputs: ["image": image(deepFile(width: 24, height: 16))], params: params))
+                #expect(job.plan?.model.id == model, "\(content ?? "photo") \(quality)")
+                let sent = try #require(runner.calls.withLock { $0.last }?.inputs["image"]?.first)
+                #expect(sent.format == .rawRGBA16)
+                let (_, data) = try await probe.output(job)
+                let cg = try decode(data)
+                #expect(cg.bitsPerComponent == 16 && cg.width == 96 && cg.height == 64)
+                #expect(job.warnings.contains { $0.code == "bit_depth_reduced" } == false)
+            }
+        }
+    }
+
+    /// The real catalog, registered as the engine starts (no weights load): the manifests of mlx-nerve-swift,
+    /// mlx-realplksr-swift and mlx-heart-swift ≥ 0.2.0 declare `.rawRGBA16`, and the live descriptor follows.
+    @Test("the real catalog's NERVE, RealPLKSR and HEART keep 16 bits, so the live descriptor offers it everywhere")
+    @MainActor
+    func realCatalogKeepsSixteenBits() async throws {
+        let store = FileManager.default.temporaryDirectory.appendingPathComponent("pa-16-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: store) }
+        let runtime = await ImageRuntime.start(modelStore: store, catalog: ModelCatalog.all(environment: [:]))
+        #expect(runtime.normalizer.options.sixteenBitUpscalers.isSuperset(of: Self.wave2),
+                "\(runtime.normalizer.options.sixteenBitUpscalers.sorted())")
+        let up = try #require(await runtime.normalizer.descriptors().first { $0.operation == "image.upscale" })
+        Self.expectSixteenBitsEverywhere(up)
     }
 
     @Test("16-bit pixels: load keeps 16 bits, and alpha is re-applied at 16 bits")

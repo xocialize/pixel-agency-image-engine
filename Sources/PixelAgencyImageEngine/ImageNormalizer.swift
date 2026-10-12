@@ -110,8 +110,9 @@ public struct ImageNormalizer: MediaEngine {
             let drawnDeepTiers = Set(QualityTier.allCases.filter { tier in
                 (OperationTable.drawnUpscale[tier] ?? []).contains { id in deepModels.contains(id) && routable.contains { $0.id == id } }
             })
-            params["allOf"] = .array(OperationTable.sixteenBitRules(deepTiers: deepTiers, drawnDeepTiers: drawnDeepTiers,
-                                                                     params: spec.params))
+            // No rules when every tier and drawn route keeps 16 bits: JSON Schema's `allOf` must be non-empty.
+            let rules = OperationTable.sixteenBitRules(deepTiers: deepTiers, drawnDeepTiers: drawnDeepTiers, params: spec.params)
+            if !rules.isEmpty { params["allOf"] = .array(rules) }
         }
         return Descriptor(
             operation: spec.operation, profile: ImageProfile.id, profileVersion: ImageProfile.version,

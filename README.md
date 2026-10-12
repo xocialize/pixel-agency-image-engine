@@ -123,11 +123,14 @@ The normalizer (`ImageNormalizer`, `RunPlan`) holds every model to the profile, 
 - **Results.** `effective.model_params` records the model, steps and guidance actually used.
 - **16 bits (upscale, G-6).** `output: {media_type: image/png | image/tiff, bit_depth: 16}` is offered on `image.upscale`
   when a model keeps 16 bits end to end. That means its package declares `.rawRGBA16` (MLXToolKit contract 1.52.0,
-  AB-A-0158); today that's RealPLKSR, the standard tier. The engine reads this from the registered manifests at start
-  and names the models in the `bit_depth` description.
+  AB-A-0158). The engine reads this from the registered manifests at start and names the models in the `bit_depth`
+  description.
+  - Since 0.2.1 (ForgeCore 0.36.0, AB-T-0229) every upscaler the tiers route to keeps 16 bits: NERVE (draft, and drawn
+    content at draft and standard), RealPLKSR (standard) and HEART (best, and drawn content at best). So 16 bits runs
+    at every quality and for drawn content, and `image.upscale` carries no `allOf` rules.
   - The input is read at 16 bits, sent to the model raw, and written as a 16-bit PNG or a lossless (ZIP) 16-bit TIFF.
-  - **Where 16 bits can't run is in the descriptor** (0.1.5; Base §6 rule 4). `image.upscale`'s `params` carry
-    `allOf` rules that pin `output.bit_depth` to 8:
+  - **Where 16 bits can't run is in the descriptor** (0.1.5; Base §6 rule 4). When some tier has no 16-bit model,
+    `image.upscale`'s `params` carry `allOf` rules that pin `output.bit_depth` to 8:
     - for a `quality` with no 16-bit model (an absent quality is standard);
     - for drawn content whose route (NERVE at draft and standard, HEART at best) has no 16-bit model. Drawn content is
       never switched to a photo model to get 16 bits.
@@ -137,9 +140,9 @@ The normalizer (`ImageNormalizer`, `RunPlan`) holds every model to the profile, 
   - A request that can't be honoured is refused at submit with 422 `unsupported_parameter` (Image §1.2): JPEG, a
     named 8-bit model, a tier or drawn route with no 16-bit model, or any other operation. A client can then run its
     own restore around an 8-bit step.
-  - On the G-6 set (AB-R-0491) the model's smooth-area flat-neighbour share sits at or below the 16-bit
-    interpolation's, so there's no 8-bit staircase. What's left at ×8 contrast is RealPLKSR's own faint ×4 mosaic,
-    the same at 8 and 16 bits.
+  - On the G-6 set (AB-R-0491 standard; draft and best under AB-T-0229) each model's smooth-area flat-neighbour share
+    sits at or below the 16-bit interpolation's, so there's no 8-bit staircase. What's left at ×8 contrast is each
+    model's own faint ×4 mosaic, the same at 8 and 16 bits: strongest for HEART, then NERVE, then RealPLKSR.
 
 - **Creative upscale (G-5, 0.2.0).** `image.upscale` declares the extension `x-pixelagency.creative` (Base §6.2):
   `{prompt, creativity 0–1 (default 0.5), protect_faces, protect_text}`. A request without it is the plain upscale,

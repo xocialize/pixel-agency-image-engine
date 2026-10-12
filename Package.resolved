@@ -1,5 +1,5 @@
 {
-  "originHash" : "0aaa01d7c52fd07817a606be119d33d6a4eff47e9be9792a540f86b78953b6c3",
+  "originHash" : "a1cbe74404deb84e8fd7fdea56da3994797e40d17a3c65a3dea700c8a5056f36",
   "pins" : [
     {
       "identity" : "anima-mlx-swift",
@@ -105,8 +105,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/ForgeCore.git",
       "state" : {
-        "revision" : "af671ed32bdc26c3eafe346061731be264e78086",
-        "version" : "0.35.0"
+        "revision" : "16fa40c1c770a600ec7a7d6d7e4289a9eaf88b59",
+        "version" : "0.36.0"
       }
     },
     {
@@ -321,8 +321,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-heart-swift.git",
       "state" : {
-        "revision" : "193099e74b1e135f7f47db1a4964b28dbacfa67b",
-        "version" : "0.1.0"
+        "revision" : "55b92ff8072b8b7401d56ecd39bb5430d2157e24",
+        "version" : "0.2.0"
       }
     },
     {
@@ -366,8 +366,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-nerve-swift.git",
       "state" : {
-        "revision" : "bcfe71eba07dd25b4d29317471404858fb462488",
-        "version" : "0.1.0"
+        "revision" : "fa4dc5381574c7eb9ae8ef9643a214f04534ef16",
+        "version" : "0.2.0"
       }
     },
     {
