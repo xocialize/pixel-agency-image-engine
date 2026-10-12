@@ -321,8 +321,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-heart-swift.git",
       "state" : {
-        "revision" : "ed8b6cd0490daa2c59c9e92a7a81f0e35cd7905b",
-        "version" : "0.2.1"
+        "revision" : "71a7a3180f6778e7c5de45305ef490fef119eeb0",
+        "version" : "0.2.2"
       }
     },
     {
@@ -348,8 +348,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-nacre-swift.git",
       "state" : {
-        "revision" : "d98be687964e0500f83cfca0c7e92f5f8960215d",
-        "version" : "0.1.5"
+        "revision" : "39a0867f728ddc1a3f5276d82e07a244a66fb65a",
+        "version" : "0.1.6"
       }
     },
     {
@@ -357,8 +357,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-nafnet-swift.git",
       "state" : {
-        "revision" : "239268046055c7cf078b5da59dfc7dcc342c79ec",
-        "version" : "0.6.0"
+        "revision" : "07d37f8a7a1ce61bacb36710c3139d4f99e6dfa9",
+        "version" : "0.6.1"
       }
     },
     {
@@ -447,8 +447,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-seedvr2-swift.git",
       "state" : {
-        "revision" : "92ce47312dcdfde31f1c685c8e2799937eb16e9e",
-        "version" : "0.10.1"
+        "revision" : "0edd52122a5d0d9c860d92087fe7013c7cdba19c",
+        "version" : "0.10.2"
       }
     },
     {
@@ -519,8 +519,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/qwen25vl-mlx-swift",
       "state" : {
-        "revision" : "02bc7f24e556c3bd00af4adb9537e5862933cf0a",
-        "version" : "0.4.1"
+        "revision" : "a76ed3f7ab98187b06db52e6c3bf2fe6272284a6",
+        "version" : "0.4.2"
       }
     },
     {
@@ -528,8 +528,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/qwen3vl-mlx-swift",
       "state" : {
-        "revision" : "38e9028a38d2bacc9f9cf14569b5ff3f617fa791",
-        "version" : "0.4.0"
+        "revision" : "e0d2c8a245d355ba8594dfb569cda4343f0ebbd9",
+        "version" : "0.4.1"
       }
     },
     {

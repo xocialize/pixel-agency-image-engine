@@ -259,7 +259,13 @@ Desktop's Optimizer scaling runs on engines (D-20). Its tiers map onto MES quali
   VOSR2 after Mage-Flow jobs. The cause was mlx's conv channel-pad helpers freeing their zero fill value before the
   GPU read it; with the 2 GiB cache cap the buffer went straight back to the OS. MLXExactConv's exact path padded one
   channel to reach one of those helpers. Fixed in mlx-exact-conv-swift 0.1.1, and Flash is offered again from 0.2.7
-  (AB-T-0214).
+  (AB-T-0214). Seven convs that models call directly still reached the helpers; 0.2.8 takes their fixed packages
+  (AB-R-0511):
+  - the Qwen VL patch embeds behind Qwen-Image-Edit and Mage-Flow Edit (so erase at best and the creative upscale);
+  - HEART's `conv_before_upsample` (upscale at best);
+  - SeedVR2's VAE `conv_in`;
+  - Nacre's input conv;
+  - NAFNet's ending conv (restore's default).
 - **LaMa's pink fills** came from the bf16 weight file. Fixed in mlx-lama-swift 0.3.1 (fp32), which ForgeCore 0.33.2
   requires (AB-R-0451).
 - **Edit models don't reliably paint a marked region** on busy photos, hence the paint guard.
