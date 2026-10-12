@@ -1,5 +1,6 @@
 import ForgeCore
 import Foundation
+import ImageServerAPI
 import ImageServerModels
 import MLXServeCore
 import MLXToolKit
@@ -44,9 +45,36 @@ public final class ImageRuntime {
         var options = options
         options.sixteenBitUpscalers.formUnion(await sixteenBitModels(service, .imageUpscale))
         options.sixteenBitRestorers.formUnion(await sixteenBitModels(service, .imageRestore))
-        let normalizer = ImageNormalizer(directory: service, runner: EngineRunner(engine: service.engine, enhancer: enhancer),
-                                         options: options)
+        options.tiledEditors.formUnion(await tiledEditors(service))
+        let runner = EngineRunner(engine: service.engine, enhancer: enhancer)
+        if options.creativeUnavailable == nil { options.creativeUnavailable = await creativeUnavailable(service, runner: runner) }
+        let normalizer = ImageNormalizer(directory: service, runner: runner, options: options)
         return ImageRuntime(normalizer: normalizer, service: service, forge: forge)
+    }
+
+    /// The registered edit models whose package takes a batch of tiles in one call: its `imageEdit` surface declares the
+    /// `tiles` mode (mage-flow-swift ≥ 0.11.0). Read from the manifests, like `sixteenBitModels`.
+    static func tiledEditors(_ service: ImageEngineService) async -> Set<String> {
+        var ids: Set<String> = []
+        for model in await service.registeredModels() where model.capabilities.contains(.imageEdit) {
+            guard let manifest = await service.engine.manifest(for: PackageID(model.packageID)) else { continue }
+            if manifest.surfaces.contains(where: { $0.capability == .imageEdit && $0.supportedModes.contains(Mode(rawValue: Creative.tilesMode)) }) {
+                ids.insert(model.id.rawValue)
+            }
+        }
+        return ids
+    }
+
+    /// Whether the creative upscale's models fit this Mac, asked at start with nothing loaded, so each model's projected
+    /// peak is its own: its weights at the residency the runtime chose for this Mac (below 32 GB Mage-Flow's conditioner
+    /// and DiT take turns, about 10 GB) plus its activation, against the engine's budget.
+    static func creativeUnavailable(_ service: ImageEngineService, runner: EngineRunner) async -> String? {
+        func fit(_ capability: Capability, _ id: String) async -> MemoryFit? {
+            guard let route = try? await service.route(capability, model: ModelID(id)) else { return nil }
+            return await runner.machineFit(route)
+        }
+        return Creative.unavailableReason(editor: await fit(.imageEdit, Creative.editor),
+                                          realistic: await fit(.imageUpscale, Creative.realistic))
     }
 
     /// The registered `capability` models whose package keeps 16 bits end to end: its surface for that capability

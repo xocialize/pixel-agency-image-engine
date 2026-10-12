@@ -83,8 +83,13 @@ struct RunPlan {
             let output = try await runner.run(work) { p in
                 // The runtime reports `downloading`/`loading` when the governor had to reload mid-job.
                 let stage: Stage = ["downloading", "loading", "waiting_for_memory"].contains(p.phase) ? .preparing : .running
+                // A staged report (an editor's tiles mode: tile k of n) places its step within the whole call.
+                let within = p.fraction.map { f in
+                    guard let s = p.stage, let n = p.totalStages, n > 0 else { return f }
+                    return (Double(max(0, s - 1)) + f) / Double(n)
+                }
                 relay.send(stage, step: p.step, steps: p.totalSteps,
-                           fraction: p.fraction.map { (Double(index) + $0) / Double(count) }, message: p.phase)
+                           fraction: within.map { (Double(index) + $0) / Double(count) }, message: p.phase)
             }
             await relay.finish()
             return output

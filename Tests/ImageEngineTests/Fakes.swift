@@ -87,8 +87,12 @@ final class FakeRunner: ModelRunner {
     let delay: Duration
     /// An edit model that returns its input, keeping the marker (as Qwen-Image-Edit did on some R1b extends).
     let editKeepsMarker: Bool
+    /// What `machineFit` answers (nil: unknown, as most tests want).
+    let fit: MemoryFit?
 
-    init(delay: Duration = .milliseconds(30), editKeepsMarker: Bool = false) { self.delay = delay; self.editKeepsMarker = editKeepsMarker }
+    init(delay: Duration = .milliseconds(30), editKeepsMarker: Bool = false, fit: MemoryFit? = nil) {
+        self.delay = delay; self.editKeepsMarker = editKeepsMarker; self.fit = fit
+    }
 
     func residentPackages() async -> Set<String> { resident.withLock { $0 } }
 
@@ -112,6 +116,14 @@ final class FakeRunner: ModelRunner {
             return .image(Self.solid(w, h, red: shade, green: 0.5, blue: 1 - shade))
         case .imageEdit where editKeepsMarker:
             return .image(first!)
+        case .imageEdit where work.spec.mode == "tiles":
+            // mage-flow-swift's tiles mode: each image edited on its own, image k at seed + k, stacked top to bottom.
+            let side = work.width ?? 64
+            return .image(Self.bands((work.inputs["images"] ?? []).indices.map { Self.tint(seed: work.seed &+ UInt64($0)) }, side: side))
+        case .imageEdit where work.route.id.rawValue == "mage-flow-edit-turbo":
+            // The creative editor: a colour from the seed, so a tile's seed shows in the result.
+            let (w, h) = size ?? (64, 64)
+            return .image(Self.solid(max(16, w / 2), max(16, h / 2), red: Self.tint(seed: work.seed), green: 0.8, blue: 0.2))
         case .imageEdit:
             let (w, h) = size ?? (64, 64)
             return .image(Self.solid(max(16, w / 2), max(16, h / 2), red: 0.2, green: 0.8, blue: 0.2))   // models pick their own size
@@ -149,7 +161,21 @@ final class FakeRunner: ModelRunner {
     }
 
     func evict(packageID: String) async { resident.withLock { _ = $0.remove(packageID) } }
-    func machineFit(_ route: RoutedModel) async -> MemoryFit? { nil }
+    func machineFit(_ route: RoutedModel) async -> MemoryFit? { fit }
+
+    static func tint(seed: UInt64) -> CGFloat { CGFloat(seed % 97) / 96 }
+
+    /// The tiles mode's answer: one `side`² band per tint, top to bottom.
+    static func bands(_ tints: [CGFloat], side: Int) -> MLXToolKit.Image {
+        let h = side * tints.count
+        let ctx = CGContext(data: nil, width: side, height: h, bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                            bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+        for (k, t) in tints.enumerated() {
+            ctx.setFillColor(red: t, green: 0.8, blue: 0.2, alpha: 1)
+            ctx.fill(CGRect(x: 0, y: h - (k + 1) * side, width: side, height: side))   // CG's origin is bottom-left
+        }
+        return MLXToolKit.Image(format: .png, data: png(ctx.makeImage()!), width: side, height: h)
+    }
 
     static func size(of image: MLXToolKit.Image) -> (Int, Int)? {
         if image.format == .rawRGBA16 || image.format == .rawBGRA8, let w = image.width, let h = image.height { return (w, h) }

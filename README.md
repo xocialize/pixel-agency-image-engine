@@ -179,10 +179,23 @@ The normalizer (`ImageNormalizer`, `RunPlan`) holds every model to the profile, 
     4. Colour and tone are locked to the base: C − G(C) + G(base).
     5. Faces (Vision) and text lines Vision reads with certainty are blended back from the base. Certain words that
        still read differently are reported as `text_altered`.
-  - `effective.model_params` records the base model, the editor, `initSigma`, the tile count, the faces kept and the
-    text check.
+  - `effective.model_params` records the base model, the editor, `initSigma`, the tile count, the editor calls, the
+    faces kept and the text check.
   - Limits: 8 bits only (`output.bit_depth: 16` is 422 `unsupported_parameter`), and at most 32 MP of output.
-  - Needs mlx-image-runtime ≥ 0.4.1, which passes `initSigma` to Mage, and mage-flow-swift ≥ 0.10.0.
+  - **One editor call for all tiles (0.2.5).** When the editor's package offers the `tiles` mode (mage-flow-swift ≥
+    0.11.0, read from its manifest at start), every tile goes in one call: the editor loads its Qwen3-VL conditioner
+    once per job instead of once per tile. Tile k still runs at the job's seed + k, so the image is the same as one call
+    per tile, byte for byte.
+  - **Small Macs (0.2.5).** Below 32 GB the runtime has Mage-Flow's conditioner and DiT take turns in memory instead of
+    both staying loaded (mlx-image-runtime ≥ 0.5.0). Measured on the Mage pass (M5 Max, 25 tiles of 928² for a ×4 from
+    1 MP): **10.3 GB MLX peak (11.5 GB process) against 17.1–17.4 GB**, one load of each model per job, 72.6 s, the same
+    bytes as the resident path. One call per tile on that tier would load both models 25 times (13.9 GB read per tile
+    on a Mac that can't cache them). `MLXIMG_MAGE_RESIDENCY` (`resident`, `evict-all`) overrides the choice.
+  - **Offered only where it fits.** At start the engine asks the runtime for Mage-Flow-Edit-Turbo's and VOSR2's projected
+    peaks with nothing loaded (`runner.machineFit`, `MemoryFit.fitsBudget`) and declares the extension only when both
+    fit the engine's memory budget (Metal's recommended GPU working set). Otherwise `image.upscale`'s summary says why.
+    A job that finds the Mac short of free memory after Residency has made room warns `memory_tight`.
+  - Needs mlx-image-runtime ≥ 0.5.0 and mage-flow-swift ≥ 0.11.0.
 
 ## Conformance
 

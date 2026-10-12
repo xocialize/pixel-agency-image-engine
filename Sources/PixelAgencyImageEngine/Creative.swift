@@ -29,6 +29,11 @@ enum Creative {
     static let maxOutputPixels = 32_000_000
     static let maxTile = 1024
     static let overlap = 128
+    /// The editor's batch mode (mage-flow-swift ≥ 0.11.0): every tile in one call, the conditioner loaded once, the
+    /// edits returned stacked top to bottom; tile k runs at seed + k, as one call per tile does.
+    static let tilesMode = "tiles"
+    /// Tiles per call in that mode (the package's `MageFlowModes.maxTiles`; a 32 MP ×4 is at most ~56).
+    static let maxTilesPerCall = 64
 
     struct Request: Equatable, Sendable {
         var prompt = ""
@@ -233,6 +238,18 @@ enum Creative {
         return mask
     }
 
+    /// Why the creative upscale isn't offered on this Mac, or nil when it is: each of its models' projected peak (its
+    /// weights at the residency the runtime chose for this Mac, plus its activation) against the engine's memory
+    /// budget (`MemoryFit.fitsBudget`, asked with nothing loaded). An unknown fit is offered: Residency still makes room.
+    static func unavailableReason(editor: MemoryFit?, realistic: MemoryFit?) -> String? {
+        let gb = { (b: UInt64) in String(format: "%.1f GB", Double(b) / 1e9) }
+        for (name, fit) in [("Mage-Flow-Edit-Turbo", editor), ("VOSR2", realistic)] {
+            guard let fit, fit.fitsBudget == false, let peak = fit.projectedPeakBytes, let budget = fit.budgetBytes else { continue }
+            return "The creative upscale isn't offered on this Mac: \(name) peaks at about \(gb(peak)) and this Mac's GPU budget is \(gb(budget))."
+        }
+        return nil
+    }
+
     /// The certain lines whose text reads differently after the creative pass: each line's padded box read the same
     /// way in the base and in the result (a whole-frame reading re-segments around invented text, so comparing two
     /// whole-frame readings flags lines that didn't change). At most 40 lines are checked.
@@ -268,33 +285,56 @@ extension RunPlan {
         let baseModel = modelParams["model"]
         // 2–3. Mage over tiles, cross-faded.
         let editor = try await route(.imageEdit, named: Creative.editor)
+        // Residency made room; if the Mac still can't hold the editor's peak right now, the run pages. Say so.
+        if let fit = await runner.machineFit(editor), !fit.fits {
+            warn("memory_tight", "This Mac is short of free memory for the creative pass (\(fit.message)); it may run slowly.",
+                 param: Creative.name)
+        }
         let envelopeSide = Int(Double(editor.envelope.maxPixels).squareRoot()) / 16 * 16
         let maxTile = max(256, min(Creative.maxTile, envelopeSide))
         let (xs, tw) = Creative.layout(w, maxTile: maxTile, overlap: Creative.overlap)
         let (ys, th) = Creative.layout(h, maxTile: maxTile, overlap: Creative.overlap)
         let side = (max(tw, th) + 15) / 16 * 16
         let ovx = xs.count > 1 ? tw - (xs[1] - xs[0]) : 1, ovy = ys.count > 1 ? th - (ys[1] - ys[0]) : 1
-        let count = xs.count * ys.count
+        let origins = ys.flatMap { y0 in xs.map { x0 in (x: x0, y: y0) } }
+        let count = origins.count
         let seedBase = seed(count: count)
-        let instruction = Creative.instruction(creative.prompt)
+        let params: ISValueObject = ["prompt": .string(Creative.instruction(creative.prompt)), "initSigma": .number(creative.initSigma)]
         var acc = [Float](repeating: 0, count: w * h * 3), weights = [Float](repeating: 0, count: w * h)
-        var index = 0
-        for y0 in ys {
-            for x0 in xs {
-                let tile = Creative.tile(base, x: x0, y: y0, width: tw, height: th, side: side)
-                let edited = try image(try await invoke(editor, params: ["prompt": .string(instruction), "initSigma": .number(creative.initSigma)],
-                                                        inputs: ["images": [Media.modelImage(tile)]], seed: seedBase + UInt64(index),
-                                                        width: side, height: side, index: index, count: count)).resized(side, side)
-                for yy in 0..<th {
-                    let wy = Creative.ramp(yy, length: th, low: y0 > 0, high: y0 + th < h, overlap: ovy)
-                    for xx in 0..<tw {
-                        let wt = wy * Creative.ramp(xx, length: tw, low: x0 > 0, high: x0 + tw < w, overlap: ovx)
-                        let d = (y0 + yy) * w + x0 + xx, s = (yy * side + xx) * 4
-                        for c in 0..<3 { acc[d * 3 + c] += wt * Float(edited.rgba[s + c]) }
-                        weights[d] += wt
-                    }
+        /// Cross-fades tile `k`, found at rows `row`… of `edited`, into the accumulator.
+        func accumulate(_ edited: Pixels, row: Int, tile k: Int) {
+            let (x0, y0) = origins[k]
+            for yy in 0..<th {
+                let wy = Creative.ramp(yy, length: th, low: y0 > 0, high: y0 + th < h, overlap: ovy)
+                for xx in 0..<tw {
+                    let wt = wy * Creative.ramp(xx, length: tw, low: x0 > 0, high: x0 + tw < w, overlap: ovx)
+                    let d = (y0 + yy) * w + x0 + xx, s = ((row + yy) * side + xx) * 4
+                    for c in 0..<3 { acc[d * 3 + c] += wt * Float(edited.rgba[s + c]) }
+                    weights[d] += wt
                 }
-                index += 1
+            }
+        }
+        let tiles = origins.map { Creative.tile(base, x: $0.x, y: $0.y, width: tw, height: th, side: side) }
+        let batched = normalizer.options.tiledEditors.contains(editor.id.rawValue)
+        if batched {
+            // One call per batch: the editor loads its conditioner once for all of them (the small-Mac path).
+            let batches = stride(from: 0, to: count, by: Creative.maxTilesPerCall).map { $0..<min(count, $0 + Creative.maxTilesPerCall) }
+            for (b, batch) in batches.enumerated() {
+                let strip = try image(try await invoke(editor, params: params, mode: Creative.tilesMode,
+                                                       inputs: ["images": batch.map { Media.modelImage(tiles[$0]) }],
+                                                       seed: seedBase + UInt64(batch.lowerBound), width: side, height: side,
+                                                       index: b, count: batches.count))
+                guard strip.width == side, strip.height == side * batch.count else {
+                    throw NormalizerError.engine("The editor returned \(strip.width)×\(strip.height) for \(batch.count) tiles of \(side)².")
+                }
+                for (i, k) in batch.enumerated() { accumulate(strip, row: i * side, tile: k) }
+            }
+        } else {
+            for k in 0..<count {
+                let edited = try image(try await invoke(editor, params: params, inputs: ["images": [Media.modelImage(tiles[k])]],
+                                                        seed: seedBase + UInt64(k), width: side, height: side,
+                                                        index: k, count: count)).resized(side, side)
+                accumulate(edited, row: 0, tile: k)
             }
         }
         var result = Pixels(width: w, height: h)
@@ -335,6 +375,7 @@ extension RunPlan {
         modelParams["initSigma"] = .number((creative.initSigma * 1000).rounded() / 1000)
         modelParams["creativity"] = .number(creative.creativity)
         modelParams["tiles"] = .number(Double(count))
+        modelParams["editor_calls"] = .number(Double(batched ? (count + Creative.maxTilesPerCall - 1) / Creative.maxTilesPerCall : count))
         modelParams["faces_protected"] = .number(Double(facesKept))
         if !text.isEmpty { modelParams["text"] = .object(text) }
         seedUsed = seedBase

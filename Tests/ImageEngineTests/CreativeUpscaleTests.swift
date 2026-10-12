@@ -67,6 +67,60 @@ struct CreativeUpscaleTests {
         }
     }
 
+    @Test("An editor with the tiles mode gets every tile in one call (one conditioner load), tile k at the job's seed + k, as a call per tile has them")
+    func oneCallForAllTiles() async throws {
+        let request = JobRequest(operation: "image.upscale", inputs: ["image": image(Fixtures.png(width: 300, height: 200))],
+                                 params: ["scale": 4], extensions: Self.creative(["protect_faces": false, "protect_text": false]))
+        for tiled in [false, true] {
+            try await withEngine(tiled: tiled ? [Creative.editor] : []) { probe, runner in
+                let job = try await probe.succeed(request)
+                let seed = try #require(job.result?.provenance.seed.map(UInt64.init))
+                let edits = runner.calls.withLock { $0 }.filter { $0.route.id.rawValue == Creative.editor }
+                if tiled {
+                    #expect(edits.count == 1, "one call for both tiles")
+                    let call = try #require(edits.first)
+                    #expect(call.spec.mode == Creative.tilesMode && call.inputs["images"]?.count == 2)
+                    #expect(call.seed == seed && call.width == 800 && call.height == 800 && call.spec.params["initSigma"]?.doubleValue == 0.9)
+                } else {
+                    #expect(edits.map(\.seed) == [seed, seed + 1] && edits.allSatisfy { $0.spec.mode == nil })
+                }
+                let params = try #require(job.result?.effective["model_params"])
+                #expect(params["tiles"] == 2 && params["editor_calls"] == .number(tiled ? 1 : 2))
+                // Each band lands where its tile came from: the fake paints band k from seed + k, so after the colour
+                // lock the tiles' own areas differ exactly as their seeds do — the same in both paths.
+                let (output, data) = try await probe.output(job)
+                #expect(output.width == 1200 && output.height == 800)
+                let decoded = try DecodedImage(data)
+                #expect(decoded.pixel(100, 400) == decoded.pixel(150, 400) && decoded.pixel(1100, 400) == decoded.pixel(1050, 400))
+            }
+        }
+    }
+
+    @Test("Gated by memory: where the models' peak is over this Mac's budget the extension isn't offered and the summary says why; a tight Mac warns")
+    func memoryGate() async throws {
+        let gb: UInt64 = 1_000_000_000
+        func fit(_ peak: UInt64, _ budget: UInt64) -> MemoryFit {
+            MemoryFit(fits: true, additionalBytes: 0, availableBytes: 0, message: "", projectedPeakBytes: peak, budgetBytes: budget)
+        }
+        // 16 GB Mac: Mage-Flow's conditioner and DiT take turns (~9.7 GB) under a ~12.7 GB budget; VOSR2 ~7 GB.
+        #expect(Creative.unavailableReason(editor: fit(97 * gb / 10, 127 * gb / 10), realistic: fit(7 * gb, 127 * gb / 10)) == nil)
+        #expect(Creative.unavailableReason(editor: nil, realistic: nil) == nil, "unknown is offered")
+        let small = try #require(Creative.unavailableReason(editor: fit(97 * gb / 10, 59 * gb / 10), realistic: fit(7 * gb, 59 * gb / 10)))
+        #expect(small.contains("Mage-Flow-Edit-Turbo") && small.contains("9.7 GB") && small.contains("5.9 GB"), "\(small)")
+
+        let options = ImageNormalizer.Options(creativeUnavailable: small)
+        let ops = await ImageNormalizer(directory: FakeModels(), runner: FakeRunner(), options: options).descriptors()
+        let up = try #require(ops.first { $0.operation == "image.upscale" })
+        #expect(up.extensions == nil && up.summary?.contains(small) == true)
+
+        let tight = MemoryFit(fits: false, additionalBytes: 9 * gb, availableBytes: 3 * gb, message: "3.0 GB available")
+        try await withEngine(runner: FakeRunner(fit: tight)) { probe, _ in
+            let job = try await probe.succeed(JobRequest(operation: "image.upscale", inputs: ["image": image()], params: ["scale": 2],
+                                                         extensions: Self.creative([:])))
+            #expect(job.warnings.contains { $0.code == "memory_tight" })
+        }
+    }
+
     @Test("Realistic (creativity 0) is VOSR2; a prompt there is ignored and says so")
     func realistic() async throws {
         try await withEngine { probe, runner in

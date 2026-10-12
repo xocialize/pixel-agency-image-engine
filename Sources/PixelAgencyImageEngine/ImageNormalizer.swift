@@ -29,12 +29,22 @@ public struct ImageNormalizer: MediaEngine {
         /// Restore models whose package keeps 16 bits end to end (AB-T-0230), read the same way. `output.bit_depth: 16` on
         /// `image.restore` runs only where the request's own route is one of these (`OperationTable.restoreRoute`).
         public var sixteenBitRestorers: Set<String> = []
+        /// Edit models that take a batch of tiles in one call (their `imageEdit` surface declares the `tiles` mode,
+        /// mage-flow-swift ≥ 0.11.0). `ImageRuntime.start` reads it from the registered manifests; the creative upscale
+        /// sends all its tiles in one call to these, so the conditioner loads once per job, not once per tile.
+        public var tiledEditors: Set<String> = []
+        /// Why the creative upscale isn't offered on this Mac (its models don't fit the engine's memory budget), or nil.
+        /// `ImageRuntime.start` asks the runtime (`Creative.unavailableReason`); the extension is left out of
+        /// `image.upscale` and its summary says why.
+        public var creativeUnavailable: String?
         public init(allowResearch: Bool = false, residency: Residency.Policy = .init(), sixteenBitUpscalers: Set<String> = [],
-                    sixteenBitRestorers: Set<String> = []) {
+                    sixteenBitRestorers: Set<String> = [], tiledEditors: Set<String> = [], creativeUnavailable: String? = nil) {
             self.allowResearch = allowResearch
             self.residency = residency
             self.sixteenBitUpscalers = sixteenBitUpscalers
             self.sixteenBitRestorers = sixteenBitRestorers
+            self.tiledEditors = tiledEditors
+            self.creativeUnavailable = creativeUnavailable
         }
 
         /// The models of `operation` that keep 16 bits (upscale and restore offer them; nothing else does).
@@ -140,15 +150,20 @@ public struct ImageNormalizer: MediaEngine {
             // No rules when every route keeps 16 bits: JSON Schema's `allOf` must be non-empty.
             if !rules.isEmpty { params["allOf"] = .array(rules) }
         }
+        // The creative upscale: offered when its models are here and fit this Mac; otherwise the summary says why.
+        let creative = spec.operation == "image.upscale" && creativeAvailable(models)
+        let creativeOffered = creative && options.creativeUnavailable == nil
+        var summary = Self.summaries[spec.operation]
+        if creative, let why = options.creativeUnavailable { summary = [summary, why].compactMap { $0 }.joined(separator: " ") }
         return Descriptor(
             operation: spec.operation, profile: ImageProfile.id, profileVersion: ImageProfile.version,
-            title: Self.titles[spec.operation] ?? spec.operation, summary: Self.summaries[spec.operation],
+            title: Self.titles[spec.operation] ?? spec.operation, summary: summary,
             inputs: inputs,
             params: .object(params),
             outputs: outputs,
             limits: .init(maxMegapixels: Double(maxPixels) / 1_000_000, maxInputs: maxInputs, maxCount: spec.operation == "image.generate" ? 4 : 1),
             qualityTiers: OperationTable.all.filter(tiers.contains), models: offers,
-            extensions: spec.operation == "image.upscale" && creativeAvailable(models) ? [Creative.spec] : nil,
+            extensions: creativeOffered ? [Creative.spec] : nil,
             remote: .init(possible: false))
     }
 
