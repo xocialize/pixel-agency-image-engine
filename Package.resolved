@@ -1,5 +1,5 @@
 {
-  "originHash" : "73f3c65ec6b715585d10d0692106fac491e3d85abf3c57db8caf1361740e1c8b",
+  "originHash" : "c9b197ec76a3ace547ecda5d65b19b48891a39aace8323e45c7cc195dc29ddbe",
   "pins" : [
     {
       "identity" : "anima-mlx-swift",
@@ -105,8 +105,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/ForgeCore.git",
       "state" : {
-        "revision" : "4c4f6407eea93d6e35cc201b2e0f10dc4caa7d9b",
-        "version" : "0.38.0"
+        "revision" : "5dd9105a5281904ae18a093509306eb47f383be3",
+        "version" : "0.38.1"
       }
     },
     {
@@ -312,8 +312,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-gfpgan-swift.git",
       "state" : {
-        "revision" : "0d4bcbacc92a5bf8799c4ba4f801718135b6f074",
-        "version" : "0.3.0"
+        "revision" : "fbd46c1acf47a41d1ad295f72408651971058902",
+        "version" : "0.3.1"
       }
     },
     {
@@ -402,8 +402,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-restoreformer-swift.git",
       "state" : {
-        "revision" : "6d61c4679561a6fc7614c1ceb76ea910e9766402",
-        "version" : "0.3.0"
+        "revision" : "b13ca1cd6e5d1efd1e600be97bdae7ea9fc8786e",
+        "version" : "0.3.1"
       }
     },
     {

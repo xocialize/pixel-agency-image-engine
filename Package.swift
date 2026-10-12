@@ -31,7 +31,9 @@ let package = Package(
         // mlx-nafnet-swift 0.6.0 and mlx-gfpgan-swift / mlx-restoreformer-swift 0.3.0 keep 16 bits (AB-T-0230), so
         // image.restore offers 16 bits for general and faces. ≥ 0.38.0: mlx-vosr-swift 0.3.0 writes 16 bits and the text guard
         // sends each tier its own depth (MaskKit 0.4.1 composites at 16 bits), so VOSR2 runs at 16 bits by name (AB-T-0233).
-        .package(url: "https://github.com/xocialize/ForgeCore.git", from: "0.38.0"),
+        // ≥ 0.38.1: mlx-gfpgan-swift and mlx-restoreformer-swift 0.3.1 — no dark line along the image edge when a face's
+        // crop extends past the frame, every close-up portrait (AB-T-0227).
+        .package(url: "https://github.com/xocialize/ForgeCore.git", from: "0.38.1"),
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.5.0"),
     ],
     targets: [

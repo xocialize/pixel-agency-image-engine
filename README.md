@@ -171,6 +171,10 @@ The normalizer (`ImageNormalizer`, `RunPlan`) holds every model to the profile, 
   - G-6 gate (`mlxengine-image/WIP/g6-16bit-gate`, `restore` and `faces`). NAFNet's smooth-area flat-neighbour share is
     0.016–0.022 with clipped values left out, against 0.91–0.95 for the 8-bit output. On a portrait in front of a 16-bit
     sky, the face pair's share at the paste edge is 0.04, against 0.90 at 8 bits, with no step at ×8 contrast.
+- **Faces at the image edge (0.2.9).** `image.restore` with `kind: faces` no longer pastes a dark 1–2 px line along the
+  image edge when a face's crop extends past the frame, which is every close-up portrait (ForgeCore 0.38.1:
+  mlx-gfpgan-swift and mlx-restoreformer-swift 0.3.1, AB-T-0227). The face crop now extends the frame's edge pixels
+  instead of blending them with black. Faces whose crop stays inside the frame come back byte-identical to 0.2.8.
 
 - **Creative upscale (G-5, 0.2.0).** `image.upscale` declares the extension `x-pixelagency.creative` (Base §6.2):
   `{prompt, creativity 0–1 (default 0.5), protect_faces, protect_text}`. A request without it is the plain upscale,
