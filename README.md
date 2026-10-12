@@ -128,6 +128,12 @@ The normalizer (`ImageNormalizer`, `RunPlan`) holds every model to the profile, 
   - Since 0.2.1 (ForgeCore 0.36.0, AB-T-0229) every upscaler the tiers route to keeps 16 bits: NERVE (draft, and drawn
     content at draft and standard), RealPLKSR (standard) and HEART (best, and drawn content at best). So 16 bits runs
     at every quality and for drawn content, and `image.upscale` carries no `allOf` rules.
+  - Since 0.2.6 (ForgeCore 0.38.0, runtime 0.5.1, AB-T-0233) VOSR2 keeps 16 bits too, by name and never as a default.
+    - It keeps its 8-bit reference prep, decodes the VAE in float32 and writes 16 bits (AB-D-0127).
+    - It runs behind the text guard, which sends each tier its own depth.
+    - Nacre stays 8-bit (AB-D-0128), and so does the creative upscale.
+  - The `bit_depth` property carries `x-pixelagency-sixteen-bit-models`, the list of models that keep 16 bits (0.2.6).
+    The `allOf` rules see params, not the model, so a client naming a model checks it against this list.
   - The input is read at 16 bits, sent to the model raw, and written as a 16-bit PNG or a lossless (ZIP) 16-bit TIFF.
   - **Where 16 bits can't run is in the descriptor** (0.1.5; Base §6 rule 4). When some tier has no 16-bit model,
     `image.upscale`'s `params` carry `allOf` rules that pin `output.bit_depth` to 8:

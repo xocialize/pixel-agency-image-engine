@@ -60,6 +60,10 @@ enum OperationTable {
     /// `image.upscale`'s `output` when a model it offers keeps 16 bits (G-6, AB-A-0158): TIFF too, and `bit_depth: 16` as
     /// PNG or TIFF. A 16-bit request runs only on those models (`ImageNormalizer.validate` refuses it otherwise with 422
     /// `unsupported_parameter`, Image §1.2), so the description names them.
+    ///
+    /// `x-pixelagency-sixteen-bit-models` lists them for machines (0.2.6, AB-T-0233). The `allOf` rules see params, not the
+    /// model, so a client sending a 16-bit request that names a model (Pixel Agency Desktop's VOSR2 step) checks the
+    /// name against this list first; JSON Schema validators ignore the annotation.
     static func deepOutput(models: [String]) -> JSONValue {
         [
             "type": "object", "additionalProperties": false,
@@ -67,10 +71,14 @@ enum OperationTable {
                 "media_type": ["enum": ["image/png", "image/jpeg", "image/tiff"]],
                 "bit_depth": ["enum": [8, 16],
                               "description": .string("16 (PNG or TIFF) keeps a 16-bit image's depth through the model; it runs on "
-                                  + models.joined(separator: ", ") + ".")],
+                                  + models.joined(separator: ", ") + "."),
+                              sixteenBitModelsKey: .array(models.map { .string($0) })],
             ],
         ]
     }
+
+    /// The annotation on `output.bit_depth` naming the models that keep 16 bits.
+    static let sixteenBitModelsKey = "x-pixelagency-sixteen-bit-models"
 
     /// Where `bit_depth: 16` can't run, stated in `image.upscale`'s schema (Base §6 rule 4: limits in the descriptor, not
     /// found by failure), so a client checks a request before sending it. Each entry pins `output.bit_depth` to 8:

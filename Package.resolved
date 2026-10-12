@@ -1,5 +1,5 @@
 {
-  "originHash" : "4abd7f43d5f03a05ca6d423deb03a50cd4fdf2c525747c824afc426dbe0cf19d",
+  "originHash" : "73f3c65ec6b715585d10d0692106fac491e3d85abf3c57db8caf1361740e1c8b",
   "pins" : [
     {
       "identity" : "anima-mlx-swift",
@@ -105,8 +105,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/ForgeCore.git",
       "state" : {
-        "revision" : "25509616931f2b74d1676261b32a39d1df0e7783",
-        "version" : "0.37.0"
+        "revision" : "4c4f6407eea93d6e35cc201b2e0f10dc4caa7d9b",
+        "version" : "0.38.0"
       }
     },
     {
@@ -186,8 +186,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/MaskKit.git",
       "state" : {
-        "revision" : "db4c9dae9e09a67bfb798683e30e979f9338ef26",
-        "version" : "0.4.0"
+        "revision" : "5447fa2ab17e2e2e2d1d8aa5048f684d53b072dd",
+        "version" : "0.4.1"
       }
     },
     {
@@ -330,8 +330,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-image-runtime.git",
       "state" : {
-        "revision" : "29ad836c3ee526905b2511fe23cbd73fed28f0ee",
-        "version" : "0.5.0"
+        "revision" : "565c392dea025ac4144d12f00f9fac1fa64ec5f4",
+        "version" : "0.5.1"
       }
     },
     {
@@ -492,8 +492,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-vosr-swift.git",
       "state" : {
-        "revision" : "4009e3a78a0dfa38a96f124c542229766d39bc88",
-        "version" : "0.2.1"
+        "revision" : "c18503010d8efcdc55e10c7301ff5fbb2978acd5",
+        "version" : "0.3.0"
       }
     },
     {

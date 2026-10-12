@@ -195,10 +195,43 @@ struct SixteenBitUpscaleTests {
         let store = FileManager.default.temporaryDirectory.appendingPathComponent("pa-16-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: store) }
         let runtime = await ImageRuntime.start(modelStore: store, catalog: ModelCatalog.all(environment: [:]))
-        #expect(runtime.normalizer.options.sixteenBitUpscalers.isSuperset(of: Self.wave2),
+        #expect(runtime.normalizer.options.sixteenBitUpscalers.isSuperset(of: Self.wave2.union(["vosr2-upscale"])),
                 "\(runtime.normalizer.options.sixteenBitUpscalers.sorted())")
         let up = try #require(await runtime.normalizer.descriptors().first { $0.operation == "image.upscale" })
         Self.expectSixteenBitsEverywhere(up)
+    }
+
+    /// VOSR2 ≥ 0.3.0 keeps 16 bits (AB-T-0233): offered by name at 16 bits, never a default, and named in the bit_depth
+    /// annotation a client checks a named model against. The creative upscale (Realistic is VOSR2) stays 8-bit.
+    @Test("VOSR2 runs at 16 bits by name; the bit_depth annotation names every 16-bit model; the creative upscale stays 8")
+    func vosr2AtSixteenBits() async throws {
+        let deep: Set<String> = Self.wave2.union(["vosr2-upscale"])
+        let ops = await ImageNormalizer(directory: FakeModels(), runner: FakeRunner(), options: .init(sixteenBitUpscalers: deep)).descriptors()
+        let up = try #require(ops.first { $0.operation == "image.upscale" })
+        let listed = up.params["properties"]?["output"]?["properties"]?["bit_depth"]?[OperationTable.sixteenBitModelsKey]?.arrayValue?
+            .compactMap(\.stringValue) ?? []
+        #expect(Set(listed) == deep, "\(listed)")
+        try await withEngine(sixteenBit: deep) { probe, runner in
+            let job = try await probe.succeed(JobRequest(
+                operation: "image.upscale", inputs: ["image": image(deepFile(width: 24, height: 16))],
+                params: ["scale": 4, "output": ["media_type": "image/tiff", "bit_depth": 16]], model: "vosr2-upscale"))
+            #expect(job.plan?.model.id == "vosr2-upscale")
+            let sent = try #require(runner.calls.withLock { $0.last }?.inputs["image"]?.first)
+            #expect(sent.format == .rawRGBA16)
+            let cg = try decode(try await probe.output(job).1)
+            #expect(cg.bitsPerComponent == 16 && cg.width == 96 && cg.height == 64)
+            // A 16-bit best still runs HEART: VOSR2 is never a default.
+            let best = try await probe.succeed(JobRequest(
+                operation: "image.upscale", inputs: ["image": image(deepFile(width: 24, height: 16))],
+                params: ["scale": 4, "quality": "best", "output": ["bit_depth": 16]]))
+            #expect(best.plan?.model.id == "heart-upscale")
+            // An 8-bit generative model (SeedVR2; Nacre likewise) named at 16 bits is refused.
+            var nacre = JobRequest(operation: "image.upscale", inputs: ["image": image(deepFile(width: 16, height: 16))],
+                                   params: ["output": ["bit_depth": 16]])
+            nacre.model = "seedvr2-upscale"
+            let refused = try await probe.wire.json("POST", "jobs", nacre)
+            #expect(refused.status == 422 && refused.errorCode == "unsupported_parameter")
+        }
     }
 
     @Test("16-bit pixels: load keeps 16 bits, and alpha is re-applied at 16 bits")

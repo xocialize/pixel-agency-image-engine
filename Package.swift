@@ -22,14 +22,16 @@ let package = Package(
         // fleet reads the weights the engine downloaded instead of fetching a second copy (AB-A-0112); ≥ 0.3.4:
         // Mage-Flow Edit Turbo at int8, content filter off (AB-D-0122), erases by name (AB-T-0220); ≥ 0.3.3 made
         // every default offer's weights the engine's to download (AB-T-0221/0222).
-        .package(url: "https://github.com/xocialize/mlx-image-runtime.git", from: "0.5.0"),
+        // ≥ 0.5.1: an enhancer result (VOSR2 behind the text guard) keeps a 16-bit request's depth (AB-T-0233).
+        .package(url: "https://github.com/xocialize/mlx-image-runtime.git", from: "0.5.1"),
         // ForgeCore's still enhancer: generative upscales behind the text-legibility guard (AB-D-0111). ≥ 0.35.0: the 16-bit
         // model boundary (AB-A-0158) — its graph brings mlx-engine-swift 0.67.0 (`.rawRGBA16`, contract 1.52.0) and
         // mlx-realplksr-swift 0.2.0, the first upscaler that keeps 16 bits. ≥ 0.36.0: mlx-nerve-swift and mlx-heart-swift
         // 0.2.0 keep 16 bits too (AB-T-0229), so draft, standard and best, and drawn content, all offer 16 bits. ≥ 0.37.0:
         // mlx-nafnet-swift 0.6.0 and mlx-gfpgan-swift / mlx-restoreformer-swift 0.3.0 keep 16 bits (AB-T-0230), so
-        // image.restore offers 16 bits for general and faces.
-        .package(url: "https://github.com/xocialize/ForgeCore.git", from: "0.37.0"),
+        // image.restore offers 16 bits for general and faces. ≥ 0.38.0: mlx-vosr-swift 0.3.0 writes 16 bits and the text guard
+        // sends each tier its own depth (MaskKit 0.4.1 composites at 16 bits), so VOSR2 runs at 16 bits by name (AB-T-0233).
+        .package(url: "https://github.com/xocialize/ForgeCore.git", from: "0.38.0"),
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.5.0"),
     ],
     targets: [
