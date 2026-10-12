@@ -82,6 +82,11 @@ Not offered:
 | Nacre (generative) | 28.75 / 0.867 | 14.1 s | 25.63 / 0.747 | 5.0 s |
 | SeedVR2 | 26.88 / 0.779 | 8.7 s | 25.64 / 0.736 | 8.4 s |
 
+RealPLKSR's and HEART's ×2 figures above are from before 0.2.2. Back then a ×2 was their ×4 output reduced by a
+CoreGraphics draw that misregistered the frame by up to ±0.26 px. Since 0.2.2 it is a Lanczos reduction (the
+packages' 0.2.1, AB-T-0225). On 20 Commons photo tiles that is worth +0.2 dB for RealPLKSR; on drawn content it is
++1.7 dB for RealPLKSR and +2.8 dB for HEART. NERVE's ×2 is a native checkpoint and is unaffected.
+
 Earlier evidence (the Commons twelve-rung ladder, AB-R-0379) agrees on ranking:
 - HEART had the best PSNR on 12 of 12 rungs.
 - RealPLKSR had the best DISTS on 12 of 12 rungs. DISTS is partly its own training loss, which flatters it.

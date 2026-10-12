@@ -321,8 +321,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-heart-swift.git",
       "state" : {
-        "revision" : "55b92ff8072b8b7401d56ecd39bb5430d2157e24",
-        "version" : "0.2.0"
+        "revision" : "ed8b6cd0490daa2c59c9e92a7a81f0e35cd7905b",
+        "version" : "0.2.1"
       }
     },
     {
@@ -393,8 +393,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-realplksr-swift.git",
       "state" : {
-        "revision" : "80fa6306e74a3e216fdb027d60c9a4c6d4a2f41c",
-        "version" : "0.2.0"
+        "revision" : "031bb8ca00f142b43f9423d39a115cb7c56ce52b",
+        "version" : "0.2.1"
       }
     },
     {
