@@ -53,9 +53,12 @@ struct ImageEngineCommand: AsyncParsableCommand {
               + (allowResearch ? " (research models named-only)" : ""))
         let deep = runtime.normalizer.options.sixteenBitUpscalers.sorted()
         print(deep.isEmpty ? "upscale runs at 8 bits" : "16-bit upscale (output.bit_depth 16): \(deep.joined(separator: ", "))")
+        let deepRestore = runtime.normalizer.options.sixteenBitRestorers.sorted()
+        print(deepRestore.isEmpty ? "restore runs at 8 bits"
+              : "16-bit restore (output.bit_depth 16): \(deepRestore.joined(separator: ", "))")
 
         var config = EngineConfiguration(id: try Self.engineID(in: stateDir), name: "Pixel Agency Image Engine",
-                                         implementationName: "pixel-agency-image-engine", implementationVersion: "0.2.2",
+                                         implementationName: "pixel-agency-image-engine", implementationVersion: "0.2.3",
                                          spoolDirectory: spoolDir)
         config.stateDirectory = stateDir
         config.port = port

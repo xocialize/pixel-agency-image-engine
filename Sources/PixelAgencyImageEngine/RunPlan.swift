@@ -119,7 +119,7 @@ struct RunPlan {
 
     /// The requested output format (PNG unless `output.media_type` asks for JPEG, or TIFF where offered).
     var outputType: String { context.param("output")?["media_type"]?.stringValue ?? "image/png" }
-    /// The requested bit depth (Image §1.2): 8 unless `output.bit_depth` asks for 16, which only upscale offers.
+    /// The requested bit depth (Image §1.2): 8 unless `output.bit_depth` asks for 16, which upscale and restore offer.
     var bitDepth: Int { context.param("output")?["bit_depth"]?.intValue ?? 8 }
 
     static func fileExtension(_ mediaType: String) -> String {
@@ -497,6 +497,15 @@ struct RunPlan {
         record(route)
         let ran = try await invoke(route, params: ["scale": .number(Double(scale))], inputs: ["image": [Media.modelImage(input)]])
         if case .upscaled(_, let model) = ran { modelParams["ran"] = .string(model) }
+        let result = try deepResult(ran, route: route, input: input, width: input.width * scale, height: input.height * scale)
+        effective["scale"] = .number(Double(scale))
+        return [try write(result, name: "image")]
+    }
+
+    /// A 16-bit route's answer as 16-bit pixels at exactly `width`×`height` (Image §3), with the input's alpha. Should the
+    /// model still answer in 8 bits, the output says so (`bit_depth_reduced`) rather than passing an 8-bit staircase off as
+    /// 16-bit detail.
+    mutating func deepResult(_ ran: RunOutputValue, route: RoutedModel, input: DeepPixels, width w: Int, height h: Int) throws -> DeepPixels {
         let answered: MLXToolKit.Image
         switch ran {
         case .image(let image), .upscaled(let image, _): answered = image
@@ -506,20 +515,19 @@ struct RunPlan {
         if answered.format != .rawRGBA16 && !result.carriesMoreThanEightBits {
             warn("bit_depth_reduced", "\(route.id.rawValue) answered at 8 bits; the 16-bit file carries 8-bit precision.", param: "output")
         }
-        let (w, h) = (input.width * scale, input.height * scale)
-        if result.width != w || result.height != h { result = result.resized(w, h) }   // exactly ×scale (Image §3)
+        if result.width != w || result.height != h { result = result.resized(w, h) }
         if input.hasTransparency, !result.hasTransparency {
             warn(ImageProfile.WarningCode.alphaReapplied, "The model can't carry alpha; the input's was re-applied.")
             result = Media.reapplyAlpha(result, from: input)
         }
-        effective["scale"] = .number(Double(scale))
-        return [try write(result, name: "image")]
+        return result
     }
 
     mutating func restore() async throws -> [ProducedOutput] {
-        let input = try load("image")
         let kind = context.param("kind")?.stringValue ?? "general"
         effective["kind"] = .string(kind)
+        if bitDepth == 16 { return try await restoreDeep() }
+        let input = try load("image")
         if kind == "scratches" {
             // Old-photo scratches (IMG-4): find the defects, then inpaint just those.
             let detector = try await route(.defectDetect, helper: true)
@@ -538,6 +546,20 @@ struct RunPlan {
         var result = try image(try await invoke(route, params: [:], inputs: ["image": [Media.modelImage(input)]]))
         if result.width != input.width || result.height != input.height { result = result.resized(input.width, input.height) }
         return [try write(keepAlpha(result, input: input), name: "image")]
+    }
+
+    /// `restore` at 16 bits (G-6, AB-T-0230): the input loaded at 16 bits goes to the kind's own route as `.rawRGBA16`, and
+    /// the model's 16-bit result is written as a 16-bit PNG or TIFF. `validateBitDepth` admitted the job only where that
+    /// route keeps 16 bits (never scratches).
+    mutating func restoreDeep() async throws -> [ProducedOutput] {
+        let input = try loadDeep("image")
+        let route = try await route(.imageRestore)
+        guard normalizer.options.sixteenBitRestorers.contains(route.id.rawValue) else {
+            throw MESError(.unsupportedParameter, "\(route.id.rawValue) runs at 8 bits.", param: "output")
+        }
+        record(route)
+        let ran = try await invoke(route, params: [:], inputs: ["image": [Media.modelImage(input)]])
+        return [try write(try deepResult(ran, route: route, input: input, width: input.width, height: input.height), name: "image")]
     }
 
     /// relight and colorize: same size and composition (Image §3).

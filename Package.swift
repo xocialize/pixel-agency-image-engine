@@ -26,8 +26,10 @@ let package = Package(
         // ForgeCore's still enhancer: generative upscales behind the text-legibility guard (AB-D-0111). ≥ 0.35.0: the 16-bit
         // model boundary (AB-A-0158) — its graph brings mlx-engine-swift 0.67.0 (`.rawRGBA16`, contract 1.52.0) and
         // mlx-realplksr-swift 0.2.0, the first upscaler that keeps 16 bits. ≥ 0.36.0: mlx-nerve-swift and mlx-heart-swift
-        // 0.2.0 keep 16 bits too (AB-T-0229), so draft, standard and best, and drawn content, all offer 16 bits.
-        .package(url: "https://github.com/xocialize/ForgeCore.git", from: "0.36.0"),
+        // 0.2.0 keep 16 bits too (AB-T-0229), so draft, standard and best, and drawn content, all offer 16 bits. ≥ 0.37.0:
+        // mlx-nafnet-swift 0.6.0 and mlx-gfpgan-swift / mlx-restoreformer-swift 0.3.0 keep 16 bits (AB-T-0230), so
+        // image.restore offers 16 bits for general and faces.
+        .package(url: "https://github.com/xocialize/ForgeCore.git", from: "0.37.0"),
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.5.0"),
     ],
     targets: [

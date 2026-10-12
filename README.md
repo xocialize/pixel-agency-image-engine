@@ -138,11 +138,33 @@ The normalizer (`ImageNormalizer`, `RunPlan`) holds every model to the profile, 
     A client checks its params against the schema (MESCore's `SchemaValidator`) before sending, so it never collects
     refused jobs.
   - A request that can't be honoured is refused at submit with 422 `unsupported_parameter` (Image §1.2): JPEG, a
-    named 8-bit model, a tier or drawn route with no 16-bit model, or any other operation. A client can then run its
+    named 8-bit model, a tier or drawn route with no 16-bit model, or an operation that doesn't offer 16 bits. A client can then run its
     own restore around an 8-bit step.
   - On the G-6 set (AB-R-0491 standard; draft and best under AB-T-0229) each model's smooth-area flat-neighbour share
     sits at or below the 16-bit interpolation's, so there's no 8-bit staircase. What's left at ×8 contrast is each
     model's own faint ×4 mosaic, the same at 8 and 16 bits: strongest for HEART, then NERVE, then RealPLKSR.
+- **16 bits (restore, G-6 wave 3, 0.2.3).** `image.restore` offers the same `output` when a restorer it offers keeps 16
+  bits (ForgeCore 0.37.0: mlx-nafnet-swift 0.6.0, mlx-gfpgan-swift and mlx-restoreformer-swift 0.3.0, AB-T-0230), read
+  from the manifests the same way.
+  - **A kind runs at 16 bits only where its own route keeps them.** That route is the model an 8-bit request of that
+    kind runs, so a 16-bit request never switches models:
+
+    | Kind | 16 bits |
+    |---|---|
+    | general (or no kind) | NAFNet, every quality |
+    | faces | GFPGAN, every quality (or a named RestoreFormer++) |
+    | denoise | at draft (NAFNet); not at standard and best (SCUNet) |
+    | deblur | no (Restormer) |
+    | scratches | no (defect detection, then LaMa) |
+
+  - The schema states each of those as an `allOf` rule pinning `output.bit_depth` to 8, as for upscale. A refused
+    request is 422 `unsupported_parameter`. The schema sees params, not the model, so naming a 16-bit restorer
+    doesn't lift its kind's rule.
+  - The input is read at 16 bits and goes to the model raw; a face model's warp, paste and mask run at 16 bits inside
+    the package. The output is a 16-bit PNG or a lossless 16-bit TIFF.
+  - G-6 gate (`mlxengine-image/WIP/g6-16bit-gate`, `restore` and `faces`). NAFNet's smooth-area flat-neighbour share is
+    0.016–0.022 with clipped values left out, against 0.91–0.95 for the 8-bit output. On a portrait in front of a 16-bit
+    sky, the face pair's share at the paste edge is 0.04, against 0.90 at 8 bits, with no step at ×8 contrast.
 
 - **Creative upscale (G-5, 0.2.0).** `image.upscale` declares the extension `x-pixelagency.creative` (Base §6.2):
   `{prompt, creativity 0–1 (default 0.5), protect_faces, protect_text}`. A request without it is the plain upscale,

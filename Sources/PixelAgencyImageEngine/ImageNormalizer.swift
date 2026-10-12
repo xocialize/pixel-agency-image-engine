@@ -26,10 +26,24 @@ public struct ImageNormalizer: MediaEngine {
         /// Upscale models whose package keeps 16 bits end to end (it declares `.rawRGBA16`, MLXToolKit contract 1.52.0).
         /// `ImageRuntime.start` reads it from the registered manifests; `output.bit_depth: 16` runs only on these.
         public var sixteenBitUpscalers: Set<String> = []
-        public init(allowResearch: Bool = false, residency: Residency.Policy = .init(), sixteenBitUpscalers: Set<String> = []) {
+        /// Restore models whose package keeps 16 bits end to end (AB-T-0230), read the same way. `output.bit_depth: 16` on
+        /// `image.restore` runs only where the request's own route is one of these (`OperationTable.restoreRoute`).
+        public var sixteenBitRestorers: Set<String> = []
+        public init(allowResearch: Bool = false, residency: Residency.Policy = .init(), sixteenBitUpscalers: Set<String> = [],
+                    sixteenBitRestorers: Set<String> = []) {
             self.allowResearch = allowResearch
             self.residency = residency
             self.sixteenBitUpscalers = sixteenBitUpscalers
+            self.sixteenBitRestorers = sixteenBitRestorers
+        }
+
+        /// The models of `operation` that keep 16 bits (upscale and restore offer them; nothing else does).
+        func sixteenBitModels(_ operation: String) -> Set<String> {
+            switch operation {
+            case "image.upscale": sixteenBitUpscalers
+            case "image.restore": sixteenBitRestorers
+            default: []
+            }
         }
     }
 
@@ -76,9 +90,9 @@ public struct ImageNormalizer: MediaEngine {
         var tiers = Set(offers.filter { $0.namedOnly != true }.flatMap(\.qualityTiers))
         if tiers.isEmpty { tiers = Set(offers.flatMap(\.qualityTiers)) }
 
-        // 16 bits (AB-A-0158): offered on upscale when a model it offers keeps them.
-        let deepModels = spec.operation == "image.upscale"
-            ? offers.map(\.id).filter { options.sixteenBitUpscalers.contains($0) } : []
+        // 16 bits (AB-A-0158, AB-T-0230): offered on upscale and restore when a model they offer keeps them.
+        let deepSet = options.sixteenBitModels(spec.operation)
+        let deepModels = offers.map(\.id).filter { deepSet.contains($0) }
         var properties: [String: MESValue] = [:]
         for (order, name) in spec.params.enumerated() {
             let narrowed = name == "output" && !deepModels.isEmpty ? OperationTable.deepOutput(models: deepModels) : spec.narrowed[name]
@@ -106,12 +120,24 @@ public struct ImageNormalizer: MediaEngine {
         var params: [String: MESValue] = ["type": "object", "additionalProperties": false, "properties": .object(properties)]
         if !deepModels.isEmpty {
             let routable = offers.filter { $0.namedOnly != true }
-            let deepTiers = Set(routable.filter { deepModels.contains($0.id) }.flatMap(\.qualityTiers))
-            let drawnDeepTiers = Set(QualityTier.allCases.filter { tier in
-                (OperationTable.drawnUpscale[tier] ?? []).contains { id in deepModels.contains(id) && routable.contains { $0.id == id } }
-            })
-            // No rules when every tier and drawn route keeps 16 bits: JSON Schema's `allOf` must be non-empty.
-            let rules = OperationTable.sixteenBitRules(deepTiers: deepTiers, drawnDeepTiers: drawnDeepTiers, params: spec.params)
+            let rules: [MESValue]
+            if spec.operation == "image.restore" {
+                // Per kind: the tiers whose own route (the model an 8-bit request of that kind runs) keeps 16 bits.
+                let deepRoutes = Dictionary(uniqueKeysWithValues: OperationTable.restoreKinds.map { kind in
+                    (kind, Set(QualityTier.allCases.filter { tier in
+                        let candidates = routable.filter { $0.qualityTiers.contains(tier) }.map(\.id)
+                        return OperationTable.restoreRoute(kind: kind, tier: tier, among: candidates).map(deepModels.contains) ?? false
+                    }))
+                })
+                rules = OperationTable.restoreSixteenBitRules(deepRoutes: deepRoutes, params: spec.params)
+            } else {
+                let deepTiers = Set(routable.filter { deepModels.contains($0.id) }.flatMap(\.qualityTiers))
+                let drawnDeepTiers = Set(QualityTier.allCases.filter { tier in
+                    (OperationTable.drawnUpscale[tier] ?? []).contains { id in deepModels.contains(id) && routable.contains { $0.id == id } }
+                })
+                rules = OperationTable.sixteenBitRules(deepTiers: deepTiers, drawnDeepTiers: drawnDeepTiers, params: spec.params)
+            }
+            // No rules when every route keeps 16 bits: JSON Schema's `allOf` must be non-empty.
             if !rules.isEmpty { params["allOf"] = .array(rules) }
         }
         return Descriptor(
@@ -217,12 +243,14 @@ public struct ImageNormalizer: MediaEngine {
     }
 
     /// `output.bit_depth: 16` (Image §1.2, AB-A-0158): honoured only as PNG or TIFF, and only on a model that keeps 16 bits
-    /// — the named one, or else one the requested tier can default to. Anything else is 422 `unsupported_parameter`, at
-    /// submit, so a client (Pixel Agency Desktop) can fall back to its own 16-bit restore around an 8-bit step.
+    /// — the named one, or else one the requested tier can default to (for restore, the request's own route: its kind's
+    /// model at that tier, never a switch to another one; scratches never). Anything else is 422 `unsupported_parameter`,
+    /// at submit, so a client (Pixel Agency Desktop) can fall back to its own 16-bit restore around an 8-bit step.
     func validateBitDepth(_ request: JobRequest, descriptor: Descriptor) throws {
         guard let output = request.params?["output"], output["bit_depth"]?.intValue == 16 else { return }
-        let deep = descriptor.models.map(\.id).filter { options.sixteenBitUpscalers.contains($0) }
-        guard descriptor.operation == "image.upscale", !deep.isEmpty else {
+        let deepSet = options.sixteenBitModels(descriptor.operation)
+        let deep = descriptor.models.map(\.id).filter { deepSet.contains($0) }
+        guard !deep.isEmpty else {
             throw MESError(.unsupportedParameter, "\(descriptor.operation) runs at 8 bits on this engine.", param: "output")
         }
         let type = output["media_type"]?.stringValue ?? "image/png"
@@ -230,6 +258,10 @@ public struct ImageNormalizer: MediaEngine {
             throw MESError(.unsupportedParameter, "16 bits needs image/png or image/tiff, not \(type).", param: "output")
         }
         let runsOn = "16 bits runs on \(deep.joined(separator: ", "))."
+        let kind = request.params?["kind"]?.stringValue ?? "general"
+        if descriptor.operation == "image.restore", kind == "scratches" {
+            throw MESError(.unsupportedParameter, "Scratch repair (defect detection, then inpainting) runs at 8 bits.", param: "output")
+        }
         if let named = request.model {
             guard deep.contains(named) else {
                 throw MESError(.unsupportedParameter, "\(named) runs at 8 bits; \(runsOn)", param: "output")
@@ -240,6 +272,13 @@ public struct ImageNormalizer: MediaEngine {
         let policy = request.policy ?? Policy()
         var candidates = descriptor.models.filter { $0.qualityTiers.contains(tier) && $0.namedOnly != true && policy.allows($0) }
             .map(\.id)
+        if descriptor.operation == "image.restore" {
+            guard let route = OperationTable.restoreRoute(kind: kind, tier: tier, among: candidates), deep.contains(route) else {
+                throw MESError(.unsupportedParameter, "No \(tier.rawValue)-quality \(kind) restorer keeps 16 bits; \(runsOn)",
+                               param: "output")
+            }
+            return
+        }
         // Drawn content keeps its route (AB-D-0124): 16 bits only where that route has a 16-bit model, never by
         // switching drawn content to a photo model.
         let drawn = request.params?["content"]?.stringValue == "drawn"
@@ -260,6 +299,7 @@ public struct ImageNormalizer: MediaEngine {
         var preferred: [String] = []
         switch request.operation {
         case "image.restore":
+            // At 16 bits too: `validateBitDepth` admitted the request only where this route keeps them.
             if let kind = request.params?["kind"]?.stringValue { preferred = OperationTable.restoreModels(kind: kind, tier: tier) }
         case "image.fill", "image.extend":
             if case .text(let prompt)? = request.inputs?["prompt"], !prompt.trimmingCharacters(in: .whitespaces).isEmpty {

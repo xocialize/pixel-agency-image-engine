@@ -42,20 +42,21 @@ public final class ImageRuntime {
         // the text-legibility guard, never bare (AB-D-0111), and reports what ran.
         let enhancer = EngineImageEnhancer(service: forge)
         var options = options
-        options.sixteenBitUpscalers.formUnion(await sixteenBitUpscalers(service))
+        options.sixteenBitUpscalers.formUnion(await sixteenBitModels(service, .imageUpscale))
+        options.sixteenBitRestorers.formUnion(await sixteenBitModels(service, .imageRestore))
         let normalizer = ImageNormalizer(directory: service, runner: EngineRunner(engine: service.engine, enhancer: enhancer),
                                          options: options)
         return ImageRuntime(normalizer: normalizer, service: service, forge: forge)
     }
 
-    /// The registered upscale models whose package keeps 16 bits end to end: its `imageUpscale` surface declares
-    /// `.rawRGBA16` (MLXToolKit contract 1.52.0, AB-A-0158). Read from the manifests the engine registered, so a
-    /// package release that adopts the boundary is offered at 16 bits with no change here.
-    static func sixteenBitUpscalers(_ service: ImageEngineService) async -> Set<String> {
+    /// The registered `capability` models whose package keeps 16 bits end to end: its surface for that capability
+    /// declares `.rawRGBA16` (MLXToolKit contract 1.52.0; upscale AB-A-0158, restore AB-T-0230). Read from the manifests the
+    /// engine registered, so a package release that adopts the boundary is offered at 16 bits with no change here.
+    static func sixteenBitModels(_ service: ImageEngineService, _ capability: Capability) async -> Set<String> {
         var ids: Set<String> = []
-        for model in await service.registeredModels() where model.capabilities.contains(.imageUpscale) {
+        for model in await service.registeredModels() where model.capabilities.contains(capability) {
             guard let manifest = await service.engine.manifest(for: PackageID(model.packageID)) else { continue }
-            if manifest.surfaces.contains(where: { $0.capability == .imageUpscale && $0.acceptsRawRGBA16 }) {
+            if manifest.surfaces.contains(where: { $0.capability == capability && $0.acceptsRawRGBA16 }) {
                 ids.insert(model.id.rawValue)
             }
         }

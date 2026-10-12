@@ -127,6 +127,10 @@ final class FakeRunner: ModelRunner {
             let (w, h) = size ?? (64, 64)
             let scale = work.spec.params["scale"]?.intValue ?? 4
             return .image(Self.solid(w * scale - 2, h * scale - 2, red: 0.5, green: 0.5, blue: 0.5))   // off by a little
+        case .imageRestore where first?.format == .rawRGBA16:
+            // A 16-bit restorer (NAFNet ≥ 0.6.0, GFPGAN and RestoreFormer++ ≥ 0.3.0) answers `.rawRGBA16` at the same size.
+            let (w, h) = size ?? (64, 64)
+            return .image(Self.deepRamp(w, h))
         case .imageRestore, .imageRelight, .imageColorize:
             let (w, h) = size ?? (64, 64)
             return .image(Self.solid(w, h, red: 0.3, green: 0.3, blue: 0.3))

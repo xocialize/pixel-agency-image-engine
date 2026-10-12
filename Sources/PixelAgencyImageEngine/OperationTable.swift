@@ -203,6 +203,57 @@ enum OperationTable {
         .draft: ["nerve-upscale"], .standard: ["nerve-upscale"], .best: ["heart-upscale", "nerve-upscale"],
     ]
 
+    /// `restore`'s kinds (the profile's `restore_kind`); an absent kind is general.
+    static let restoreKinds = ["general", "denoise", "deblur", "faces", "scratches"]
+
+    /// The model a restore of `kind` at `tier` runs when the request names none: its kind's models, then the operation's
+    /// default (NAFNet), the first one among `candidates` (the tier's routable offers) — `ImageNormalizer.defaultModel`'s
+    /// pick. nil for scratches (detection, then inpainting: no restore model) or when nothing offered fits.
+    static func restoreRoute(kind: String, tier: QualityTier, among candidates: [String]) -> String? {
+        guard kind != "scratches", let spec = specs.first(where: { $0.operation == "image.restore" }) else { return nil }
+        return (restoreModels(kind: kind, tier: tier) + spec.preferred(at: tier)).first(where: candidates.contains)
+    }
+
+    /// Where `bit_depth: 16` can't run on `image.restore`, stated in its schema (AB-T-0230), as `sixteenBitRules` does for
+    /// upscale: a kind runs at 16 bits only where its own route keeps them (`deepRoutes[kind]`, the tiers), so a 16-bit
+    /// request never switches to another model. Each rule pins `output.bit_depth` to 8:
+    /// - a kind at the qualities whose route is 8-bit (every quality: the kind alone), an absent quality being standard;
+    /// - an absent kind as general;
+    /// - scratches always (defect detection, then inpainting: 8-bit models).
+    static func restoreSixteenBitRules(deepRoutes: [String: Set<QualityTier>], params: [String]) -> [JSONValue] {
+        let eightBits: JSONValue = ["properties": ["output": ["properties": ["bit_depth": ["enum": [8]]]]]]
+        func names(_ tiers: [QualityTier]) -> JSONValue { .array(tiers.map { .string($0.rawValue) }) }
+        func without(_ removed: Set<String>) -> JSONValue { .array(params.filter { !removed.contains($0) }.map { .string($0) }) }
+        var rules: [JSONValue] = []
+        for kind in restoreKinds {
+            let plain = QualityTier.allCases.filter { !(deepRoutes[kind] ?? []).contains($0) }
+            guard !plain.isEmpty else { continue }
+            // The kind named, and (for general) the kind left out.
+            var forms: [(properties: [String: JSONValue], required: [String], absent: Set<String>)] =
+                [(["kind": ["const": .string(kind)]], ["kind"], [])]
+            if kind == "general" { forms.append(([:], [], ["kind"])) }
+            for form in forms {
+                func rule(_ extra: [String: JSONValue], required: [String], absent: Set<String>) -> JSONValue {
+                    var condition: [String: JSONValue] = [:]
+                    let properties = form.properties.merging(extra) { a, _ in a }
+                    if !properties.isEmpty { condition["properties"] = .object(properties) }
+                    let req = form.required + required
+                    if !req.isEmpty { condition["required"] = .array(req.map { .string($0) }) }
+                    let gone = form.absent.union(absent)
+                    if !gone.isEmpty { condition["propertyNames"] = ["enum": without(gone)] }
+                    return ["if": .object(condition), "then": eightBits]
+                }
+                if plain.count == QualityTier.allCases.count {
+                    rules.append(rule([:], required: [], absent: []))
+                } else {
+                    rules.append(rule(["quality": ["enum": names(plain)]], required: ["quality"], absent: []))
+                    if plain.contains(.standard) { rules.append(rule([:], required: [], absent: ["quality"])) }
+                }
+            }
+        }
+        return rules
+    }
+
     /// `restore`'s `kind` → the models that do it at `tier`, most preferred first (when the request named none).
     /// Measured (R1b, docs/TIERS.md): denoise at σ 25, SCUNet 33.3 dB / NAFNet 32.6 / DRUNet 27.7 / Restormer-real
     /// 27.0, NAFNet ~50× faster than SCUNet; SCUNet also leads on real noise (NIND). DRUNet needs a noise level the
