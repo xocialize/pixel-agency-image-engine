@@ -1,0 +1,30 @@
+{
+ "preference": {
+  "car": "sensenova-u1-fast",
+  "derby": "sensenova-u1-fast",
+  "temple": "klein-4b",
+  "louvre": "sensenova-u1-fast",
+  "fortress": "klein-4b",
+  "stilts": "sensenova-u1-fast",
+  "stopsign": "klein-4b",
+  "snowforest": "sensenova-u1-fast",
+  "terrace": "sensenova-u1-fast",
+  "gokyo": "sensenova-u1-fast",
+  "cross": "klein-4b",
+  "statue": "klein-4b",
+  "warbler": "klein-4b",
+  "crystal": "sensenova-u1-fast",
+  "sculpture": "sensenova-u1-fast"
+ },
+ "wins": {
+  "sensenova-u1-fast": 9,
+  "klein-4b": 6
+ },
+ "prompt_failures": {
+  "klein-4b": [
+   "derby",
+   "stilts",
+   "snowforest"
+  ]
+ }
+}

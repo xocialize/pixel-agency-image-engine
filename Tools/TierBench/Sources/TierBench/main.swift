@@ -24,6 +24,8 @@ struct TierBench: AsyncParsableCommand {
     @Option(help: "erase: how many of the gate's subset S (60) to run.") var eraseItems = 60
     @Option(help: "judge: a previous run whose generate outputs to judge.") var from: String?
     @Flag(help: "generate: the hard prompt set (text in the image, counts, attribute binding).") var hard = false
+    @Option(help: "fillbake: the case file (bench/fillbake/cases.json).") var cases: String?
+    @Option(help: "fillbake: which tasks (comma-separated: fill, fill768, seamless, extend, remove).") var tasks = "fill,fill768,seamless,extend,remove"
 
     func run() async throws {
         setvbuf(stdout, nil, _IOLBF, 0)
@@ -46,6 +48,10 @@ struct TierBench: AsyncParsableCommand {
             try await suite.erase(gate: gateDir, items: eraseItems, &footprints)
         }
         if suites.contains("judge"), let from { try await suite.judge(from: URL(fileURLWithPath: from, isDirectory: true)) }
+        if suites.contains("fillbake"), let cases {
+            let arms = models.map { $0.split(separator: ",").map(String.init) } ?? ["klein-4b", "sensenova-u1-fast"]
+            try await suite.fillBake(cases: URL(fileURLWithPath: cases), arms: arms, tasks: Set(tasks.split(separator: ",").map(String.init)), &footprints)
+        }
         let md = "# Tier bench — \(bench.info.name)\n\nRun \(ISO8601DateFormatter().string(from: Date())), engine \(engine).\n"
             + Summary.markdown(bench.records, footprints: footprints)
         try md.write(to: bench.out.appendingPathComponent("summary.md"), atomically: true, encoding: .utf8)

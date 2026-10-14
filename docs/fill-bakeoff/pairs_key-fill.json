@@ -1,0 +1,77 @@
+[
+ {
+  "item": "car",
+  "A": "klein-4b",
+  "B": "sensenova-u1-fast"
+ },
+ {
+  "item": "derby",
+  "A": "klein-4b",
+  "B": "sensenova-u1-fast"
+ },
+ {
+  "item": "temple",
+  "A": "klein-4b",
+  "B": "sensenova-u1-fast"
+ },
+ {
+  "item": "louvre",
+  "A": "sensenova-u1-fast",
+  "B": "klein-4b"
+ },
+ {
+  "item": "fortress",
+  "A": "sensenova-u1-fast",
+  "B": "klein-4b"
+ },
+ {
+  "item": "stilts",
+  "A": "klein-4b",
+  "B": "sensenova-u1-fast"
+ },
+ {
+  "item": "stopsign",
+  "A": "sensenova-u1-fast",
+  "B": "klein-4b"
+ },
+ {
+  "item": "snowforest",
+  "A": "sensenova-u1-fast",
+  "B": "klein-4b"
+ },
+ {
+  "item": "terrace",
+  "A": "klein-4b",
+  "B": "sensenova-u1-fast"
+ },
+ {
+  "item": "gokyo",
+  "A": "klein-4b",
+  "B": "sensenova-u1-fast"
+ },
+ {
+  "item": "cross",
+  "A": "sensenova-u1-fast",
+  "B": "klein-4b"
+ },
+ {
+  "item": "statue",
+  "A": "sensenova-u1-fast",
+  "B": "klein-4b"
+ },
+ {
+  "item": "warbler",
+  "A": "sensenova-u1-fast",
+  "B": "klein-4b"
+ },
+ {
+  "item": "crystal",
+  "A": "klein-4b",
+  "B": "sensenova-u1-fast"
+ },
+ {
+  "item": "sculpture",
+  "A": "klein-4b",
+  "B": "sensenova-u1-fast"
+ }
+]

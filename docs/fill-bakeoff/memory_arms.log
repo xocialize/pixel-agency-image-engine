@@ -1,0 +1,81 @@
+=== klein bf16 1024
+[pkg-edit] surfaces=[flux2-klein-4b-t2i, flux2-klein-4b-edit] quant=bf16 evict=false
+[pkg-edit] load: 1.94s | resident floor 13652MB
+[pkg-edit] run: 23.59s → 2372312 bytes .png
+[pkg-edit] PEAK 24418MB | quant=bf16 evict=false size=1024
+       26.60 real         0.84 user         7.50 sys
+         14268809216  maximum resident set size
+         41801231592  peak memory footprint
+=== klein int4 evict 1024
+[pkg-edit] surfaces=[flux2-klein-4b-t2i, flux2-klein-4b-edit] quant=int4 evict=true
+[pkg-edit] load: 1.08s | resident floor 2667MB
+[pkg-edit] run: 18.90s → 2335114 bytes .png
+[pkg-edit] PEAK 13433MB | quant=int4 evict=true size=1024
+       20.08 real         0.77 user         4.44 sys
+         14273937408  maximum resident set size
+         30208674312  peak memory footprint
+=== klein int4 evict 768
+[pkg-edit] surfaces=[flux2-klein-4b-t2i, flux2-klein-4b-edit] quant=int4 evict=true
+[pkg-edit] load: 0.44s | resident floor 2667MB
+[pkg-edit] run: 7.71s → 1317300 bytes .png
+[pkg-edit] PEAK 8923MB | quant=int4 evict=true size=768
+        8.23 real         0.62 user         3.88 sys
+         14267252736  maximum resident set size
+         17906518512  peak memory footprint
+=== klein int8 evict 1024
+[pkg-edit] surfaces=[flux2-klein-4b-t2i, flux2-klein-4b-edit] quant=bf16 evict=true
+[pkg-edit] load: 0.31s | resident floor 7712MB
+[pkg-edit] run: 15.88s → 2372312 bytes .png
+[pkg-edit] PEAK 18478MB | quant=bf16 evict=true size=1024
+       16.34 real         0.86 user         5.57 sys
+         14269267968  maximum resident set size
+         35503446712  peak memory footprint
+=== klein int4 1024
+[pkg-edit] surfaces=[flux2-klein-4b-t2i, flux2-klein-4b-edit] quant=int4 evict=false
+[pkg-edit] load: 1.25s | resident floor 8606MB
+[pkg-edit] run: 14.51s → 2335114 bytes .png
+[pkg-edit] PEAK 19372MB | quant=int4 evict=false size=1024
+       15.98 real         1.01 user         5.50 sys
+         14271348736  maximum resident set size
+         38757903832  peak memory footprint
+=== sensenova int4 768
+[cli] loaded in 4.1s
+[cli] resident after load: 11230 MB active, peak 14725 MB
+[cli] 8-step 768x768: 2.3s total, 0.29s/step
+[cli] peak memory: 14725 MB
+        7.20 real         1.15 user         2.76 sys
+         11941855232  maximum resident set size
+         23501351688  peak memory footprint
+=== sensenova int8 768
+[cli] loaded in 5.8s
+[cli] resident after load: 18958 MB active, peak 22924 MB
+[cli] 8-step 768x768: 2.5s total, 0.31s/step
+[cli] peak memory: 22924 MB
+        9.22 real         1.20 user         4.88 sys
+         20039139328  maximum resident set size
+         31535071600  peak memory footprint
+=== sensenova int4 1024
+[cli] loaded in 2.8s
+[cli] resident after load: 11235 MB active, peak 14730 MB
+[cli] 8-step 1024x1024: 3.9s total, 0.48s/step
+[cli] peak memory: 14730 MB
+        7.61 real         1.27 user         3.22 sys
+         11966218240  maximum resident set size
+         24089258808  peak memory footprint
+=== MEMORY DONE
+=== klein int8 evict 1024 (rerun, flag fixed)
+[pkg-edit] surfaces=[flux2-klein-4b-t2i, flux2-klein-4b-edit] quant=int8 evict=true
+[pkg-edit] load: 0.95s | resident floor 4422MB
+[pkg-edit] run: 15.36s → 2370652 bytes .png
+[pkg-edit] PEAK 15188MB | quant=int8 evict=true size=1024
+       16.80 real         0.96 user         5.16 sys
+         14274183168  maximum resident set size
+         32050809136  peak memory footprint
+=== klein int8 evict 768
+[pkg-edit] surfaces=[flux2-klein-4b-t2i, flux2-klein-4b-edit] quant=int8 evict=true
+[pkg-edit] load: 0.58s | resident floor 4422MB
+[pkg-edit] run: 9.07s → 1334576 bytes .png
+[pkg-edit] PEAK 10678MB | quant=int8 evict=true size=768
+        9.78 real         0.86 user         4.83 sys
+         14268579840  maximum resident set size
+         19808307528  peak memory footprint

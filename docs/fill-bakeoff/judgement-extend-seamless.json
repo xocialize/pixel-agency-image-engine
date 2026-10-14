@@ -1,0 +1,30 @@
+{
+ "method": "labelled full-resolution crops of the composite edge (zoom-*.jpg), one judge, 2026-10-14",
+ "extend": {
+  "car":        {"klein-4b": "FAIL purple/dark haze on the new strip", "sensenova-u1-fast": "ok paving and cars continued", "preferred": "sensenova-u1-fast"},
+  "derby":      {"klein-4b": "FAIL pink haze on the new strip", "sensenova-u1-fast": "ok rink wall and floor continued", "preferred": "sensenova-u1-fast"},
+  "temple":     {"klein-4b": "ok, visible tone band in the sky", "sensenova-u1-fast": "ok", "preferred": "sensenova-u1-fast"},
+  "louvre":     {"klein-4b": "ok plinth continued, odd reflection", "sensenova-u1-fast": "ok plinth and lawn continued", "preferred": "tie"},
+  "fortress":   {"klein-4b": "FAIL purple haze on the new strip", "sensenova-u1-fast": "ok building continued", "preferred": "sensenova-u1-fast"},
+  "stilts":     {"klein-4b": "FAIL flat grey patch at the horizon", "sensenova-u1-fast": "ok sea continued", "preferred": "sensenova-u1-fast"},
+  "snowforest": {"klein-4b": "ok", "sensenova-u1-fast": "ok", "preferred": "tie"},
+  "gokyo":      {"klein-4b": "ok but invented a lake reflection where the shore is", "sensenova-u1-fast": "ok rocky shore continued", "preferred": "sensenova-u1-fast"},
+  "cross":      {"klein-4b": "ok", "sensenova-u1-fast": "ok", "preferred": "tie"},
+  "stopsign":   {"klein-4b": "ok, slightly smeared foliage", "sensenova-u1-fast": "ok tree and hills", "preferred": "tie"},
+  "terrace":    {"klein-4b": "FAIL pink haze in the new corner", "sensenova-u1-fast": "ok, faint seam", "preferred": "sensenova-u1-fast"},
+  "statue":     {"klein-4b": "FAIL pink smear along the bottom (one marker rejection, retried)", "sensenova-u1-fast": "ok plain wall and floor", "preferred": "sensenova-u1-fast"}
+ },
+ "seamless": {
+  "car":        {"klein-4b": "FAIL hard rectangle, mismatched building", "sensenova-u1-fast": "ok roof continued", "preferred": "sensenova-u1-fast"},
+  "temple":     {"klein-4b": "ok", "sensenova-u1-fast": "ok, grass texture differs slightly", "preferred": "klein-4b"},
+  "louvre":     {"klein-4b": "ok, extended the tree into the sky", "sensenova-u1-fast": "ok, added a cloud", "preferred": "tie"},
+  "fortress":   {"klein-4b": "ok, railing slightly off", "sensenova-u1-fast": "ok", "preferred": "tie"},
+  "stilts":     {"klein-4b": "hallucinated a pole fragment", "sensenova-u1-fast": "ok water", "preferred": "sensenova-u1-fast"},
+  "snowforest": {"klein-4b": "ok, added a snow mound", "sensenova-u1-fast": "ok flat snow", "preferred": "tie"},
+  "gokyo":      {"klein-4b": "FAIL mismatched glacier patch with a hard edge", "sensenova-u1-fast": "ok glacier continued", "preferred": "sensenova-u1-fast"},
+  "terrace":    {"klein-4b": "ok seamless sky", "sensenova-u1-fast": "FAIL bluish rectangle visible", "preferred": "klein-4b"},
+  "warbler":    {"klein-4b": "ok", "sensenova-u1-fast": "ok, faint rectangle", "preferred": "klein-4b"},
+  "crystal":    {"klein-4b": "ok sharp crystals", "sensenova-u1-fast": "blurry blob", "preferred": "klein-4b"},
+  "derby":      {"klein-4b": "FAIL hallucinated roller skates", "sensenova-u1-fast": "ok floor and lines", "preferred": "sensenova-u1-fast"}
+ }
+}
