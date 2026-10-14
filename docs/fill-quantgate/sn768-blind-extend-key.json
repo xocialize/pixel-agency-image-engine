@@ -1,0 +1,50 @@
+{
+ "car": {
+  "A": "bench/quantgate/run-sn768:sensenova-u1-fast-4bit-768",
+  "B": "bench/quantgate/run-sn768:sensenova-u1-fast-768"
+ },
+ "derby": {
+  "A": "bench/quantgate/run-sn768:sensenova-u1-fast-768",
+  "B": "bench/quantgate/run-sn768:sensenova-u1-fast-4bit-768"
+ },
+ "temple": {
+  "A": "bench/quantgate/run-sn768:sensenova-u1-fast-768",
+  "B": "bench/quantgate/run-sn768:sensenova-u1-fast-4bit-768"
+ },
+ "louvre": {
+  "A": "bench/quantgate/run-sn768:sensenova-u1-fast-4bit-768",
+  "B": "bench/quantgate/run-sn768:sensenova-u1-fast-768"
+ },
+ "fortress": {
+  "A": "bench/quantgate/run-sn768:sensenova-u1-fast-4bit-768",
+  "B": "bench/quantgate/run-sn768:sensenova-u1-fast-768"
+ },
+ "stilts": {
+  "A": "bench/quantgate/run-sn768:sensenova-u1-fast-768",
+  "B": "bench/quantgate/run-sn768:sensenova-u1-fast-4bit-768"
+ },
+ "snowforest": {
+  "A": "bench/quantgate/run-sn768:sensenova-u1-fast-768",
+  "B": "bench/quantgate/run-sn768:sensenova-u1-fast-4bit-768"
+ },
+ "gokyo": {
+  "A": "bench/quantgate/run-sn768:sensenova-u1-fast-4bit-768",
+  "B": "bench/quantgate/run-sn768:sensenova-u1-fast-768"
+ },
+ "cross": {
+  "A": "bench/quantgate/run-sn768:sensenova-u1-fast-4bit-768",
+  "B": "bench/quantgate/run-sn768:sensenova-u1-fast-768"
+ },
+ "stopsign": {
+  "A": "bench/quantgate/run-sn768:sensenova-u1-fast-4bit-768",
+  "B": "bench/quantgate/run-sn768:sensenova-u1-fast-768"
+ },
+ "terrace": {
+  "A": "bench/quantgate/run-sn768:sensenova-u1-fast-768",
+  "B": "bench/quantgate/run-sn768:sensenova-u1-fast-4bit-768"
+ },
+ "statue": {
+  "A": "bench/quantgate/run-sn768:sensenova-u1-fast-768",
+  "B": "bench/quantgate/run-sn768:sensenova-u1-fast-4bit-768"
+ }
+}

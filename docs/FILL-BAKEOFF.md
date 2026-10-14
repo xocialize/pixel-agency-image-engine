@@ -87,11 +87,75 @@ is its activation (the fp32 activation stream, IMG-011), so eviction does not br
   that beats LaMa by 3.7 dB in the hole without a naming model.
 - **32 GB+:** SenseNova-U1.5 8step-v2-8bit (22.9 GB peak), which reproduces the bf16 merge (cos 0.995, AB-R-0490).
 
+Since then: AB-D-0141 (amended) put 16 GB on SenseNova 8step-v2-4bit at ≤ 768², once its load transient was gone
+(AB-R-0536), with Klein-4B evicted at ≤ 768² as the documented fallback. The quant gate below passes both SenseNova
+int4 tiers and moves that fallback from Klein int4 to Klein int8 (AB-R-0544).
+
+## Quant gate (AB-A-0178, receipt AB-R-0544): the int4 tiers against their quality arms
+
+**2026-10-14, same machine, same 58 cases, seed 7, through the engine's fill route with the model named**
+(pixel-agency-image-engine 0.2.9 plus hidden `--quant-gate-arms` catalog entries, `Sources/ImageEngineCLI/QuantGateArms.swift`;
+harness `Tools/TierBench/fillbake/run_quantgate.sh` and `quantgate.py`). The route renders the whole canvas at the
+model's envelope, so a 768² envelope is the 768² window. The int8 reference reproduced the bake-off's SenseNova
+outputs bit-identical, 58 of 58. Each reference was run again at seed 8, to show how far an equally valid draw lands.
+Failures are counted as above: prompt ignored, marker left, haze, patches and seams from labelled sheets with
+region zooms, and remove as LaMa fallbacks plus objects left in place. Blind: crops around the region, arm order
+from `os.urandom`, key opened after judging, one judge.
+
+| Tier (test arm) | Reference | Fill /15 | Seamless /11 | Extend /12 | Remove /20 | Blind fill (test : ref : tie) | Blind extend |
+|---|---|---|---|---|---|---|---|
+| 24 GB: SenseNova 8step-v2-4bit, 1024-class | 8step-v2-8bit | **0** vs 0 | 1 vs 1 | 0 vs 0 | 0 vs 0 | 4 : 3 : 8 | 0 : 1 : 11 |
+| 16 GB: SenseNova 8step-v2-4bit, 768² | 8step-v2-8bit, 768² | **0** vs 0 | 1 vs 2 | 0 vs 0 | 0 vs 0 | 2 : 1 : 12 | 1 : 0 : 11 |
+| 16 GB fallback: Klein-4B int4 evicted, 768² | bf16, 768² | **8** vs 6 (5 at seed 8) | 3 vs 3 | 7 vs 7 | 12 vs 14 | **1 : 4 : 10** | 2 : 3 : 7 |
+| Klein-4B int8 evicted, 768² (the alternative) | bf16, 768² | 6 vs 6 | 3 vs 3 | 7 vs 7 | 14 vs 14 | 0 : 0 : 15 | 1 : 0 : 11 |
+
+Test against reference on all 58 cases (median PSNR, mean LPIPS alex; mask = the region, LPIPS on its box), and the
+reference against itself at seed 8:
+
+| Pair | PSNR whole | PSNR mask | LPIPS whole | LPIPS mask | Reference reseeded: PSNR mask / LPIPS mask |
+|---|---|---|---|---|---|
+| SenseNova int4 vs int8, 1024-class | 37.7 dB | 26.7 dB | 0.016 | 0.118 | 17.3 dB / 0.257 |
+| SenseNova int4 vs int8, 768² | 35.0 | 23.5 | 0.020 | 0.135 | 16.8 / 0.302 |
+| Klein int4 evicted vs bf16, 768² | 36.1 | 24.4 | 0.016 | 0.117 | 19.0 / 0.248 |
+| Klein int8 evicted vs bf16, 768² | 53.9 | 43.9 | 0.002 | 0.018 | — |
+
+Prompted fill alone, inside the mask: SenseNova int4 18.2 dB / 0.191 at 1024 and 21.4 / 0.194 at 768² (reseed
+14.1 / 0.410 and 14.6 / 0.477); Klein int4 19.9 / 0.176 (reseed 14.9 / 0.402). Klein's "whole" medians count the 11–13
+removes where both arms fell back to LaMa and match exactly. Per-case tables: `docs/fill-quantgate/gate-*.md`.
+
+- **24 GB, SenseNova 8step-v2-4bit: GO.** Same failures as int8 on every task (terrace's bluish rectangle in both),
+  blind even, and int4 lands about half as far from int8 as a reseed does. Every prompted fill keeps int8's
+  composition. One remove (corne-000022) painted a stack of papers where the object was (hole PSNR 6.6 vs 28.8 dB);
+  that is not a failure by the count above, and int8's doorway in corne-000044 shows up in int4 too. Remove hole PSNR
+  is 16.7 vs 17.7 dB (mean). Warm fill 6.2 vs 6.5 s.
+- **16 GB, SenseNova 8step-v2-4bit at ≤ 768²: GO on quality**, against int8 at the same window: 1 failure against 2
+  (int8 smudged one seamless sky), blind even, warm fill 3.3 vs 3.8 s. The memory confirmation on a real 16 GB Mac
+  (AB-D-0141) still gates it. The 768² window costs both quants in remove: hole PSNR 14.2 / 13.9 dB against 17.7 at
+  1024², about LaMa's 14.5 here.
+- **16 GB fallback, Klein-4B int4 evicted at ≤ 768²: NO-GO.** Prompted fill fails 8 of 15 against bf16's 6 (5 at
+  seed 8). The two extra failures are washed-out half-renders, a ghost snowman and a bench that is only a post.
+  Blind prompted fill goes 1 : 4 against int4. The totals match (30 / 58 each) only because int4 hands two fewer
+  removes to LaMa.
+- **What fits instead: Klein-4B int8 evicted at ≤ 768²**, 10.7 GB MLX peak (AB-R-0534) under the 12.7 GB limit with
+  2 GB to spare. It reproduces bf16: 43.9 dB inside the mask, the same failure on every case, and blind ties on 26 of
+  27 pairs. Speed through the engine route, warm medians under this run's load: fill 10.2 s (int4 10.6, bf16 9.6),
+  extend 10.7 s, remove 19.9 s (most removes retry, then fall back to LaMa). The package CLI on an idle GPU measured
+  9.1 s at 768² against int4's 7.7 s (AB-R-0534).
+- **Klein at 768² is a weak tier whatever the quant.** bf16 itself fails 30 of 58 at a 768² window, 6 of 15 prompted
+  fills, against 23 of 58 and 3 of 15 at 1024² in the bake-off. SenseNova int4 at 768² fails 1 of 58. Klein stays the
+  fallback only.
+
+Caveats: one judge. For the SenseNova 1024 and Klein int8 blinds, the judge had already seen labelled sheets of the
+same outputs. The Klein int4 and SenseNova 768 blinds were judged first. Load average was 30–75 throughout (other
+sessions' test runners), so the times are indicative only; timing was not the point of this run. The fill route renders the whole canvas at the window. ForgeCore's provider crops a
+window around the mask first (AB-R-0541), which gives a small region more pixels on large canvases, so its failure
+rates may run lower than these.
+
 ## Caveats
 
 - The quality arms were Klein bf16 and SenseNova int8, the engine's tiers. The 16 / 24 GB quants (Klein int4,
   SenseNova int4) were only measured for memory and time. SenseNova int4 is a different-but-valid draw from int8
-  (cos 0.976); Klein int4's edit quality against bf16 is unmeasured.
+  (cos 0.976); Klein int4's edit quality against bf16 is unmeasured. *(Since measured: the quant gate above.)*
 - One judge, 15 / 11 / 12 / 20 cases. Blind only for prompted fill.
 - Remove used the first 20 of subset S with object masks, not the gate's 60, so hole PSNR is not comparable to
   AB-R-0476's table; the three arms here are comparable with each other.
@@ -106,3 +170,9 @@ is its activation (the fp32 activation stream, IMG-011), so eviction does not br
 `summary.md`, `scores.json`, `memory_arms.log`. The remove sheet and crops stay out of the repo (CORNE is
 evaluation-only); they are in `bench/fillbake/run-remove/` locally. Harness: `Tools/TierBench/fillbake/`
 (`build_cases.py`, `score.py`, `pairs.py`, `zoom.py`, `run_all.sh`, `memory_arms.sh`) and the `fillbake` suite.
+
+Quant gate: `docs/fill-quantgate/`. Per pair it has `gate-*.md` / `.json` (`anchor` = the seed-8 rerun), the labelled
+sheets `sheet-*-{fill,seamless,extend}-*.jpg`, the blind pairs `*-blind-{fill,extend}-*.jpg` with their
+`*-blind-*-key.json` and `*-judged-*.json`, and `judgement-failures.json`. Remove sheets and crops stay local
+(`bench/quantgate/`). Harness: `run_quantgate.sh`, `quantgate.py`, TierBench `fillbake --seed`, and the engine's
+hidden `--quant-gate-arms`.

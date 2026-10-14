@@ -35,6 +35,11 @@ let package = Package(
         // crop extends past the frame, every close-up portrait (AB-T-0227).
         .package(url: "https://github.com/xocialize/ForgeCore.git", from: "0.38.1"),
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.5.0"),
+        // The CLI's quant-gate arms (`--quant-gate-arms`, AB-A-0178) configure these packages directly; all three are
+        // already in the graph through mlx-image-runtime.
+        .package(url: "https://github.com/xocialize/mlx-engine-swift.git", from: "0.67.0"),
+        .package(url: "https://github.com/xocialize/flux2-klein-swift.git", from: "0.8.1"),
+        .package(url: "https://github.com/xocialize/sensenova-u1-swift.git", from: "0.5.1"),
     ],
     targets: [
         .target(name: "PixelAgencyImageEngine", dependencies: [
@@ -50,6 +55,11 @@ let package = Package(
             .product(name: "ImageServerModels", package: "mlx-image-runtime"),
             .product(name: "MESEngineKit", package: "media-engine-spec"),
             .product(name: "ArgumentParser", package: "swift-argument-parser"),
+            .product(name: "ImageServerAPI", package: "mlx-image-runtime"),
+            .product(name: "MLXServeCore", package: "mlx-engine-swift"),
+            .product(name: "MLXToolKit", package: "mlx-engine-swift"),
+            .product(name: "MLXKlein", package: "flux2-klein-swift"),
+            .product(name: "MLXSenseNovaU1", package: "sensenova-u1-swift"),
         ]),
         .testTarget(name: "ImageEngineTests", dependencies: [
             "PixelAgencyImageEngine",

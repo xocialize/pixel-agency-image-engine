@@ -1,0 +1,1689 @@
+{
+ "arms": {
+  "bf16": "bench/quantgate/run-klein768:klein-4b-768",
+  "int4": "bench/quantgate/run-klein768:klein-4b-int4-evict-768"
+ },
+ "pairs": [
+  [
+   "klein768",
+   "int4",
+   "bf16"
+  ]
+ ],
+ "own": {
+  "bf16": {
+   "fill/car": {
+    "run_ms": 14996,
+    "warm": false,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "marker_left": 7.964129560459689e-05,
+    "purple_tint": 0.002341454090775149,
+    "change_inside": 71.99922482472277,
+    "failed": 0
+   },
+   "fill/derby": {
+    "run_ms": 9541,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "marker_left": 0.0,
+    "purple_tint": 0.0,
+    "change_inside": 20.92574878843251,
+    "failed": 0
+   },
+   "fill/temple": {
+    "run_ms": 8867,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "marker_left": 0.0,
+    "purple_tint": 0.0,
+    "change_inside": 65.66121437422554,
+    "failed": 0
+   },
+   "fill/louvre": {
+    "run_ms": 8866,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "marker_left": 0.0,
+    "purple_tint": 0.0,
+    "change_inside": 59.77434037537402,
+    "failed": 0
+   },
+   "fill/fortress": {
+    "run_ms": 9613,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "marker_left": 0.0,
+    "purple_tint": 0.0,
+    "change_inside": 33.79541325706417,
+    "failed": 0
+   },
+   "fill/stilts": {
+    "run_ms": 9996,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "marker_left": 0.0,
+    "purple_tint": 0.0,
+    "change_inside": 22.647562299727234,
+    "failed": 0
+   },
+   "fill/stopsign": {
+    "run_ms": 7319,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "marker_left": 0.0,
+    "purple_tint": 2.385353926888902e-05,
+    "change_inside": 18.509670622378597,
+    "failed": 0
+   },
+   "fill/snowforest": {
+    "run_ms": 9711,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "marker_left": 3.1778819416858666e-05,
+    "purple_tint": 0.0008262493048383253,
+    "change_inside": 33.655173326977575,
+    "failed": 0
+   },
+   "fill/terrace": {
+    "run_ms": 9862,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "marker_left": 0.0,
+    "purple_tint": 1.5889409708429333e-05,
+    "change_inside": 38.23168348295861,
+    "failed": 0
+   },
+   "fill/gokyo": {
+    "run_ms": 9946,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "marker_left": 0.0,
+    "purple_tint": 0.0,
+    "change_inside": 73.7564630173989,
+    "failed": 0
+   },
+   "fill/cross": {
+    "run_ms": 6503,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "marker_left": 0.0,
+    "purple_tint": 0.0,
+    "change_inside": 50.01524853685019,
+    "failed": 0
+   },
+   "fill/statue": {
+    "run_ms": 8178,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "marker_left": 0.017145209426777813,
+    "purple_tint": 0.049912524441700114,
+    "change_inside": 74.18899523172448,
+    "failed": 0
+   },
+   "fill/warbler": {
+    "run_ms": 9550,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "marker_left": 0.0,
+    "purple_tint": 0.0,
+    "change_inside": 49.101972935038795,
+    "failed": 0
+   },
+   "fill/crystal": {
+    "run_ms": 9599,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "marker_left": 0.0,
+    "purple_tint": 0.00018317497989057285,
+    "change_inside": 36.47874772026791,
+    "failed": 0
+   },
+   "fill/sculpture": {
+    "run_ms": 7979,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "marker_left": 0.0,
+    "purple_tint": 0.0,
+    "change_inside": 32.41575932215019,
+    "failed": 0
+   },
+   "seamless/car": {
+    "run_ms": 9605,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.10593469452609836,
+    "failed": 0
+   },
+   "seamless/temple": {
+    "run_ms": 8588,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "seamless/louvre": {
+    "run_ms": 8654,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "seamless/fortress": {
+    "run_ms": 9603,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "seamless/stilts": {
+    "run_ms": 9565,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "seamless/snowforest": {
+    "run_ms": 9580,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "seamless/gokyo": {
+    "run_ms": 9535,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "seamless/terrace": {
+    "run_ms": 9438,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "seamless/warbler": {
+    "run_ms": 9457,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "seamless/crystal": {
+    "run_ms": 9581,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "seamless/derby": {
+    "run_ms": 10004,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "extend/car": {
+    "run_ms": 20858,
+    "warm": true,
+    "retries": 0,
+    "rejected": "marker",
+    "fallback": 1,
+    "error": null,
+    "purple_tint": 0.0037841796875,
+    "failed": 1
+   },
+   "extend/derby": {
+    "run_ms": 11531,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "extend/temple": {
+    "run_ms": 11306,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "extend/louvre": {
+    "run_ms": 10537,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "extend/fortress": {
+    "run_ms": 12450,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "extend/stilts": {
+    "run_ms": 11909,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.07866668701171875,
+    "failed": 0
+   },
+   "extend/snowforest": {
+    "run_ms": 12298,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 2.5431315104166665e-06,
+    "failed": 0
+   },
+   "extend/gokyo": {
+    "run_ms": 12564,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 5.086263020833333e-06,
+    "failed": 0
+   },
+   "extend/cross": {
+    "run_ms": 9493,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "extend/stopsign": {
+    "run_ms": 10425,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.07938385009765625,
+    "failed": 0
+   },
+   "extend/terrace": {
+    "run_ms": 14130,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "extend/statue": {
+    "run_ms": 12403,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.2777033625422297,
+    "failed": 1
+   },
+   "remove/corne-000001": {
+    "run_ms": 19311,
+    "warm": true,
+    "retries": 0,
+    "rejected": "marker",
+    "fallback": 1,
+    "error": null,
+    "psnr_hole": 5.86353990496444,
+    "left": 0,
+    "failed": 1
+   },
+   "remove/corne-000007": {
+    "run_ms": 19160,
+    "warm": true,
+    "retries": 0,
+    "rejected": "marker",
+    "fallback": 1,
+    "error": null,
+    "psnr_hole": 11.45035309319756,
+    "left": 0,
+    "failed": 1
+   },
+   "remove/corne-000008": {
+    "run_ms": 19114,
+    "warm": true,
+    "retries": 0,
+    "rejected": "marker",
+    "fallback": 1,
+    "error": null,
+    "psnr_hole": 9.796632565365334,
+    "left": 0,
+    "failed": 1
+   },
+   "remove/corne-000014": {
+    "run_ms": 17397,
+    "warm": true,
+    "retries": 0,
+    "rejected": "marker",
+    "fallback": 1,
+    "error": null,
+    "psnr_hole": 16.812200359982693,
+    "left": 0,
+    "failed": 1
+   },
+   "remove/corne-000022": {
+    "run_ms": 18442,
+    "warm": true,
+    "retries": 0,
+    "rejected": "marker",
+    "fallback": 1,
+    "error": null,
+    "psnr_hole": 29.6480750002359,
+    "left": 0,
+    "failed": 1
+   },
+   "remove/corne-000024": {
+    "run_ms": 21567,
+    "warm": true,
+    "retries": 0,
+    "rejected": "marker",
+    "fallback": 1,
+    "error": null,
+    "psnr_hole": 11.031254230225535,
+    "left": 0,
+    "failed": 1
+   },
+   "remove/corne-000037": {
+    "run_ms": 20858,
+    "warm": true,
+    "retries": 0,
+    "rejected": "marker",
+    "fallback": 1,
+    "error": null,
+    "psnr_hole": 11.738172029975411,
+    "left": 0,
+    "failed": 1
+   },
+   "remove/corne-000044": {
+    "run_ms": 18145,
+    "warm": true,
+    "retries": 0,
+    "rejected": "marker",
+    "fallback": 1,
+    "error": null,
+    "psnr_hole": 24.956119346902913,
+    "left": 0,
+    "failed": 1
+   },
+   "remove/corne-000045": {
+    "run_ms": 8704,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "psnr_hole": 7.758064563467787,
+    "left": 1,
+    "failed": 1
+   },
+   "remove/corne-000050": {
+    "run_ms": 8840,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "psnr_hole": 19.671391487993677,
+    "left": 0,
+    "failed": 0
+   },
+   "remove/corne-000058": {
+    "run_ms": 16649,
+    "warm": true,
+    "retries": 0,
+    "rejected": "marker",
+    "fallback": 1,
+    "error": null,
+    "psnr_hole": 13.814360538011194,
+    "left": 0,
+    "failed": 1
+   },
+   "remove/corne-000059": {
+    "run_ms": 9087,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "psnr_hole": 11.472049374183165,
+    "left": 0,
+    "failed": 0
+   },
+   "remove/corne-000063": {
+    "run_ms": 7964,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "psnr_hole": 18.48602097638032,
+    "left": 0,
+    "failed": 0
+   },
+   "remove/corne-000064": {
+    "run_ms": 7522,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "psnr_hole": 11.604882267290256,
+    "left": 0,
+    "failed": 0
+   },
+   "remove/corne-000065": {
+    "run_ms": 15562,
+    "warm": true,
+    "retries": 0,
+    "rejected": "marker",
+    "fallback": 1,
+    "error": null,
+    "psnr_hole": 19.92217349376408,
+    "left": 0,
+    "failed": 1
+   },
+   "remove/corne-000069": {
+    "run_ms": 15494,
+    "warm": true,
+    "retries": 1,
+    "rejected": "marker",
+    "fallback": 0,
+    "error": null,
+    "psnr_hole": 9.988488406818801,
+    "left": 0,
+    "failed": 0
+   },
+   "remove/corne-000072": {
+    "run_ms": 7621,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "psnr_hole": 20.8043845327025,
+    "left": 0,
+    "failed": 0
+   },
+   "remove/corne-000073": {
+    "run_ms": 15681,
+    "warm": true,
+    "retries": 0,
+    "rejected": "marker",
+    "fallback": 1,
+    "error": null,
+    "psnr_hole": 8.536582971903572,
+    "left": 0,
+    "failed": 1
+   },
+   "remove/corne-000075": {
+    "run_ms": 15828,
+    "warm": true,
+    "retries": 0,
+    "rejected": "marker",
+    "fallback": 1,
+    "error": null,
+    "psnr_hole": 18.275744971987212,
+    "left": 0,
+    "failed": 1
+   },
+   "remove/corne-000084": {
+    "run_ms": 15799,
+    "warm": true,
+    "retries": 0,
+    "rejected": "marker",
+    "fallback": 1,
+    "error": null,
+    "psnr_hole": 17.96167608787973,
+    "left": 0,
+    "failed": 1
+   }
+  },
+  "int4": {
+   "fill/car": {
+    "run_ms": 12050,
+    "warm": false,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "marker_left": 0.00019910323901149225,
+    "purple_tint": 0.004706800570231677,
+    "change_inside": 70.26959109504128,
+    "failed": 0
+   },
+   "fill/derby": {
+    "run_ms": 10625,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "marker_left": 0.0,
+    "purple_tint": 0.0,
+    "change_inside": 21.643219194406928,
+    "failed": 0
+   },
+   "fill/temple": {
+    "run_ms": 9114,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "marker_left": 0.0,
+    "purple_tint": 0.0,
+    "change_inside": 59.75931937014538,
+    "failed": 0
+   },
+   "fill/louvre": {
+    "run_ms": 9237,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "marker_left": 0.0,
+    "purple_tint": 0.0,
+    "change_inside": 55.57672802006831,
+    "failed": 0
+   },
+   "fill/fortress": {
+    "run_ms": 10555,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "marker_left": 0.0,
+    "purple_tint": 0.0,
+    "change_inside": 30.522284897116077,
+    "failed": 0
+   },
+   "fill/stilts": {
+    "run_ms": 11115,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "marker_left": 0.0,
+    "purple_tint": 0.0,
+    "change_inside": 23.159413151134768,
+    "failed": 0
+   },
+   "fill/stopsign": {
+    "run_ms": 8466,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "marker_left": 0.0,
+    "purple_tint": 1.192676963444451e-05,
+    "change_inside": 15.585242610372312,
+    "failed": 1
+   },
+   "fill/snowforest": {
+    "run_ms": 11285,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "marker_left": 0.0,
+    "purple_tint": 0.0,
+    "change_inside": 28.233505468605177,
+    "failed": 0
+   },
+   "fill/terrace": {
+    "run_ms": 10749,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "marker_left": 0.0,
+    "purple_tint": 0.0,
+    "change_inside": 36.583189004528485,
+    "failed": 0
+   },
+   "fill/gokyo": {
+    "run_ms": 10568,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "marker_left": 0.0,
+    "purple_tint": 0.0,
+    "change_inside": 48.67875850745478,
+    "failed": 0
+   },
+   "fill/cross": {
+    "run_ms": 8313,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "marker_left": 0.0,
+    "purple_tint": 0.0,
+    "change_inside": 47.68358359153624,
+    "failed": 0
+   },
+   "fill/statue": {
+    "run_ms": 8534,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "marker_left": 0.017227539364001235,
+    "purple_tint": 0.05472882576927035,
+    "change_inside": 74.57706425165517,
+    "failed": 0
+   },
+   "fill/warbler": {
+    "run_ms": 10669,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "marker_left": 0.0,
+    "purple_tint": 3.1778819416858666e-05,
+    "change_inside": 45.31855088583459,
+    "failed": 0
+   },
+   "fill/crystal": {
+    "run_ms": 11306,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "marker_left": 0.0,
+    "purple_tint": 0.0006530586239576945,
+    "change_inside": 37.014810626272606,
+    "failed": 0
+   },
+   "fill/sculpture": {
+    "run_ms": 8742,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "marker_left": 0.0,
+    "purple_tint": 0.0,
+    "change_inside": 33.34854378923536,
+    "failed": 0
+   },
+   "seamless/car": {
+    "run_ms": 10488,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.10566457456105506,
+    "failed": 0
+   },
+   "seamless/temple": {
+    "run_ms": 9850,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "seamless/louvre": {
+    "run_ms": 9458,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "seamless/fortress": {
+    "run_ms": 10081,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "seamless/stilts": {
+    "run_ms": 10615,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "seamless/snowforest": {
+    "run_ms": 11214,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "seamless/gokyo": {
+    "run_ms": 12271,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "seamless/terrace": {
+    "run_ms": 12185,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "seamless/warbler": {
+    "run_ms": 12393,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "seamless/crystal": {
+    "run_ms": 12221,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "seamless/derby": {
+    "run_ms": 13075,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "extend/car": {
+    "run_ms": 13695,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.23176956176757812,
+    "failed": 0
+   },
+   "extend/derby": {
+    "run_ms": 13855,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "extend/temple": {
+    "run_ms": 12404,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "extend/louvre": {
+    "run_ms": 13045,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "extend/fortress": {
+    "run_ms": 14197,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "extend/stilts": {
+    "run_ms": 14737,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "extend/snowforest": {
+    "run_ms": 13598,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "extend/gokyo": {
+    "run_ms": 13961,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "extend/cross": {
+    "run_ms": 11590,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "extend/stopsign": {
+    "run_ms": 10963,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.000362396240234375,
+    "failed": 0
+   },
+   "extend/terrace": {
+    "run_ms": 13168,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.0,
+    "failed": 0
+   },
+   "extend/statue": {
+    "run_ms": 11002,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "purple_tint": 0.2786601298564189,
+    "failed": 1
+   },
+   "remove/corne-000001": {
+    "run_ms": 20265,
+    "warm": true,
+    "retries": 0,
+    "rejected": "marker",
+    "fallback": 1,
+    "error": null,
+    "psnr_hole": 5.86353990496444,
+    "left": 0,
+    "failed": 1
+   },
+   "remove/corne-000007": {
+    "run_ms": 19254,
+    "warm": true,
+    "retries": 0,
+    "rejected": "marker",
+    "fallback": 1,
+    "error": null,
+    "psnr_hole": 11.45035309319756,
+    "left": 0,
+    "failed": 1
+   },
+   "remove/corne-000008": {
+    "run_ms": 16895,
+    "warm": true,
+    "retries": 0,
+    "rejected": "marker",
+    "fallback": 1,
+    "error": null,
+    "psnr_hole": 9.796632565365334,
+    "left": 0,
+    "failed": 1
+   },
+   "remove/corne-000014": {
+    "run_ms": 16398,
+    "warm": true,
+    "retries": 0,
+    "rejected": "marker",
+    "fallback": 1,
+    "error": null,
+    "psnr_hole": 16.812200359982693,
+    "left": 0,
+    "failed": 1
+   },
+   "remove/corne-000022": {
+    "run_ms": 15619,
+    "warm": true,
+    "retries": 0,
+    "rejected": "marker",
+    "fallback": 1,
+    "error": null,
+    "psnr_hole": 29.6480750002359,
+    "left": 0,
+    "failed": 1
+   },
+   "remove/corne-000024": {
+    "run_ms": 17452,
+    "warm": true,
+    "retries": 0,
+    "rejected": "marker",
+    "fallback": 1,
+    "error": null,
+    "psnr_hole": 11.031254230225535,
+    "left": 0,
+    "failed": 1
+   },
+   "remove/corne-000037": {
+    "run_ms": 16673,
+    "warm": true,
+    "retries": 0,
+    "rejected": "marker",
+    "fallback": 1,
+    "error": null,
+    "psnr_hole": 11.738172029975411,
+    "left": 0,
+    "failed": 1
+   },
+   "remove/corne-000044": {
+    "run_ms": 15257,
+    "warm": true,
+    "retries": 0,
+    "rejected": "marker",
+    "fallback": 1,
+    "error": null,
+    "psnr_hole": 24.956119346902913,
+    "left": 0,
+    "failed": 1
+   },
+   "remove/corne-000045": {
+    "run_ms": 7394,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "psnr_hole": 7.233073769408453,
+    "left": 1,
+    "failed": 1
+   },
+   "remove/corne-000050": {
+    "run_ms": 7594,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "psnr_hole": 21.204145601316476,
+    "left": 0,
+    "failed": 0
+   },
+   "remove/corne-000058": {
+    "run_ms": 16006,
+    "warm": true,
+    "retries": 1,
+    "rejected": "marker",
+    "fallback": 0,
+    "error": null,
+    "psnr_hole": 13.220521144713775,
+    "left": 0,
+    "failed": 0
+   },
+   "remove/corne-000059": {
+    "run_ms": 7891,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "psnr_hole": 13.240826339169015,
+    "left": 0,
+    "failed": 0
+   },
+   "remove/corne-000063": {
+    "run_ms": 7619,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "psnr_hole": 18.323464237560184,
+    "left": 0,
+    "failed": 0
+   },
+   "remove/corne-000064": {
+    "run_ms": 8151,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "psnr_hole": 11.017993382181546,
+    "left": 0,
+    "failed": 0
+   },
+   "remove/corne-000065": {
+    "run_ms": 19407,
+    "warm": true,
+    "retries": 0,
+    "rejected": "marker",
+    "fallback": 1,
+    "error": null,
+    "psnr_hole": 19.92217349376408,
+    "left": 0,
+    "failed": 1
+   },
+   "remove/corne-000069": {
+    "run_ms": 16172,
+    "warm": true,
+    "retries": 1,
+    "rejected": "marker",
+    "fallback": 0,
+    "error": null,
+    "psnr_hole": 10.703163851711903,
+    "left": 0,
+    "failed": 0
+   },
+   "remove/corne-000072": {
+    "run_ms": 7987,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "psnr_hole": 20.136779968362703,
+    "left": 0,
+    "failed": 0
+   },
+   "remove/corne-000073": {
+    "run_ms": 15857,
+    "warm": true,
+    "retries": 0,
+    "rejected": "marker",
+    "fallback": 1,
+    "error": null,
+    "psnr_hole": 8.536582971903572,
+    "left": 0,
+    "failed": 1
+   },
+   "remove/corne-000075": {
+    "run_ms": 17522,
+    "warm": true,
+    "retries": 0,
+    "rejected": "marker",
+    "fallback": 1,
+    "error": null,
+    "psnr_hole": 18.275744971987212,
+    "left": 0,
+    "failed": 1
+   },
+   "remove/corne-000084": {
+    "run_ms": 9911,
+    "warm": true,
+    "retries": 0,
+    "rejected": "",
+    "fallback": 0,
+    "error": null,
+    "psnr_hole": 11.764131121714714,
+    "left": 0,
+    "failed": 0
+   }
+  }
+ },
+ "versus": {
+  "klein768": {
+   "fill/car": {
+    "identical": false,
+    "psnr_whole": 25.107567693044743,
+    "psnr_mask": 14.12927280453697,
+    "lpips_whole": 0.023573849350214005,
+    "lpips_mask": 0.27244627475738525
+   },
+   "fill/derby": {
+    "identical": false,
+    "psnr_whole": 39.20614617328313,
+    "psnr_mask": 25.22815681525948,
+    "lpips_whole": 0.004837460815906525,
+    "lpips_mask": 0.08550628274679184
+   },
+   "fill/temple": {
+    "identical": false,
+    "psnr_whole": 34.54566052157208,
+    "psnr_mask": 20.57372967857752,
+    "lpips_whole": 0.005864029750227928,
+    "lpips_mask": 0.14049610495567322
+   },
+   "fill/louvre": {
+    "identical": false,
+    "psnr_whole": 33.71096393306692,
+    "psnr_mask": 19.73903309007236,
+    "lpips_whole": 0.00920978095382452,
+    "lpips_mask": 0.1715303361415863
+   },
+   "fill/fortress": {
+    "identical": false,
+    "psnr_whole": 33.71686211478849,
+    "psnr_mask": 19.73887275676485,
+    "lpips_whole": 0.004455383401364088,
+    "lpips_mask": 0.10294099897146225
+   },
+   "fill/stilts": {
+    "identical": false,
+    "psnr_whole": 40.09275996484793,
+    "psnr_mask": 26.114770606824287,
+    "lpips_whole": 0.004722751677036285,
+    "lpips_mask": 0.1181463971734047
+   },
+   "fill/stopsign": {
+    "identical": false,
+    "psnr_whole": 36.54864918295048,
+    "psnr_mask": 25.5774217407852,
+    "lpips_whole": 0.007805811241269112,
+    "lpips_mask": 0.10072243958711624
+   },
+   "fill/snowforest": {
+    "identical": false,
+    "psnr_whole": 33.889727390710966,
+    "psnr_mask": 19.91173803268732,
+    "lpips_whole": 0.010741387493908405,
+    "lpips_mask": 0.19337615370750427
+   },
+   "fill/terrace": {
+    "identical": false,
+    "psnr_whole": 33.64069427326753,
+    "psnr_mask": 19.662704915243882,
+    "lpips_whole": 0.009182755835354328,
+    "lpips_mask": 0.2078712284564972
+   },
+   "fill/gokyo": {
+    "identical": false,
+    "psnr_whole": 25.58106659853251,
+    "psnr_mask": 11.603077240508865,
+    "lpips_whole": 0.02434537746012211,
+    "lpips_mask": 0.519471287727356
+   },
+   "fill/cross": {
+    "identical": false,
+    "psnr_whole": 30.75263891173677,
+    "psnr_mask": 16.77464955371313,
+    "lpips_whole": 0.01215578243136406,
+    "lpips_mask": 0.2855067849159241
+   },
+   "fill/statue": {
+    "identical": false,
+    "psnr_whole": 35.65197664589941,
+    "psnr_mask": 21.680482126290865,
+    "lpips_whole": 0.0041923364624381065,
+    "lpips_mask": 0.08820619434118271
+   },
+   "fill/warbler": {
+    "identical": false,
+    "psnr_whole": 33.66790753518845,
+    "psnr_mask": 19.68991817716481,
+    "lpips_whole": 0.008572361432015896,
+    "lpips_mask": 0.1526774764060974
+   },
+   "fill/crystal": {
+    "identical": false,
+    "psnr_whole": 36.691464603726004,
+    "psnr_mask": 25.71316971521823,
+    "lpips_whole": 0.009605073370039463,
+    "lpips_mask": 0.10438884049654007
+   },
+   "fill/sculpture": {
+    "identical": false,
+    "psnr_whole": 37.84809221975823,
+    "psnr_mask": 23.876597700149684,
+    "lpips_whole": 0.004334980621933937,
+    "lpips_mask": 0.09622527658939362
+   },
+   "seamless/car": {
+    "identical": false,
+    "psnr_whole": 32.5836355887734,
+    "psnr_mask": 18.605646230749752,
+    "lpips_whole": 0.004233032464981079,
+    "lpips_mask": 0.08902225643396378
+   },
+   "seamless/temple": {
+    "identical": false,
+    "psnr_whole": 40.41994632177308,
+    "psnr_mask": 26.448015478778526,
+    "lpips_whole": 0.003928754478693008,
+    "lpips_mask": 0.07741174101829529
+   },
+   "seamless/louvre": {
+    "identical": false,
+    "psnr_whole": 40.90373471483619,
+    "psnr_mask": 26.93180387184163,
+    "lpips_whole": 0.0019701861310750246,
+    "lpips_mask": 0.046624183654785156
+   },
+   "seamless/fortress": {
+    "identical": false,
+    "psnr_whole": 35.79716789298342,
+    "psnr_mask": 21.819178534959775,
+    "lpips_whole": 0.003116712672635913,
+    "lpips_mask": 0.06356766074895859
+   },
+   "seamless/stilts": {
+    "identical": false,
+    "psnr_whole": 36.62030755760104,
+    "psnr_mask": 22.642318199577392,
+    "lpips_whole": 0.005064519587904215,
+    "lpips_mask": 0.11688516288995743
+   },
+   "seamless/snowforest": {
+    "identical": false,
+    "psnr_whole": 34.53466812714249,
+    "psnr_mask": 20.556678769118847,
+    "lpips_whole": 0.009945150464773178,
+    "lpips_mask": 0.2248028963804245
+   },
+   "seamless/gokyo": {
+    "identical": false,
+    "psnr_whole": 38.80930385762903,
+    "psnr_mask": 24.831314499605387,
+    "lpips_whole": 0.004386761225759983,
+    "lpips_mask": 0.09322686493396759
+   },
+   "seamless/terrace": {
+    "identical": false,
+    "psnr_whole": 63.2898895989606,
+    "psnr_mask": 49.31190024093696,
+    "lpips_whole": 0.0004221846756990999,
+    "lpips_mask": 0.010130003094673157
+   },
+   "seamless/warbler": {
+    "identical": false,
+    "psnr_whole": 39.96343942952691,
+    "psnr_mask": 25.985450071503262,
+    "lpips_whole": 0.0035250657238066196,
+    "lpips_mask": 0.08038673549890518
+   },
+   "seamless/crystal": {
+    "identical": false,
+    "psnr_whole": 43.872112492265956,
+    "psnr_mask": 29.894123134242317,
+    "lpips_whole": 0.003086845390498638,
+    "lpips_mask": 0.04706387594342232
+   },
+   "seamless/derby": {
+    "identical": false,
+    "psnr_whole": 41.10844568545072,
+    "psnr_mask": 27.130456327427076,
+    "lpips_whole": 0.004549767356365919,
+    "lpips_mask": 0.09118679910898209
+   },
+   "extend/car": {
+    "identical": false,
+    "psnr_whole": 22.6126973194466,
+    "psnr_mask": 14.831184815610161,
+    "lpips_whole": 0.11098597198724747,
+    "lpips_mask": 0.6768184900283813
+   },
+   "extend/derby": {
+    "identical": false,
+    "psnr_whole": 33.73878572914196,
+    "psnr_mask": 25.957273225305528,
+    "lpips_whole": 0.015349683351814747,
+    "lpips_mask": 0.09408119320869446
+   },
+   "extend/temple": {
+    "identical": false,
+    "psnr_whole": 41.420669864464614,
+    "psnr_mask": 34.15068258510199,
+    "lpips_whole": 0.002786107826977968,
+    "lpips_mask": 0.012538271024823189
+   },
+   "extend/louvre": {
+    "identical": false,
+    "psnr_whole": 28.55223293155995,
+    "psnr_mask": 21.282245652197325,
+    "lpips_whole": 0.02269788831472397,
+    "lpips_mask": 0.12224666774272919
+   },
+   "extend/fortress": {
+    "identical": false,
+    "psnr_whole": 28.458456996075434,
+    "psnr_mask": 23.68724444887881,
+    "lpips_whole": 0.03640659898519516,
+    "lpips_mask": 0.03640659898519516
+   },
+   "extend/stilts": {
+    "identical": false,
+    "psnr_whole": 35.70656198923114,
+    "psnr_mask": 29.685962075951515,
+    "lpips_whole": 0.01441583689302206,
+    "lpips_mask": 0.057654060423374176
+   },
+   "extend/snowforest": {
+    "identical": false,
+    "psnr_whole": 25.982377974395973,
+    "psnr_mask": 19.96177806111635,
+    "lpips_whole": 0.058873727917671204,
+    "lpips_mask": 0.23476195335388184
+   },
+   "extend/gokyo": {
+    "identical": false,
+    "psnr_whole": 28.969744390613144,
+    "psnr_mask": 22.94914447733352,
+    "lpips_whole": 0.04423871263861656,
+    "lpips_mask": 0.1745959222316742
+   },
+   "extend/cross": {
+    "identical": false,
+    "psnr_whole": 26.784339994762433,
+    "psnr_mask": 20.76374008148281,
+    "lpips_whole": 0.025600802153348923,
+    "lpips_mask": 0.10500730574131012
+   },
+   "extend/stopsign": {
+    "identical": false,
+    "psnr_whole": 33.63236935441696,
+    "psnr_mask": 27.611769441137334,
+    "lpips_whole": 0.029338732361793518,
+    "lpips_mask": 0.1189330667257309
+   },
+   "extend/terrace": {
+    "identical": false,
+    "psnr_whole": 25.254183396664025,
+    "psnr_mask": 20.34508800461107,
+    "lpips_whole": 0.0652863159775734,
+    "lpips_mask": 0.0652863159775734
+   },
+   "extend/statue": {
+    "identical": false,
+    "psnr_whole": 23.967424443010543,
+    "psnr_mask": 17.946824529730918,
+    "lpips_whole": 0.0398513600230217,
+    "lpips_mask": 0.16129016876220703
+   },
+   "remove/corne-000001": {
+    "identical": true,
+    "psnr_whole": 99.0,
+    "psnr_mask": 99.0,
+    "lpips_whole": 0.0,
+    "lpips_mask": 0.0
+   },
+   "remove/corne-000007": {
+    "identical": true,
+    "psnr_whole": 99.0,
+    "psnr_mask": 99.0,
+    "lpips_whole": 0.0,
+    "lpips_mask": 0.0
+   },
+   "remove/corne-000008": {
+    "identical": true,
+    "psnr_whole": 99.0,
+    "psnr_mask": 99.0,
+    "lpips_whole": 0.0,
+    "lpips_mask": 0.0
+   },
+   "remove/corne-000014": {
+    "identical": true,
+    "psnr_whole": 99.0,
+    "psnr_mask": 99.0,
+    "lpips_whole": 0.0,
+    "lpips_mask": 0.0
+   },
+   "remove/corne-000022": {
+    "identical": true,
+    "psnr_whole": 99.0,
+    "psnr_mask": 99.0,
+    "lpips_whole": 0.0,
+    "lpips_mask": 0.0
+   },
+   "remove/corne-000024": {
+    "identical": true,
+    "psnr_whole": 99.0,
+    "psnr_mask": 99.0,
+    "lpips_whole": 0.0,
+    "lpips_mask": 0.0
+   },
+   "remove/corne-000037": {
+    "identical": true,
+    "psnr_whole": 99.0,
+    "psnr_mask": 99.0,
+    "lpips_whole": 0.0,
+    "lpips_mask": 0.0
+   },
+   "remove/corne-000044": {
+    "identical": true,
+    "psnr_whole": 99.0,
+    "psnr_mask": 99.0,
+    "lpips_whole": 0.0,
+    "lpips_mask": 0.0
+   },
+   "remove/corne-000045": {
+    "identical": false,
+    "psnr_whole": 34.3419352986593,
+    "psnr_mask": 20.9197540355676,
+    "lpips_whole": 0.009715096093714237,
+    "lpips_mask": 0.1443171501159668
+   },
+   "remove/corne-000050": {
+    "identical": false,
+    "psnr_whole": 46.1146010104478,
+    "psnr_mask": 31.380809067782174,
+    "lpips_whole": 0.001006710808724165,
+    "lpips_mask": 0.02097409963607788
+   },
+   "remove/corne-000058": {
+    "identical": false,
+    "psnr_whole": 22.61639968149769,
+    "psnr_mask": 17.50321899289489,
+    "lpips_whole": 0.23273080587387085,
+    "lpips_mask": 0.6312800049781799
+   },
+   "remove/corne-000059": {
+    "identical": false,
+    "psnr_whole": 36.34804042889286,
+    "psnr_mask": 19.33268527978171,
+    "lpips_whole": 0.0031698409002274275,
+    "lpips_mask": 0.09048822522163391
+   },
+   "remove/corne-000063": {
+    "identical": false,
+    "psnr_whole": 46.543185762865676,
+    "psnr_mask": 31.414531310792064,
+    "lpips_whole": 0.0012925578048452735,
+    "lpips_mask": 0.013578458689153194
+   },
+   "remove/corne-000064": {
+    "identical": false,
+    "psnr_whole": 33.55273381039878,
+    "psnr_mask": 18.476512071036687,
+    "lpips_whole": 0.0029803006909787655,
+    "lpips_mask": 0.04254534840583801
+   },
+   "remove/corne-000065": {
+    "identical": true,
+    "psnr_whole": 99.0,
+    "psnr_mask": 99.0,
+    "lpips_whole": 0.0,
+    "lpips_mask": 0.0
+   },
+   "remove/corne-000069": {
+    "identical": false,
+    "psnr_whole": 31.619945692972816,
+    "psnr_mask": 22.694092228270613,
+    "lpips_whole": 0.028370773419737816,
+    "lpips_mask": 0.14103181660175323
+   },
+   "remove/corne-000072": {
+    "identical": false,
+    "psnr_whole": 50.592603968605225,
+    "psnr_mask": 36.80362588408707,
+    "lpips_whole": 0.0002980809658765793,
+    "lpips_mask": 0.0044438098557293415
+   },
+   "remove/corne-000073": {
+    "identical": true,
+    "psnr_whole": 99.0,
+    "psnr_mask": 99.0,
+    "lpips_whole": 0.0,
+    "lpips_mask": 0.0
+   },
+   "remove/corne-000075": {
+    "identical": true,
+    "psnr_whole": 99.0,
+    "psnr_mask": 99.0,
+    "lpips_whole": 0.0,
+    "lpips_mask": 0.0
+   },
+   "remove/corne-000084": {
+    "identical": false,
+    "psnr_whole": 28.2912884543195,
+    "psnr_mask": 13.119655004556863,
+    "lpips_whole": 0.021059712395071983,
+    "lpips_mask": 0.2681972086429596
+   }
+  }
+ }
+}

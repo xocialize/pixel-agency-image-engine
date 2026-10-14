@@ -21,9 +21,9 @@ extension Suites {
         let remove: [Remove]
     }
 
-    func fillBake(cases file: URL, arms: [String], tasks: Set<String>, _ footprints: inout [String: Double]) async throws {
+    func fillBake(cases file: URL, arms: [String], tasks: Set<String>, seed: Int = 7, _ footprints: inout [String: Double]) async throws {
         let cases = try JSONDecoder().decode(FillCases.self, from: Data(contentsOf: file))
-        let seed: JSONValue = 7
+        let seed = JSONValue.number(Double(seed))
         for arm in arms {
             // Cold: the first job loads the arm (or reloads it after another arm evicted it).
             var cold = true

@@ -1,0 +1,153 @@
+{
+ "method": "AB-R-0534's count: prompted fill = prompt ignored (nothing painted / faint patch / shapeless blob) or marker left, judged on labelled sheets with region zooms; seamless and extend = hard patch, invented object, visible rectangle, purple/pink haze or flat patch on the new strip, judged on labelled sheets; remove = the engine's LaMa fallbacks plus objects left in place (score checks). One judge, 2026-10-14.",
+ "sn1024": {
+  "reference": "sensenova-u1-fast (8step-v2-8bit), 1024-class, reproduces AB-R-0534 bit-identical (58/58)",
+  "test": "sensenova-u1-fast-4bit (8step-v2-4bit)",
+  "fill": {
+   "int8": [],
+   "int4": []
+  },
+  "seamless": {
+   "int8": [
+    "terrace: bluish rectangle"
+   ],
+   "int4": [
+    "terrace: bluish rectangle"
+   ]
+  },
+  "extend": {
+   "int8": [],
+   "int4": []
+  },
+  "remove": {
+   "int8": [],
+   "int4": []
+  },
+  "notes": [
+   "remove corne-000022: int4 painted a stack of papers where the object was (hole PSNR 6.6 vs int8 28.8); not a failure by AB-R-0534's count (no fallback, nothing left), noted beside AB-R-0534's int8 doorway in corne-000044, which int4 also paints",
+   "every prompted fill keeps int8's composition; both show the box edge where the object meets the mask edge (AB-R-0541)"
+  ]
+ },
+ "klein768": {
+  "reference": "klein-4b-768 (bf16 resident, 768\u00b2 window)",
+  "test": "klein-4b-int4-evict-768 (int4, text encoder evicted, 768\u00b2 window)",
+  "fill": {
+   "bf16": [
+    "derby: nothing painted",
+    "fortress: nothing painted",
+    "stilts: nothing painted",
+    "stopsign: nothing painted",
+    "terrace: nothing painted (green speck)",
+    "sculpture: nothing painted"
+   ],
+   "int4": [
+    "derby: nothing painted",
+    "fortress: nothing painted",
+    "stilts: nothing painted",
+    "stopsign: nothing painted",
+    "terrace: nothing painted (green speck)",
+    "sculpture: nothing painted",
+    "snowforest: faint washed-out half snowman (bf16: a snowman with a red scarf)",
+    "cross: a post and one slat, not a bench (bf16: a broken-legged bench)"
+   ]
+  },
+  "seamless": {
+   "bf16": [
+    "car: hard rectangle, mismatched body",
+    "temple: pasted chunk of wall in the grass",
+    "gokyo: mismatched glacier patch, hard edge"
+   ],
+   "int4": [
+    "car: hard rectangle, mismatched body",
+    "temple: pasted chunk of wall in the grass",
+    "gokyo: mismatched glacier patch, hard edge"
+   ]
+  },
+  "extend": {
+   "bf16": [
+    "car: LaMa fallback, dark smear",
+    "derby: pink haze on the wall",
+    "fortress: flat blue strip left, haze right",
+    "stilts: pink haze right, flat patch at the horizon",
+    "stopsign: purple/dark haze",
+    "terrace: flat lavender mush",
+    "statue: purple strip along the bottom"
+   ],
+   "int4": [
+    "car: purple haze",
+    "derby: pink haze on the wall",
+    "fortress: flat blue strip left, haze right",
+    "stilts: flat patch at the horizon",
+    "stopsign: purple/dark haze",
+    "terrace: flat lavender patch",
+    "statue: purple strip along the bottom"
+   ]
+  },
+  "remove": {
+   "bf16": "13 LaMa fallbacks + 1 left (corne-000045)",
+   "int4": "11 LaMa fallbacks + 1 left (corne-000045)"
+  },
+  "notes": [
+   "gokyo fill: int4's tent is translucent and washed out (passes: a yellow tent is there)",
+   "11 of 20 removes are bit-identical between the arms because both fell back to LaMa"
+  ]
+ },
+ "sn768": {
+  "reference": "sensenova-u1-fast-768 (8step-v2-8bit, 768\u00b2 window)",
+  "test": "sensenova-u1-fast-4bit-768 (8step-v2-4bit, 768\u00b2 window; AB-D-0141's 16 GB tier)",
+  "fill": {
+   "int8": [],
+   "int4": []
+  },
+  "seamless": {
+   "int8": [
+    "louvre: dark smudge at the top of the tree",
+    "gokyo: blurred glacier patch, hard edge"
+   ],
+   "int4": [
+    "gokyo: blurred glacier patch, hard edge"
+   ]
+  },
+  "extend": {
+   "int8": [],
+   "int4": []
+  },
+  "remove": {
+   "int8": [],
+   "int4": []
+  },
+  "notes": [
+   "the 768\u00b2 window softens every seamless patch in both arms (temple, fortress, crystal: blurred, not counted, as AB-R-0534 did not count SenseNova's blurry crystal)",
+   "remove hole PSNR falls with the window in both quants: 17.7 dB at 1024\u00b2 \u2192 14.2 (int8) / 13.9 (int4) at 768\u00b2, LaMa's level in AB-R-0534 (14.5)"
+  ]
+ },
+ "klein768_reseed": {
+  "arm": "klein-4b-768 at seed 8",
+  "fill": [
+   "derby: nothing painted",
+   "fortress: nothing painted",
+   "stilts: nothing painted",
+   "stopsign: orange blob, not a dog",
+   "sculpture: nothing painted"
+  ],
+  "notes": [
+   "5/15 against 6/15 at seed 7: terrace paints a cup at seed 8; stopsign turns from nothing to a blob"
+  ]
+ },
+ "klein8": {
+  "reference": "klein-4b-768 (bf16, seed 7, the klein768 run)",
+  "test": "klein-4b-int8-evict-768 (int8, encoder evicted, 768\u00b2 window)",
+  "fill": {
+   "int8": "the same six as bf16 (derby, fortress, stilts, stopsign, terrace, sculpture: nothing painted); every row near-identical to bf16"
+  },
+  "seamless": {
+   "int8": "the same three as bf16 (car, temple, gokyo)"
+  },
+  "extend": {
+   "int8": "the same seven as bf16; car is a purple haze where bf16 fell back to LaMa's dark smear"
+  },
+  "remove": {
+   "int8": "13 LaMa fallbacks + 1 left, the same items as bf16"
+  }
+ }
+}

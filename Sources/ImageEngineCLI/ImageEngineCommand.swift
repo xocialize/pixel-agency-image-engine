@@ -31,6 +31,7 @@ struct ImageEngineCommand: AsyncParsableCommand {
     @Option(help: "State: engine id, TLS identity, pairings.") var state: String?
     @Option(help: "Seconds outputs are kept for collection.") var ttl = 3600
     @Flag(help: "Don't advertise over DNS-SD.") var noAdvertise = false
+    @Flag(help: .hidden) var quantGateArms = false   // Generative Fill's int4 tiers by name (QuantGateArms, AB-A-0178)
 
     func run() async throws {
         setvbuf(stdout, nil, _IOLBF, 0)   // line-buffered, so the listening line shows up when piped
@@ -43,7 +44,8 @@ struct ImageEngineCommand: AsyncParsableCommand {
 
         let modelStore = store.map { URL(fileURLWithPath: $0, isDirectory: true) } ?? ImageRuntime.defaultModelStore
         print("Registering models (models folder: \(modelStore.path))…")
-        let runtime = await ImageRuntime.start(modelStore: modelStore, catalog: ModelCatalog.all(),
+        let catalog = ModelCatalog.all() + (quantGateArms ? QuantGateArms.entries() : [])
+        let runtime = await ImageRuntime.start(modelStore: modelStore, catalog: catalog,
                                                options: .init(allowResearch: allowResearch))
         for (model, reason) in ImageNormalizer.quarantined.sorted(by: { $0.key < $1.key }) {
             print("not offering \(model): \(reason)")

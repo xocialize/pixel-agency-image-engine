@@ -1,0 +1,50 @@
+{
+ "car": {
+  "A": "bench/quantgate/run-klein768:klein-4b-int4-evict-768",
+  "B": "bench/quantgate/run-klein768:klein-4b-768"
+ },
+ "derby": {
+  "A": "bench/quantgate/run-klein768:klein-4b-int4-evict-768",
+  "B": "bench/quantgate/run-klein768:klein-4b-768"
+ },
+ "temple": {
+  "A": "bench/quantgate/run-klein768:klein-4b-768",
+  "B": "bench/quantgate/run-klein768:klein-4b-int4-evict-768"
+ },
+ "louvre": {
+  "A": "bench/quantgate/run-klein768:klein-4b-int4-evict-768",
+  "B": "bench/quantgate/run-klein768:klein-4b-768"
+ },
+ "fortress": {
+  "A": "bench/quantgate/run-klein768:klein-4b-int4-evict-768",
+  "B": "bench/quantgate/run-klein768:klein-4b-768"
+ },
+ "stilts": {
+  "A": "bench/quantgate/run-klein768:klein-4b-768",
+  "B": "bench/quantgate/run-klein768:klein-4b-int4-evict-768"
+ },
+ "snowforest": {
+  "A": "bench/quantgate/run-klein768:klein-4b-768",
+  "B": "bench/quantgate/run-klein768:klein-4b-int4-evict-768"
+ },
+ "gokyo": {
+  "A": "bench/quantgate/run-klein768:klein-4b-int4-evict-768",
+  "B": "bench/quantgate/run-klein768:klein-4b-768"
+ },
+ "cross": {
+  "A": "bench/quantgate/run-klein768:klein-4b-int4-evict-768",
+  "B": "bench/quantgate/run-klein768:klein-4b-768"
+ },
+ "stopsign": {
+  "A": "bench/quantgate/run-klein768:klein-4b-768",
+  "B": "bench/quantgate/run-klein768:klein-4b-int4-evict-768"
+ },
+ "terrace": {
+  "A": "bench/quantgate/run-klein768:klein-4b-768",
+  "B": "bench/quantgate/run-klein768:klein-4b-int4-evict-768"
+ },
+ "statue": {
+  "A": "bench/quantgate/run-klein768:klein-4b-int4-evict-768",
+  "B": "bench/quantgate/run-klein768:klein-4b-768"
+ }
+}

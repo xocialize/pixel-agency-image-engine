@@ -26,6 +26,7 @@ struct TierBench: AsyncParsableCommand {
     @Flag(help: "generate: the hard prompt set (text in the image, counts, attribute binding).") var hard = false
     @Option(help: "fillbake: the case file (bench/fillbake/cases.json).") var cases: String?
     @Option(help: "fillbake: which tasks (comma-separated: fill, fill768, seamless, extend, remove).") var tasks = "fill,fill768,seamless,extend,remove"
+    @Option(help: "fillbake: the seed every job asks for (the bake-off's is 7).") var seed = 7
 
     func run() async throws {
         setvbuf(stdout, nil, _IOLBF, 0)
@@ -50,7 +51,8 @@ struct TierBench: AsyncParsableCommand {
         if suites.contains("judge"), let from { try await suite.judge(from: URL(fileURLWithPath: from, isDirectory: true)) }
         if suites.contains("fillbake"), let cases {
             let arms = models.map { $0.split(separator: ",").map(String.init) } ?? ["klein-4b", "sensenova-u1-fast"]
-            try await suite.fillBake(cases: URL(fileURLWithPath: cases), arms: arms, tasks: Set(tasks.split(separator: ",").map(String.init)), &footprints)
+            try await suite.fillBake(cases: URL(fileURLWithPath: cases), arms: arms, tasks: Set(tasks.split(separator: ",").map(String.init)),
+                                     seed: seed, &footprints)
         }
         let md = "# Tier bench — \(bench.info.name)\n\nRun \(ISO8601DateFormatter().string(from: Date())), engine \(engine).\n"
             + Summary.markdown(bench.records, footprints: footprints)

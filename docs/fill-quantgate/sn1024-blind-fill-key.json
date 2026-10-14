@@ -1,0 +1,62 @@
+{
+ "car": {
+  "A": "bench/quantgate/run-sn1024:sensenova-u1-fast-4bit",
+  "B": "bench/quantgate/run-sn1024:sensenova-u1-fast"
+ },
+ "derby": {
+  "A": "bench/quantgate/run-sn1024:sensenova-u1-fast",
+  "B": "bench/quantgate/run-sn1024:sensenova-u1-fast-4bit"
+ },
+ "temple": {
+  "A": "bench/quantgate/run-sn1024:sensenova-u1-fast",
+  "B": "bench/quantgate/run-sn1024:sensenova-u1-fast-4bit"
+ },
+ "louvre": {
+  "A": "bench/quantgate/run-sn1024:sensenova-u1-fast",
+  "B": "bench/quantgate/run-sn1024:sensenova-u1-fast-4bit"
+ },
+ "fortress": {
+  "A": "bench/quantgate/run-sn1024:sensenova-u1-fast-4bit",
+  "B": "bench/quantgate/run-sn1024:sensenova-u1-fast"
+ },
+ "stilts": {
+  "A": "bench/quantgate/run-sn1024:sensenova-u1-fast",
+  "B": "bench/quantgate/run-sn1024:sensenova-u1-fast-4bit"
+ },
+ "stopsign": {
+  "A": "bench/quantgate/run-sn1024:sensenova-u1-fast-4bit",
+  "B": "bench/quantgate/run-sn1024:sensenova-u1-fast"
+ },
+ "snowforest": {
+  "A": "bench/quantgate/run-sn1024:sensenova-u1-fast",
+  "B": "bench/quantgate/run-sn1024:sensenova-u1-fast-4bit"
+ },
+ "terrace": {
+  "A": "bench/quantgate/run-sn1024:sensenova-u1-fast",
+  "B": "bench/quantgate/run-sn1024:sensenova-u1-fast-4bit"
+ },
+ "gokyo": {
+  "A": "bench/quantgate/run-sn1024:sensenova-u1-fast",
+  "B": "bench/quantgate/run-sn1024:sensenova-u1-fast-4bit"
+ },
+ "cross": {
+  "A": "bench/quantgate/run-sn1024:sensenova-u1-fast",
+  "B": "bench/quantgate/run-sn1024:sensenova-u1-fast-4bit"
+ },
+ "statue": {
+  "A": "bench/quantgate/run-sn1024:sensenova-u1-fast-4bit",
+  "B": "bench/quantgate/run-sn1024:sensenova-u1-fast"
+ },
+ "warbler": {
+  "A": "bench/quantgate/run-sn1024:sensenova-u1-fast",
+  "B": "bench/quantgate/run-sn1024:sensenova-u1-fast-4bit"
+ },
+ "crystal": {
+  "A": "bench/quantgate/run-sn1024:sensenova-u1-fast-4bit",
+  "B": "bench/quantgate/run-sn1024:sensenova-u1-fast"
+ },
+ "sculpture": {
+  "A": "bench/quantgate/run-sn1024:sensenova-u1-fast",
+  "B": "bench/quantgate/run-sn1024:sensenova-u1-fast-4bit"
+ }
+}
