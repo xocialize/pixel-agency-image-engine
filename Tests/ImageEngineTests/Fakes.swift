@@ -66,6 +66,7 @@ actor FakeModels: ImageModelDirectory, ModelRouter {
         model("heart-upscale", [.imageUpscale]),
         model("seedvr2-upscale", [.imageUpscale]),
         model("vosr2-upscale", [.imageUpscale], gb: 9),
+        model("anime4k-upscale", [.imageUpscale]),
         model("nafnet-restore", [.imageRestore]),
         model("scunet-denoise", [.imageRestore]),
         model("defect-detect", [.defectDetect]),

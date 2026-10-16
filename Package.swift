@@ -23,7 +23,8 @@ let package = Package(
         // Mage-Flow Edit Turbo at int8, content filter off (AB-D-0122), erases by name (AB-T-0220); ≥ 0.3.3 made
         // every default offer's weights the engine's to download (AB-T-0221/0222).
         // ≥ 0.5.1: an enhancer result (VOSR2 behind the text guard) keeps a 16-bit request's depth (AB-T-0233).
-        .package(url: "https://github.com/xocialize/mlx-image-runtime.git", from: "0.5.1"),
+        // ≥ 0.6.0: Anime4K VL (`anime4k-upscale`), Forge Optimizer's Instant tier, in the catalog by name (AB-A-0183).
+        .package(url: "https://github.com/xocialize/mlx-image-runtime.git", from: "0.6.0"),
         // ForgeCore's still enhancer: generative upscales behind the text-legibility guard (AB-D-0111). ≥ 0.35.0: the 16-bit
         // model boundary (AB-A-0158) — its graph brings mlx-engine-swift 0.67.0 (`.rawRGBA16`, contract 1.52.0) and
         // mlx-realplksr-swift 0.2.0, the first upscaler that keeps 16 bits. ≥ 0.36.0: mlx-nerve-swift and mlx-heart-swift
@@ -32,8 +33,9 @@ let package = Package(
         // image.restore offers 16 bits for general and faces. ≥ 0.38.0: mlx-vosr-swift 0.3.0 writes 16 bits and the text guard
         // sends each tier its own depth (MaskKit 0.4.1 composites at 16 bits), so VOSR2 runs at 16 bits by name (AB-T-0233).
         // ≥ 0.38.1: mlx-gfpgan-swift and mlx-restoreformer-swift 0.3.1 — no dark line along the image edge when a face's
-        // crop extends past the frame, every close-up portrait (AB-T-0227).
-        .package(url: "https://github.com/xocialize/ForgeCore.git", from: "0.38.1"),
+        // crop extends past the frame, every close-up portrait (AB-T-0227). ≥ 0.41.1: `.upscaleInstant`, Anime4K VL as a
+        // weightless imageUpscale registration that reads as nothing to download (AB-A-0183).
+        .package(url: "https://github.com/xocialize/ForgeCore.git", from: "0.41.1"),
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.5.0"),
         // The CLI's quant-gate arms (`--quant-gate-arms`, AB-A-0178) configure these packages directly; all three are
         // already in the graph through mlx-image-runtime.

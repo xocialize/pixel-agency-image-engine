@@ -1,5 +1,5 @@
 {
-  "originHash" : "c9b197ec76a3ace547ecda5d65b19b48891a39aace8323e45c7cc195dc29ddbe",
+  "originHash" : "36066a0e84037e1ee0648d7aecb98775742632ce6a3da02f7ac9ac14613649eb",
   "pins" : [
     {
       "identity" : "anima-mlx-swift",
@@ -8,6 +8,15 @@
       "state" : {
         "revision" : "04949dca3cd0ca858369f69436a65573ff98d4c4",
         "version" : "0.3.0"
+      }
+    },
+    {
+      "identity" : "anime4k-metal",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/xocialize/anime4k-metal.git",
+      "state" : {
+        "revision" : "19b5e6f5a34673a8b1932eab230b529fdf562635",
+        "version" : "0.1.0"
       }
     },
     {
@@ -105,8 +114,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/ForgeCore.git",
       "state" : {
-        "revision" : "5dd9105a5281904ae18a093509306eb47f383be3",
-        "version" : "0.38.1"
+        "revision" : "eb38dcf763df95b170dbca92b29b89a76c1a40eb",
+        "version" : "0.41.1"
       }
     },
     {
@@ -114,8 +123,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/ForgeOptimizerKit.git",
       "state" : {
-        "revision" : "c9b5f5d193aad5ca5910014711d1e8c5577bdd80",
-        "version" : "0.24.0"
+        "revision" : "bba80db8d42d1e130041dc9c8414c5bdbcfc6764",
+        "version" : "0.26.0"
       }
     },
     {
@@ -186,8 +195,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/MaskKit.git",
       "state" : {
-        "revision" : "5447fa2ab17e2e2e2d1d8aa5048f684d53b072dd",
-        "version" : "0.4.1"
+        "revision" : "b4790dcced505ca133240869d59eb76ee42213a7",
+        "version" : "0.5.0"
       }
     },
     {
@@ -330,8 +339,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-image-runtime.git",
       "state" : {
-        "revision" : "565c392dea025ac4144d12f00f9fac1fa64ec5f4",
-        "version" : "0.5.1"
+        "revision" : "e18758301a8c1aad20857ff70ca68a73f5ee3c58",
+        "version" : "0.6.0"
       }
     },
     {
@@ -537,8 +546,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/sensenova-u1-swift.git",
       "state" : {
-        "revision" : "9d201244055a3904e2e04f6ff65ca7f5cad1fec4",
-        "version" : "0.5.1"
+        "revision" : "9bb73fb220a140be609a27c3861af4d21a450a8a",
+        "version" : "0.5.3"
       }
     },
     {

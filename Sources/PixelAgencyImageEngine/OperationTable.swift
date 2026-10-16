@@ -154,10 +154,14 @@ enum OperationTable {
         // SeedVR2 measured worst of the learned models on photos. The generative stills routes, VOSR2 and Nacre, run
         // behind ForgeCore's text-legibility guard (the runtime's enhancer, AB-D-0111): offered at best, by name,
         // never a default. Drawn content (`content: drawn`) goes by `drawnUpscale`: NERVE at draft and standard, HEART at
-        // best (the G-4 drawn ladder, AB-R-0486 / AB-D-0124).
+        // best (the G-4 drawn ladder, AB-R-0486 / AB-D-0124). Anime4K VL (`anime4k-upscale`, AB-A-0183) is Forge Optimizer's
+        // Instant tier: model-free Metal shaders, instant, offered at every quality by name and never a default — the
+        // efficient choice, below the learned tiers on quality (AB-R-0559, AB-D-0146). MES has no `instant` quality: a
+        // client names the model.
         OperationSpec("image.upscale", .imageUpscale,
                       tiers: ["nerve-upscale": all, "realplksr-upscale": [.standard], "heart-upscale": [.best],
-                              "seedvr2-upscale": [.best], "nacre-upscale": [.best], "vosr2-upscale": [.best]],
+                              "seedvr2-upscale": [.best], "nacre-upscale": [.best], "vosr2-upscale": [.best],
+                              "anime4k-upscale": all],
                       defaults: ["realplksr-upscale", "heart-upscale", "nerve-upscale"],
                       params: ["scale", "content", "quality", "output"], narrowed: ["output": output],
                       inputs: ["image": true]),

@@ -244,11 +244,15 @@ Desktop's Optimizer scaling runs on engines (D-20). Its tiers map onto MES quali
 | Fast | `image.upscale`, `quality: draft` | NERVE |
 | Best | `image.upscale`, `quality: standard` | RealPLKSR |
 | Generative (stills, user's choice) | `image.upscale`, `model: nacre-upscale` | Nacre; VOSR2 when the engine carries it |
+| Instant (the efficiency tier, AB-D-0146) | `image.upscale`, `model: anime4k-upscale` (any quality) | Anime4K VL: Metal shaders, no weights |
 | Live action (video, user declares it) | Video profile (ENG R2) | FlashVSR |
 
 - **Fast and Best** are today's Optimizer models, so this mapping keeps its output unchanged.
 - **MES `best` (HEART)** is the extra fidelity step the Optimizer can offer next.
 - **Generative and Live action** are routes chosen by content or provenance, never quality defaults, as in ForgeCore.
+- **Instant** has no MES `quality` of its own: `quality` is one ladder for every operation, so a client names the
+  model (AB-A-0183). It is offered at draft, standard and best and is never a default, being below the learned tiers on
+  quality (AB-R-0559). Engine 0.2.10 (ForgeCore 0.41.1, mlx-image-runtime 0.6.0).
 
 ## What the measuring found besides tiers
 

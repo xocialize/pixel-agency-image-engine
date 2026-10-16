@@ -75,7 +75,9 @@ suits those. Erase at best runs Mage-Flow Edit Turbo by name: Mage-VL names the 
 exactly as they were (Image §1.7). It retries once if Mage hands the object back, then falls back to LaMa
 (`model_fallback`). On the removal gate it fills 3.5 dB closer to the truth than LaMa, at 4.1 s against 0.42 s
 ([TIERS.md](docs/TIERS.md#erase-removal-gate-subset-s-r2)). Other models (Z-Image, Klein Base, Qwen-Image-Edit 2511, Mage-Flow and Mage-Flow Edit, SeedVR2, Nacre,
-DRUNet, …) are offered and run when named. Every offer carries its licence in MES terms (Base §10.2).
+DRUNet, …) are offered and run when named. `anime4k-upscale` (Anime4K VL, Forge Optimizer's Instant tier) is offered
+at every quality by name: model-free Metal shaders, nothing to download, ×2 and ×4 in milliseconds, and below the
+learned upscalers on quality. Every offer carries its licence in MES terms (Base §10.2).
 `commercial_use` is `true` only when every weight licence and the port's code licence are permissive.
 
 ### Research models (opt-in)

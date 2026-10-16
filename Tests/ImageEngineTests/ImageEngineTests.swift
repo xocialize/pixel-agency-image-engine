@@ -296,6 +296,13 @@ struct ImageEngineTests {
                          try await model("image.upscale", ["image": small], ["content": "drawn"]),
                          try await model("image.upscale", ["image": small], ["quality": "best", "content": "drawn"])]
             #expect(drawn == ["nerve-upscale", "nerve-upscale", "heart-upscale"], "the G-4 drawn ladder (AB-R-0486)")
+            // Anime4K VL (AB-A-0183): never a default, run when named at every quality, drawn or not.
+            for quality: MESValue in ["draft", "standard", "best"] {
+                let named = try await probe.succeed(JobRequest(operation: "image.upscale", inputs: ["image": small],
+                                                               params: ["quality": quality, "content": "drawn"],
+                                                               model: "anime4k-upscale"))
+                #expect(named.plan?.model.id == "anime4k-upscale")
+            }
             let points: RequestInput = .one(.data([["x": 0.5, "y": 0.5, "label": "include"]]))
             // Segment's vocabulary has no `quality` (Image §5): its default is the standard tier's model.
             #expect(try await model("image.segment", ["image": image(), "points": points], [:]) == "sam21-segment")
