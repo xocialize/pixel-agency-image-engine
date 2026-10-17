@@ -1,5 +1,5 @@
 {
-  "originHash" : "36066a0e84037e1ee0648d7aecb98775742632ce6a3da02f7ac9ac14613649eb",
+  "originHash" : "5669342795d68e0be21618700632fd4b169cb215c76dd05228d6ad6eb1ddc52c",
   "pins" : [
     {
       "identity" : "anima-mlx-swift",
@@ -105,8 +105,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/flux2-vae-mlx-swift",
       "state" : {
-        "revision" : "699662d62e47bee82aa4acd4882328988bd32ea4",
-        "version" : "0.3.1"
+        "revision" : "4fde50e68fc4fe30bae37b3ddfb811304ef0e843",
+        "version" : "0.4.0"
       }
     },
     {
@@ -339,8 +339,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-image-runtime.git",
       "state" : {
-        "revision" : "e18758301a8c1aad20857ff70ca68a73f5ee3c58",
-        "version" : "0.6.0"
+        "revision" : "f4d28d0028d40195a8010bf3f69f0f05944a08ea",
+        "version" : "0.7.0"
       }
     },
     {
@@ -503,6 +503,15 @@
       "state" : {
         "revision" : "f85595f398d64ef421966abd1a55703add07cb7e",
         "version" : "0.3.1"
+      }
+    },
+    {
+      "identity" : "moss-image-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/xocialize/moss-image-swift.git",
+      "state" : {
+        "revision" : "6c26a0296ba2d2a09e061d89a9b9b758786cd186",
+        "version" : "0.2.0"
       }
     },
     {

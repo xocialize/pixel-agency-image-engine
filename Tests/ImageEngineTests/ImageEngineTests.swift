@@ -72,6 +72,8 @@ struct ImageEngineTests {
         #expect(generate.models.first?.id == "z-image-turbo" && generate.models.first?.isDefault == true)
         #expect(generate.models.map(\.id).contains("qwen-image-2.1") == false)
         #expect(generate.qualityTiers == [.draft, .standard, .best])
+        let moss = try #require(generate.models.first { $0.id == "moss-image-sft" }, "MOSS-Image is offered (AB-T-0307)")
+        #expect(moss.isDefault != true && moss.qualityTiers == [.best] && moss.speedClass == .slow)
         let klein = try #require(generate.models.first { $0.id == "klein-4b" })
         #expect(klein.qualityTiers == [.draft] && klein.license.commercialUse == .yes && klein.license.spdx == "Apache-2.0")
         let fill = try #require(ops.first { $0.operation == "image.fill" })

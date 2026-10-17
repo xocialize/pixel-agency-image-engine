@@ -57,6 +57,7 @@ actor FakeModels: ImageModelDirectory, ModelRouter {
         model("z-image-turbo", [.textToImage], guidance: 1, gb: 12),
         model("klein-4b", [.textToImage, .imageEdit], guidance: 4, maxInputs: 4, gb: 8),
         model("z-image", [.textToImage], guidance: 4, gb: 12),
+        model("moss-image-sft", [.textToImage], guidance: 3, gb: 10),
         model("qwen-image-2.1", [.textToImage], license: research, guidance: 1, gb: 30),
         model("boogu", [.imageEdit], maturity: .wip, guidance: 4, gb: 20),
         model("mage-flow-edit-turbo", [.imageEdit], guidance: 1, maxPixels: 1024 * 1024, maxInputs: 3, gb: 14),

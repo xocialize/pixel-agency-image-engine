@@ -112,9 +112,11 @@ enum OperationTable {
     static let specs: [OperationSpec] = [
         // Measured (R1b, docs/TIERS.md): Z-Image Turbo leads on both prompt sets (IQA 0.915 / 0.903, hard-prompt recall
         // 0.94, text spelled right) at 13.7 s; Z-Image (28 steps, 70 s) scored lower on both, so it isn't "best".
+        // MOSS-Image (SFT, and Base) is best-tier by name only (AB-T-0307): long EN/ZH text and JSON layout prompts, but
+        // 50 CFG steps is about 2 min per 1024² image, so no unnamed request lands on it.
         OperationSpec("image.generate", .textToImage,
                       tiers: ["klein-4b": [.draft], "z-image-turbo": [.standard, .best], "z-image": [.standard],
-                              "qwen-image-flash": [.standard, .best]],
+                              "qwen-image-flash": [.standard, .best], "moss-image-sft": [.best], "moss-image-base": [.best]],
                       defaults: ["z-image-turbo", "klein-4b", "z-image"],
                       params: ["negative_prompt", "size", "aspect", "megapixels", "quality", "seed", "count", "output"],
                       narrowed: ["count": ["type": "integer", "minimum": 1, "maximum": 4, "default": 1], "output": output],
