@@ -97,6 +97,16 @@ struct ImageEngineTests {
             #expect(qwen.license.notice == "Research licence (LicenseRef-Qwen-Research): not for commercial use. Read the terms before you use or share results.")
             let boogu = probe.descriptor("image.edit")?.models.first { $0.id == "boogu" }
             #expect(boogu?.namedOnly == true && boogu?.license.notice == "Work in progress: results may change between versions.")
+            // FLUX 3 Klein (AB-D-0151): named-only on both operations, with its own notice (not "research licence").
+            for operation in ["image.generate", "image.edit"] {
+                let flux = try #require(probe.descriptor(operation)?.models.first { $0.id == "flux-3-klein" })
+                #expect(flux.namedOnly == true && flux.isDefault == nil)
+                #expect(flux.license.commercialUse == .no && flux.license.acceptedRequired == true)
+                #expect(flux.license.spdx == "LicenseRef-FLUX-Kommunity-1.0")
+                #expect(flux.license.notice?.hasPrefix("FLUX Kommunity licence: non-commercial use; commercial use of outputs only for businesses under US$5M revenue") == true)
+                #expect(flux.license.notice?.hasSuffix("Work in progress: results may change between versions.") == true)
+            }
+            #expect(probe.descriptor("image.edit")?.inputs.first { $0.name == "images" }?.max == 10)
 
             // Unnamed at best quality: the measured best (Z-Image Turbo), never the research model.
             let best = try await probe.succeed(JobRequest(operation: "image.generate", inputs: ["prompt": .text("a fox")],

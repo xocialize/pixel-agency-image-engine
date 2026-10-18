@@ -43,6 +43,8 @@ actor FakeModels: ImageModelDirectory, ModelRouter {
     static let apache = LicenseStamp(licenseClass: .permissive, weightLicenses: ["Apache-2.0"], portCodeLicense: "MIT")
     static let research = LicenseStamp(licenseClass: .restricted, weightLicenses: ["LicenseRef-Qwen-Research"], portCodeLicense: "MIT",
                                        advisories: ["Research use only."])
+    static let kommunity = LicenseStamp(licenseClass: .restricted, weightLicenses: ["LicenseRef-FLUX-Kommunity-1.0"],
+                                        portCodeLicense: "MIT")
 
     static func model(_ id: String, _ capabilities: [Capability], license: LicenseStamp = apache, maturity: Maturity = .prod,
                       guidance: Double? = nil, maxPixels: Int = 2_100_000, maxInputs: Int = 1, gb: Double = 2) -> ModelInfo {
@@ -59,6 +61,8 @@ actor FakeModels: ImageModelDirectory, ModelRouter {
         model("z-image", [.textToImage], guidance: 4, gb: 12),
         model("moss-image-sft", [.textToImage], guidance: 3, gb: 10),
         model("qwen-image-2.1", [.textToImage], license: research, guidance: 1, gb: 30),
+        model("flux-3-klein", [.textToImage, .imageEdit], license: kommunity, maturity: .wip, guidance: 1,
+              maxPixels: 1152 * 1152, maxInputs: 10, gb: 27),
         model("boogu", [.imageEdit], maturity: .wip, guidance: 4, gb: 20),
         model("mage-flow-edit-turbo", [.imageEdit], guidance: 1, maxPixels: 1024 * 1024, maxInputs: 3, gb: 14),
         model("lama-inpaint", [.imageInpaint]),

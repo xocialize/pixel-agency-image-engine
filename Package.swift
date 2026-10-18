@@ -25,7 +25,7 @@ let package = Package(
         // ≥ 0.5.1: an enhancer result (VOSR2 behind the text guard) keeps a 16-bit request's depth (AB-T-0233).
         // ≥ 0.6.0: Anime4K VL (`anime4k-upscale`), Forge Optimizer's Instant tier, in the catalog by name (AB-A-0183).
         // ≥ 0.7.0: MOSS-Image SFT and Base (`moss-image-sft`, `moss-image-base`), best tier by name (AB-T-0307, in-app AB-R-0570).
-        .package(url: "https://github.com/xocialize/mlx-image-runtime.git", from: "0.7.0"),
+        .package(url: "https://github.com/xocialize/mlx-image-runtime.git", from: "0.9.0"),
         // ForgeCore's still enhancer: generative upscales behind the text-legibility guard (AB-D-0111). ≥ 0.35.0: the 16-bit
         // model boundary (AB-A-0158) — its graph brings mlx-engine-swift 0.67.0 (`.rawRGBA16`, contract 1.52.0) and
         // mlx-realplksr-swift 0.2.0, the first upscaler that keeps 16 bits. ≥ 0.36.0: mlx-nerve-swift and mlx-heart-swift

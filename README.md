@@ -83,13 +83,17 @@ learned upscalers on quality. Every offer carries its licence in MES terms (Base
 ### Research models (opt-in)
 
 With `--allow-research`, research-licensed and work-in-progress models are offered too. That covers Qwen-Image 2.1
-Turbo (8 steps) and Qwen-Image 2.1 (40 steps), SenseNova U1, Ming, Boogu and the like. The flag is the
+Turbo (8 steps) and Qwen-Image 2.1 (40 steps), FLUX 3 Klein (`flux-3-klein`, `image.generate` and `image.edit`),
+SenseNova U1, Ming, Boogu and the like. The flag is the
 operator accepting their terms (Base §10.2 `accepted_required`).
 
 They are offered **`named_only`** (Base §6 rule 2): they run only when a request names them, and default choice
 never picks one. Their offers say `commercial_use: false`, with the terms URL and a plain-language `notice`
 ("Research licence (…): not for commercial use. Read the terms before you use or share results."; work-in-progress
-models add that results may change), so a client can show it. A request with `policy.license: commercial-use` is refused `policy_unmet` if it names one.
+models add that results may change), so a client can show it. FLUX 3 Klein's FLUX Kommunity licence gets its own
+notice: commercial use of outputs is allowed only for businesses under US$5M revenue that filter content and disclose AI
+generation, and outputs never train another model. The engine can't tell whether its operator qualifies, so the
+offer still says `commercial_use: false`. A request with `policy.license: commercial-use` is refused `policy_unmet` if it names one.
 
 ```bash
 mes run image.generate -i prompt="a lighthouse at dusk" --model qwen-image-2.1

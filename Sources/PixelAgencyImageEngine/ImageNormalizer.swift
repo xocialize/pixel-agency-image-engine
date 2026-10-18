@@ -190,6 +190,9 @@ public struct ImageNormalizer: MediaEngine {
                                notice: notice(info, spdx: spdx), acceptedRequired: permissive ? nil : true)
     }
 
+    /// The FLUX Kommunity License's package-local identifier (flux3-klein-swift `SPDXLicense.fluxKommunity`).
+    static let fluxKommunity = "LicenseRef-FLUX-Kommunity-1.0"
+
     /// What a person should know before using a model's results, in plain words. (The runtime's own advisories are
     /// log lines for the operator, not notices.)
     static func notice(_ info: ModelInfo, spdx: String) -> String? {
@@ -197,7 +200,17 @@ public struct ImageNormalizer: MediaEngine {
         switch info.license.licenseClass {
         case .permissive: break
         case .evalAcknowledged: parts.append("Evaluation licence (\(spdx)): for evaluation only, not for commercial use.")
-        default: parts.append("Research licence (\(spdx)): not for commercial use. Read the terms before you use or share results.")
+        default:
+            if info.license.weightLicenses.contains(fluxKommunity) {
+                // FLUX Kommunity (FLUX 3 Klein, AB-D-0151): not a research-only licence, but the engine can't tell
+                // whether its operator qualifies for the commercial-outputs exception, so the offer stays
+                // commercial_use: false and the notice names the exception.
+                parts.append("FLUX Kommunity licence: non-commercial use; commercial use of outputs only for businesses "
+                    + "under US$5M revenue that filter content and disclose AI generation; never use outputs to train "
+                    + "another image model. Read the terms before you use or share results.")
+            } else {
+                parts.append("Research licence (\(spdx)): not for commercial use. Read the terms before you use or share results.")
+            }
         }
         if info.maturity == .wip { parts.append("Work in progress: results may change between versions.") }
         return parts.isEmpty ? nil : parts.joined(separator: " ")
