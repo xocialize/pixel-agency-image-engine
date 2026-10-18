@@ -1,5 +1,5 @@
 {
-  "originHash" : "02e7b9dfeb611b18985567b92a41454ae439c1e27aa55663c6400ad0a6052eb2",
+  "originHash" : "f2ff87f2e72677275f9f4535c5c8f6edf5114a4b1cb4184f3809c833d94ac035",
   "pins" : [
     {
       "identity" : "anima-mlx-swift",
@@ -114,8 +114,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/flux3-klein-swift.git",
       "state" : {
-        "revision" : "d3083c2221f041a8ab81ca21271e6e38a603becd",
-        "version" : "0.5.0"
+        "revision" : "93f34b9fe3372fee24e1d822cef25791e58769cb",
+        "version" : "0.6.1"
       }
     },
     {
@@ -348,8 +348,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-image-runtime.git",
       "state" : {
-        "revision" : "f01b6eabfb8883589cc2a0f205fef96c7f5d4920",
-        "version" : "0.12.0"
+        "revision" : "8a521aba4bb66457db5c521b65b77d8dd3f65082",
+        "version" : "0.13.0"
       }
     },
     {

@@ -28,7 +28,7 @@ let package = Package(
         // ≥ 0.7.0: MOSS-Image SFT and Base (`moss-image-sft`, `moss-image-base`), best tier by name (AB-T-0307, in-app AB-R-0570).
         // ≥ 0.10.0: FLUX 3 Klein (`flux-3-klein`) on flux3-klein-swift 0.3.0, the row-band VAE decode: output up to
         // 2048², declared activation 12.0 GB, int4 admitted on a 24 GB Mac (AB-R-0579).
-        .package(url: "https://github.com/xocialize/mlx-image-runtime.git", from: "0.12.0"),
+        .package(url: "https://github.com/xocialize/mlx-image-runtime.git", from: "0.13.0"),
         // ForgeCore's still enhancer: generative upscales behind the text-legibility guard (AB-D-0111). ≥ 0.35.0: the 16-bit
         // model boundary (AB-A-0158) — its graph brings mlx-engine-swift 0.67.0 (`.rawRGBA16`, contract 1.52.0) and
         // mlx-realplksr-swift 0.2.0, the first upscaler that keeps 16 bits. ≥ 0.36.0: mlx-nerve-swift and mlx-heart-swift

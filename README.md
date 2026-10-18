@@ -37,6 +37,9 @@ the loopback interface. Models download into the shared models folder on first u
 
 Mage-Flow's content filter is off by default (mlx-image-runtime 0.3.4, AB-D-0122); `MLXIMG_MAGE_CONTENT_FILTER=1`
 turns it on, and a refusal then fails the job with the filter's verdict.
+FLUX 3 Klein's safety checks (BFL's own: characters, brands and public figures in the prompt, references and output,
+plus an NSFW classifier) are off by default too (0.2.16, mlx-image-runtime 0.13.0). `MLXIMG_FLUX3_SAFETY=1` turns them on.
+A flag then fails the job with the check's message, and the check adds about 2 s per job.
 
 `MLXIMG_WEIGHTS_ROOT` points the runtime at local weight snapshots instead of downloading. It also changes Z-Image's
 quant: with a local snapshot the DiT runs bf16 (about 20.5 GB resident), and without one the runtime downloads
