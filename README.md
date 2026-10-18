@@ -94,7 +94,8 @@ models add that results may change), so a client can show it. FLUX 3 Klein's FLU
 notice: commercial use of outputs is allowed only for businesses under US$5M revenue that filter content and disclose AI
 generation, and outputs never train another model. The engine can't tell whether its operator qualifies, so the
 offer still says `commercial_use: false`. Since 0.2.14 (flux3-klein-swift 0.5.0) a short prompt is fine for FLUX 3 Klein: BFL's
-Apache-2.0 prompt upsampler (int8) expands each request into the full scene caption first, about 10 s per request. A request with `policy.license: commercial-use` is refused `policy_unmet` if it names one.
+Apache-2.0 prompt upsampler (int8) expands each request into the full scene caption first, about 10 s per request. Since 0.2.15 (media-engine-spec 0.2.0) the offer's `notes` say so, and the MCP tool descriptions show each model's
+licence notice and notes, so an agent sees the terms and the prompting rules before it names the model. A request with `policy.license: commercial-use` is refused `policy_unmet` if it names one.
 
 ```bash
 mes run image.generate -i prompt="a lighthouse at dusk" --model qwen-image-2.1

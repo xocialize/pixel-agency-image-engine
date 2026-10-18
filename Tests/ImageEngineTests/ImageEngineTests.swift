@@ -105,7 +105,11 @@ struct ImageEngineTests {
                 #expect(flux.license.spdx == "LicenseRef-FLUX-Kommunity-1.0")
                 #expect(flux.license.notice?.hasPrefix("FLUX Kommunity licence: non-commercial use; commercial use of outputs only for businesses under US$5M revenue") == true)
                 #expect(flux.license.notice?.hasSuffix("Work in progress: results may change between versions.") == true)
+                // Its prompting guidance (AB-A-0186): short requests are fine, quoted text renders; no licence wording.
+                let notes = try #require(flux.notes)
+                #expect(notes.hasPrefix("Short requests are fine") && notes.contains("in quotes") && !notes.contains("licen"))
             }
+            #expect(qwen.notes == nil, "a model without guidance offers no notes")
             #expect(probe.descriptor("image.edit")?.inputs.first { $0.name == "images" }?.max == 10)
 
             // Unnamed at best quality: the measured best (Z-Image Turbo), never the research model.

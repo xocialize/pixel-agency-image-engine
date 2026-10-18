@@ -16,7 +16,8 @@ let package = Package(
         .executable(name: "pixel-agency-image-engine", targets: ["ImageEngineCLI"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/xocialize/media-engine-spec.git", from: "0.1.3"),
+        // ≥ 0.2.0: ModelOffer.notes, and MCP tool descriptions carry each offer's licence notice and notes (AB-A-0186).
+        .package(url: "https://github.com/xocialize/media-engine-spec.git", from: "0.2.0"),
         // ≥ 0.3.9: CIDNet relights any image size, where 570×320 used to kill the engine (AB-T-0223); ≥ 0.3.8:
         // Z-Image, Klein and Qwen-Image report denoise step progress (AB-A-0139); ≥ 0.3.7: the restore
         // fleet reads the weights the engine downloaded instead of fetching a second copy (AB-A-0112); ≥ 0.3.4:

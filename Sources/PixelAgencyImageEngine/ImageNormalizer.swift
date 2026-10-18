@@ -91,7 +91,7 @@ public struct ImageNormalizer: MediaEngine {
                        memoryClass: Self.memoryClass(info.footprintBytes), speedClass: Self.speedClass(spec, info),
                        qualityTiers: spec.tiers[info.id.rawValue] ?? spec.otherTiers,
                        isDefault: info.id.rawValue == defaultID ? true : nil,
-                       namedOnly: info.isDefaultRoutable ? nil : true)
+                       namedOnly: info.isDefaultRoutable ? nil : true, notes: Self.notes[info.id.rawValue])
         }
         offers.sort { a, b in
             func rank(_ o: ModelOffer) -> Int { o.isDefault == true ? 0 : o.namedOnly == true ? 2 : 1 }
@@ -189,6 +189,14 @@ public struct ImageNormalizer: MediaEngine {
                                termsURL: info.sourceRepo.isEmpty ? nil : "https://huggingface.co/\(info.sourceRepo)",
                                notice: notice(info, spdx: spdx), acceptedRequired: permissive ? nil : true)
     }
+
+    /// Per-model usage guidance for the offer's `notes` (Base §6 rule 5): how to prompt the model, in a sentence or two.
+    /// Licence terms stay in `license.notice`; limits stay in the descriptor.
+    static let notes: [String: String] = [
+        "flux-3-klein": "Short requests are fine: the engine runs BFL's prompt upsampler, which expands each one into the "
+            + "full scene caption the model needs (about 10 s). Put text to render in quotes, e.g. a sign reading \"OPEN\"; "
+            + "a layout of bounding boxes may go in the prompt as JSON.",
+    ]
 
     /// The FLUX Kommunity License's package-local identifier (flux3-klein-swift `SPDXLicense.fluxKommunity`).
     static let fluxKommunity = "LicenseRef-FLUX-Kommunity-1.0"
