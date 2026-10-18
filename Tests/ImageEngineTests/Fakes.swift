@@ -62,7 +62,7 @@ actor FakeModels: ImageModelDirectory, ModelRouter {
         model("moss-image-sft", [.textToImage], guidance: 3, gb: 10),
         model("qwen-image-2.1", [.textToImage], license: research, guidance: 1, gb: 30),
         model("flux-3-klein", [.textToImage, .imageEdit], license: kommunity, maturity: .wip, guidance: 1,
-              maxPixels: 1152 * 1152, maxInputs: 10, gb: 27),
+              maxPixels: 2048 * 2048, maxInputs: 10, gb: 24),
         model("boogu", [.imageEdit], maturity: .wip, guidance: 4, gb: 20),
         model("mage-flow-edit-turbo", [.imageEdit], guidance: 1, maxPixels: 1024 * 1024, maxInputs: 3, gb: 14),
         model("lama-inpaint", [.imageInpaint]),
