@@ -48,7 +48,7 @@ used bf16 snapshots.
 
 ## The app
 
-`App/` is the engine as a Mac app (ENG-9), a thin shell around `ImageEngineHost`. It serves as the headless engine does
+`App/` (0.3.0) is the engine as a Mac app (ENG-9), a thin shell around `ImageEngineHost`. It serves as the headless engine does
 (open mode, port 17610), sandboxed (ENG-11, below). It adds MESEngineUI's console window and a menu-bar item:
 - **Queue:** the job running now, what's waiting in slot order, and recent results, with cancel.
 - **Models:** the enabled set. The engine picks models itself, so you switch models on and off rather than load them.
