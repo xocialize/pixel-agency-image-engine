@@ -18,6 +18,20 @@ public final class ImageRuntime {
         self.normalizer = normalizer; self.service = service; self.forge = forge
     }
 
+    /// The engine's version, as `GET {path}` and provenance report it.
+    public nonisolated static let version = "0.2.16"
+
+    /// A stable engine id (Base §4), made once and kept with the state.
+    public nonisolated static func engineID(in state: URL) throws -> String {
+        let file = state.appendingPathComponent("engine-id")
+        if let id = try? String(contentsOf: file, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines), !id.isEmpty {
+            return id
+        }
+        let id = "eng_" + UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased().prefix(16)
+        try id.write(to: file, atomically: true, encoding: .utf8)
+        return id
+    }
+
     /// The models folder every Pixel Agency engine and ML[X] app shares (Engines-PRD ENG-13), so a model downloaded
     /// once serves them all. `MLXIMG_MODEL_STORE` overrides it.
     public nonisolated static var defaultModelStore: URL {

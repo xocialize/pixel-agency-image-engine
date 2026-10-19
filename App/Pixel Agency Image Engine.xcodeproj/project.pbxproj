@@ -1,0 +1,284 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		49E0F9F82EBADAC0707E0FA2 /* ImageEngineHost in Frameworks */ = {isa = PBXBuildFile; productRef = FAC3C4CACF41B655C3BC40AF /* ImageEngineHost */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		45972426DE2886D4B7A16F2A /* Pixel Agency Image Engine.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Pixel Agency Image Engine.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		6E80E30B9EB44241CBC67AE0 /* Engine */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Engine;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		15118C0618A60C21FBDF8C86 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				49E0F9F82EBADAC0707E0FA2 /* ImageEngineHost in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		C51DE2680B303B7471E17056 = {
+			isa = PBXGroup;
+			children = (
+				6E80E30B9EB44241CBC67AE0 /* Engine */,
+				4CFFD3D0E4B655A12966CABD /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		4CFFD3D0E4B655A12966CABD /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				45972426DE2886D4B7A16F2A /* Pixel Agency Image Engine.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		C21CCA822E7EE26C1944438A /* Pixel Agency Image Engine */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E2D28B6FBC970A503686EB1B /* Build configuration list for PBXNativeTarget "Pixel Agency Image Engine" */;
+			buildPhases = (
+				FC05135970032597AF54B341 /* Sources */,
+				15118C0618A60C21FBDF8C86 /* Frameworks */,
+				CAD2D968EF150B9F79E9DC35 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				6E80E30B9EB44241CBC67AE0 /* Engine */,
+			);
+			name = "Pixel Agency Image Engine";
+			packageProductDependencies = (
+				FAC3C4CACF41B655C3BC40AF /* ImageEngineHost */,
+			);
+			productName = "Pixel Agency Image Engine";
+			productReference = 45972426DE2886D4B7A16F2A /* Pixel Agency Image Engine.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		8229E98F5C4919A28BE915D9 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2700;
+				LastUpgradeCheck = 2700;
+				TargetAttributes = {
+					C21CCA822E7EE26C1944438A = {
+						CreatedOnToolsVersion = 27.0;
+					};
+				};
+			};
+			buildConfigurationList = E390D5DA67BE805C6E71E10F /* Build configuration list for PBXProject "Pixel Agency Image Engine" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = C51DE2680B303B7471E17056;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				F9C0E6FC62D8337C7630E081 /* XCLocalSwiftPackageReference ".." */,
+				2C18A07DF6E8D727275F9445 /* XCLocalSwiftPackageReference "../../media-engine-spec" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 4CFFD3D0E4B655A12966CABD /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				C21CCA822E7EE26C1944438A /* Pixel Agency Image Engine */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		CAD2D968EF150B9F79E9DC35 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		FC05135970032597AF54B341 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		0AA11FE4A342F52F7B542820 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		D26D88332101084A6353D79A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+			};
+			name = Release;
+		};
+		5C9CB4EB3261F4E7192E0F7D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Support/PixelAgencyImageEngine.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = CFZS6RXUCP;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ARCHS = arm64;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Support/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Pixel Agency Image Engine";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.graphics-design";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Dustin Nielson. Apache-2.0 licensed.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Pixel Agency Image Engine advertises itself to Pixel Agency apps and other MES clients on your network.";
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.2.16;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xocialize.pixelagency.image-engine;
+				PRODUCT_NAME = "Pixel Agency Image Engine";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Debug;
+		};
+		978A454A0329900C495FBF3E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Support/PixelAgencyImageEngine.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = CFZS6RXUCP;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ARCHS = arm64;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Support/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Pixel Agency Image Engine";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.graphics-design";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Dustin Nielson. Apache-2.0 licensed.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Pixel Agency Image Engine advertises itself to Pixel Agency apps and other MES clients on your network.";
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.2.16;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xocialize.pixelagency.image-engine;
+				PRODUCT_NAME = "Pixel Agency Image Engine";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		E390D5DA67BE805C6E71E10F /* Build configuration list for PBXProject "Pixel Agency Image Engine" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0AA11FE4A342F52F7B542820 /* Debug */,
+				D26D88332101084A6353D79A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E2D28B6FBC970A503686EB1B /* Build configuration list for PBXNativeTarget "Pixel Agency Image Engine" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5C9CB4EB3261F4E7192E0F7D /* Debug */,
+				978A454A0329900C495FBF3E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		F9C0E6FC62D8337C7630E081 /* XCLocalSwiftPackageReference ".." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ..;
+		};
+		2C18A07DF6E8D727275F9445 /* XCLocalSwiftPackageReference "../../media-engine-spec" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../../media-engine-spec";
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		FAC3C4CACF41B655C3BC40AF /* ImageEngineHost */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ImageEngineHost;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 8229E98F5C4919A28BE915D9 /* Project object */;
+}

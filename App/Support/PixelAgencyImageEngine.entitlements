@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Not sandboxed yet. ENG-11 sandboxes every Pixel Agency engine (README APP-1: network.server and network.client, the
+  spool in the container), and that waits on its first-launch onboarding: a working folder for the model store, held
+  by a security-scoped bookmark, with the shared folder suggested (ENG-13). Until then the app uses the shared models
+  folder directly, as the headless engine does, and the System page's sensor readers (MESEngineUI's SystemSensors trait)
+  can reach the hardware.
+-->
+<plist version="1.0">
+<dict>
+</dict>
+</plist>

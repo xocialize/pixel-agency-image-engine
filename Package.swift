@@ -7,12 +7,15 @@ import PackageDescription
 // normalizer between them: MES operations and vocabulary in, model runs out, the profile's rules enforced.
 //
 //   PixelAgencyImageEngine     the normalizer (a MediaEngine), media I/O, the runtime bootstrap
+//   ImageEngineHost            the engine in an app (ENG-9): MESEngineUI's console and menu-bar item over the runtime;
+//                              App/ is the Mac app around it
 //   pixel-agency-image-engine  the headless engine
 let package = Package(
     name: "PixelAgencyImageEngine",
     platforms: [.macOS(.v26)],
     products: [
         .library(name: "PixelAgencyImageEngine", targets: ["PixelAgencyImageEngine"]),
+        .library(name: "ImageEngineHost", targets: ["ImageEngineHost"]),
         .executable(name: "pixel-agency-image-engine", targets: ["ImageEngineCLI"]),
     ],
     dependencies: [
@@ -54,6 +57,15 @@ let package = Package(
             .product(name: "MESEngineCore", package: "media-engine-spec"),
             .product(name: "ImageServerModels", package: "mlx-image-runtime"),
             .product(name: "ImageServerAPI", package: "mlx-image-runtime"),
+        ]),
+        .target(name: "ImageEngineHost", dependencies: [
+            "PixelAgencyImageEngine",
+            .product(name: "MESCore", package: "media-engine-spec"),
+            .product(name: "MESEngineKit", package: "media-engine-spec"),
+            .product(name: "MESEngineUI", package: "media-engine-spec"),
+            .product(name: "ImageServerAPI", package: "mlx-image-runtime"),
+            .product(name: "ImageServerCatalog", package: "mlx-image-runtime"),
+            .product(name: "ImageServerModels", package: "mlx-image-runtime"),
         ]),
         .executableTarget(name: "ImageEngineCLI", dependencies: [
             "PixelAgencyImageEngine",

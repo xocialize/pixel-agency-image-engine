@@ -46,6 +46,29 @@ quant: with a local snapshot the DiT runs bf16 (about 20.5 GB resident), and wit
 `mlx-community/Z-Image-Turbo-bf16` and quantizes the DiT to int4 on load (about 11.9 GB). The R1b tier measurements
 used bf16 snapshots.
 
+## The app
+
+`App/` is the engine as a Mac app (ENG-9), a thin shell around `ImageEngineHost`. It serves exactly as the headless
+engine does (open mode, port 17610, the same engine id and models folder). It adds MESEngineUI's console window and a
+menu-bar item:
+- **Queue:** the job running now, what's waiting in slot order, and recent results, with cancel.
+- **Models:** the enabled set. The engine picks models itself, so you switch models on and off rather than load them.
+  Research and work-in-progress models start off. Turning one on shows its licence notice and records that you accepted
+  it, and it then runs only when a request names it. Each model's card says what it does at which tier, how to name it,
+  how to prompt it, and whether it's downloaded or in memory. The choices are kept in
+  `~/Library/Application Support/Pixel Agency/Image Engine/State/enabled-models.json`.
+- **System:** live CPU, GPU, memory (with the engine's footprint), disk and sensors.
+
+Closing the window leaves the engine serving from the menu bar. Don't run the app and the headless engine at once:
+they'd both want port 17610.
+
+```bash
+open "App/Pixel Agency Image Engine.xcodeproj"
+```
+
+Until media-engine-spec 0.3.0 is tagged, the project also references `../../media-engine-spec` locally (for
+MESEngineUI). For `swift build`, run `swift package edit media-engine-spec --path ../media-engine-spec`.
+
 ## What it offers
 
 Measured on this Mac (ENG R1b): the evidence for every row is in [`docs/TIERS.md`](docs/TIERS.md).
@@ -250,7 +273,9 @@ offline, that test is skipped.
 
 ## Not yet
 
-- **The menu-bar app and the sandbox** (ENG-9, ENG-11). This is the headless engine.
+- **The sandbox** (ENG-11): the app isn't sandboxed until its first-launch onboarding picks the models folder (ENG-13).
+- **A download-only prefetch.** A model's "Download Now" also loads it, so it waits for an idle engine.
+- **Paired clients and remote providers in the app** (the rest of ENG-9).
 - **Channel clearance** (ENG-14).
 - **A real edit benchmark**, before edit's best tier is final (docs/TIERS.md, Open).
 

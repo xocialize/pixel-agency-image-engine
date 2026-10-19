@@ -59,8 +59,8 @@ struct ImageEngineCommand: AsyncParsableCommand {
         print(deepRestore.isEmpty ? "restore runs at 8 bits"
               : "16-bit restore (output.bit_depth 16): \(deepRestore.joined(separator: ", "))")
 
-        var config = EngineConfiguration(id: try Self.engineID(in: stateDir), name: "Pixel Agency Image Engine",
-                                         implementationName: "pixel-agency-image-engine", implementationVersion: "0.2.16",
+        var config = EngineConfiguration(id: try ImageRuntime.engineID(in: stateDir), name: "Pixel Agency Image Engine",
+                                         implementationName: "pixel-agency-image-engine", implementationVersion: ImageRuntime.version,
                                          spoolDirectory: spoolDir)
         config.stateDirectory = stateDir
         config.port = port
@@ -89,16 +89,5 @@ struct ImageEngineCommand: AsyncParsableCommand {
         try await server.run { port in
             print("pixel-agency-image-engine listening on \(scheme)://\(bindHost):\(port)\(basePath) (\(note))")
         }
-    }
-
-    /// A stable engine id (Base §4), made once and kept with the state.
-    static func engineID(in state: URL) throws -> String {
-        let file = state.appendingPathComponent("engine-id")
-        if let id = try? String(contentsOf: file, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines), !id.isEmpty {
-            return id
-        }
-        let id = "eng_" + UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased().prefix(16)
-        try id.write(to: file, atomically: true, encoding: .utf8)
-        return id
     }
 }

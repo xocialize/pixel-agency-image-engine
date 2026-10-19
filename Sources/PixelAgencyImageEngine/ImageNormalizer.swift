@@ -19,8 +19,13 @@ typealias ISValue = ImageServerAPI.JSONValue
 ///   pixels restored exactly (§1.7), exact ×scale upscales, upright sRGB in and out, alpha re-applied (§1.5).
 public struct ImageNormalizer: MediaEngine {
     public struct Options: Sendable {
-        /// Offer research and work-in-progress models (named-only). Off by default (Engines-PRD OQ-4).
+        /// Offer research and work-in-progress models (named-only). Off by default (Engines-PRD OQ-4). Ignored when
+        /// there's an `enablement`, which decides model by model.
         public var allowResearch = false
+        /// The operator's enabled set (the engine app's Models section, ENG-4): a model that's off isn't offered, and a
+        /// research or work-in-progress model is offered, named-only, once its operator turned it on and accepted its
+        /// terms. nil, as in the headless engine: every model is offered, research ones only with `allowResearch`.
+        public var enablement: ModelEnablement?
         /// Which models stay in memory (ENG-3).
         public var residency = Residency.Policy()
         /// Upscale models whose package keeps 16 bits end to end (it declares `.rawRGBA16`, MLXToolKit contract 1.52.0).
@@ -37,9 +42,11 @@ public struct ImageNormalizer: MediaEngine {
         /// `ImageRuntime.start` asks the runtime (`Creative.unavailableReason`); the extension is left out of
         /// `image.upscale` and its summary says why.
         public var creativeUnavailable: String?
-        public init(allowResearch: Bool = false, residency: Residency.Policy = .init(), sixteenBitUpscalers: Set<String> = [],
-                    sixteenBitRestorers: Set<String> = [], tiledEditors: Set<String> = [], creativeUnavailable: String? = nil) {
+        public init(allowResearch: Bool = false, enablement: ModelEnablement? = nil, residency: Residency.Policy = .init(),
+                    sixteenBitUpscalers: Set<String> = [], sixteenBitRestorers: Set<String> = [], tiledEditors: Set<String> = [],
+                    creativeUnavailable: String? = nil) {
             self.allowResearch = allowResearch
+            self.enablement = enablement
             self.residency = residency
             self.sixteenBitUpscalers = sixteenBitUpscalers
             self.sixteenBitRestorers = sixteenBitRestorers
@@ -73,16 +80,69 @@ public struct ImageNormalizer: MediaEngine {
 
     public func descriptors() async -> [Descriptor] {
         let models = await directory.models()
-        return OperationTable.specs.compactMap { descriptor($0, models: models) }
+        return OperationTable.specs.compactMap { descriptor($0, models: models, offering: offered) }
+    }
+
+    /// The operations as they'd be with every usable model on: what each model does once its operator turns it on (the
+    /// engine app's model cards). Never served.
+    public func catalogDescriptors() async -> [Descriptor] {
+        let models = await directory.models()
+        return OperationTable.specs.compactMap { descriptor($0, models: models, offering: offerable) }
+    }
+
+    /// Every model the runtime registered, with its state: downloaded, resident, or why it can't run here.
+    public func models() async -> [ModelInfo] { await directory.models() }
+
+    /// Whether the operator must opt in to `info` and accept its terms: research and other restricted licences, and work
+    /// in progress. Offered, such a model is `named_only`.
+    public static func isOptIn(_ info: ModelInfo) -> Bool { !info.isDefaultRoutable }
+
+    /// Downloads `id`'s weights and loads it now, instead of on the first job that needs it. Room is made as for a job
+    /// (Residency), and the model is released again after its keep-warm time. `progress` reports downloads (0–1).
+    public func prefetch(_ id: String, progress: @escaping @Sendable (Double) -> Void) async throws {
+        guard let info = await directory.model(ModelID(id)), let capability = info.capabilities.first else {
+            throw MESError(.modelUnavailable, "No model \(id) on this engine.")
+        }
+        let route = try await directory.route(capability, model: info.id)
+        await residency.admit(route)
+        do {
+            try await runner.prepare(route) { p in
+                if p.phase == "downloading", let fraction = p.fraction { progress(fraction) }
+            }
+        } catch {
+            await residency.release(route)
+            throw error
+        }
+        await residency.release(route)
+    }
+
+    /// Releases `id` from memory unless a job is using it. Returns whether it was released.
+    @discardableResult
+    public func unload(_ id: String) async -> Bool {
+        guard let info = await directory.model(ModelID(id)), let capability = info.capabilities.first,
+              let route = try? await directory.route(capability, model: info.id) else { return false }
+        return await residency.unload(route)
+    }
+
+    /// Usable on this Mac at all: registered without a problem, and not quarantined.
+    func offerable(_ info: ModelInfo) -> Bool {
+        info.state.problem == nil && OperationTable.quarantined[info.id.rawValue] == nil
     }
 
     func offered(_ info: ModelInfo) -> Bool {
-        info.state.problem == nil && OperationTable.quarantined[info.id.rawValue] == nil
-            && (info.isDefaultRoutable || options.allowResearch)
+        guard offerable(info) else { return false }
+        if let enablement = options.enablement {
+            return enablement.isEnabled(info.id.rawValue, optIn: Self.isOptIn(info))
+        }
+        return info.isDefaultRoutable || options.allowResearch
     }
 
     func descriptor(_ spec: OperationSpec, models: [ModelInfo]) -> Descriptor? {
-        let candidates = models.filter { spec.serves($0.id.rawValue, capabilities: $0.capabilities) && offered($0) }
+        descriptor(spec, models: models, offering: offered)
+    }
+
+    func descriptor(_ spec: OperationSpec, models: [ModelInfo], offering: (ModelInfo) -> Bool) -> Descriptor? {
+        let candidates = models.filter { spec.serves($0.id.rawValue, capabilities: $0.capabilities) && offering($0) }
         guard !candidates.isEmpty, let profile = ImageProfile.operations.operations[spec.operation] else { return nil }
         let defaultID = spec.defaults.first { id in candidates.contains { $0.id.rawValue == id && $0.isDefaultRoutable } }
             ?? candidates.first { $0.isDefaultRoutable }?.id.rawValue
@@ -151,7 +211,7 @@ public struct ImageNormalizer: MediaEngine {
             if !rules.isEmpty { params["allOf"] = .array(rules) }
         }
         // The creative upscale: offered when its models are here and fit this Mac; otherwise the summary says why.
-        let creative = spec.operation == "image.upscale" && creativeAvailable(models)
+        let creative = spec.operation == "image.upscale" && creativeAvailable(models, offering: offering)
         let creativeOffered = creative && options.creativeUnavailable == nil
         var summary = Self.summaries[spec.operation]
         if creative, let why = options.creativeUnavailable { summary = [summary, why].compactMap { $0 }.joined(separator: " ") }
@@ -169,9 +229,9 @@ public struct ImageNormalizer: MediaEngine {
 
     /// The creative upscale's models are here: its editor (Mage-Flow-Edit-Turbo, for image edits) and its Realistic
     /// (VOSR2).
-    func creativeAvailable(_ models: [ModelInfo]) -> Bool {
-        models.contains { $0.id.rawValue == Creative.editor && $0.capabilities.contains(.imageEdit) && offered($0) }
-            && models.contains { $0.id.rawValue == Creative.realistic && offered($0) }
+    func creativeAvailable(_ models: [ModelInfo], offering: (ModelInfo) -> Bool) -> Bool {
+        models.contains { $0.id.rawValue == Creative.editor && $0.capabilities.contains(.imageEdit) && offering($0) }
+            && models.contains { $0.id.rawValue == Creative.realistic && offering($0) }
     }
 
     static let imageTypes = ["image/png", "image/jpeg", "image/heic", "image/webp", "image/tiff"]
@@ -181,7 +241,7 @@ public struct ImageNormalizer: MediaEngine {
 
     /// A model's licence in MES terms (Base §10.2). Commercial use follows the engine's licence classification:
     /// only models whose weights and code are all permissive allow it. Others ask for acceptance (ENG-14).
-    static func license(_ info: ModelInfo) -> MESCore.License {
+    public static func license(_ info: ModelInfo) -> MESCore.License {
         let stamp = info.license
         let spdx = stamp.weightLicenses.isEmpty ? "NOASSERTION" : stamp.weightLicenses.joined(separator: " AND ")
         let permissive = stamp.licenseClass == .permissive

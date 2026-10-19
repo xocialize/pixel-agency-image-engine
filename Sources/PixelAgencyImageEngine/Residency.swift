@@ -63,6 +63,15 @@ public actor Residency {
         lastUse[package] = .now
     }
 
+    /// Releases `route`'s package now if no job is using it (the operator's "release from memory"). Returns whether it was
+    /// resident and released.
+    public func unload(_ route: RoutedModel) async -> Bool {
+        let package = route.packageID
+        guard idle(package), await runner.residentPackages().contains(package) else { return false }
+        await evict(package, reason: "released by the operator")
+        return true
+    }
+
     /// Releases models idle past their keep-warm time.
     public func sweep() async {
         let now = ContinuousClock.Instant.now
