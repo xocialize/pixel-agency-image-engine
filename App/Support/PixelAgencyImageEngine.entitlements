@@ -1,13 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  Not sandboxed yet. ENG-11 sandboxes every Pixel Agency engine (README APP-1: network.server and network.client, the
-  spool in the container), and that waits on its first-launch onboarding: a working folder for the model store, held
-  by a security-scoped bookmark, with the shared folder suggested (ENG-13). Until then the app uses the shared models
-  folder directly, as the headless engine does, and the System page's sensor readers (MESEngineUI's SystemSensors trait)
-  can reach the hardware.
+  ENG-11: sandboxed like every Pixel Agency app. README APP-1's baseline (the sandbox, user-selected files, app-scope
+  bookmarks) and APP-2's network roles: network.server to serve MES, network.client for model downloads. The models
+  folder is the one the operator picks at first launch, kept as an app-scope bookmark (ImageEngineHost's ModelsFolder);
+  the spool and the engine's state stay in the container. No temporary exceptions (APP-7).
 -->
 <plist version="1.0">
 <dict>
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+	<key>com.apple.security.files.bookmarks.app-scope</key>
+	<true/>
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<key>com.apple.security.network.server</key>
+	<true/>
 </dict>
 </plist>

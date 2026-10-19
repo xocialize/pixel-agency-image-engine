@@ -11,7 +11,9 @@ import PixelAgencyImageEngine
 /// menu-bar item. It serves as the headless engine does, open mode on this Mac, and the operator chooses its enabled set
 /// of models in the console instead of with `--allow-research`.
 ///
-/// The app is a thin shell around this: `ImageEngineHost().start()` at launch, `showConsole()` when it's reopened.
+/// The app is a thin shell around this, sandboxed (ENG-11): `ModelsFolder` resolves the models folder the operator
+/// chose (`ModelsFolderSetupWindow` asks for it first), then `ImageEngineHost(modelStore:).start()`; `showConsole()`
+/// when it's reopened. The engine's state and spool live in the app's container.
 @MainActor
 public final class ImageEngineHost {
     public let console = EngineConsoleModel(info: EngineConsoleInfo(name: "Pixel Agency Image Engine", profile: "Image",
@@ -28,8 +30,9 @@ public final class ImageEngineHost {
 
     /// - Parameters:
     ///   - port: where the engine listens (the headless engine's default, so clients find it the same way).
-    ///   - modelStore: the shared models folder (ENG-13).
-    public init(port: Int = 17610, modelStore: URL = ImageRuntime.defaultModelStore) {
+    ///   - modelStore: the models folder the operator chose (`ModelsFolder`), open for this app. There's no default:
+    ///     inside the sandbox `ImageRuntime.defaultModelStore` is a folder in the container, which no other app shares.
+    public init(port: Int = 17610, modelStore: URL) {
         self.port = port
         self.modelStore = modelStore
     }
@@ -48,10 +51,18 @@ public final class ImageEngineHost {
     /// Stops serving (at quit).
     public func stop() { serverTask?.cancel() }
 
+    /// Stops serving and waits until the port is free, for a restart on another models folder.
+    public func shutdown() async {
+        serverTask?.cancel()
+        await serverTask?.value
+        serverTask = nil
+    }
+
     private func boot() async {
+        // In the app's container (ENG-11): the sandbox redirects Application Support there. So the app has an engine id
+        // and enabled set of its own, apart from a headless engine's.
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Pixel Agency/Image Engine", isDirectory: true)
-        // The headless engine's state folder: the same engine id, so clients that know this engine still do.
         let stateDir = support.appendingPathComponent("State", isDirectory: true)
         do {
             try FileManager.default.createDirectory(at: stateDir, withIntermediateDirectories: true)
@@ -61,8 +72,9 @@ public final class ImageEngineHost {
                                                    options: .init(enablement: enablement))
             self.runtime = runtime
 
-            // Its own spool: a start wipes the spool (Base §13 rule 3), and a headless engine may be using its own.
-            let spool = FileManager.default.temporaryDirectory.appendingPathComponent("pixel-agency-image-engine-app-spool")
+            // The spool stays in the container too (ENG-11), apart from a headless engine's: a start wipes it (Base §13
+            // rule 3).
+            let spool = support.appendingPathComponent("Spool", isDirectory: true)
             var config = EngineConfiguration(id: try ImageRuntime.engineID(in: stateDir), name: console.info.name,
                                              implementationName: "pixel-agency-image-engine",
                                              implementationVersion: ImageRuntime.version, spoolDirectory: spool)

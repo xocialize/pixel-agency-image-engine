@@ -48,16 +48,16 @@ used bf16 snapshots.
 
 ## The app
 
-`App/` is the engine as a Mac app (ENG-9), a thin shell around `ImageEngineHost`. It serves exactly as the headless
-engine does (open mode, port 17610, the same engine id and models folder). It adds MESEngineUI's console window and a
-menu-bar item:
+`App/` is the engine as a Mac app (ENG-9), a thin shell around `ImageEngineHost`. It serves as the headless engine does
+(open mode, port 17610), sandboxed (ENG-11, below). It adds MESEngineUI's console window and a menu-bar item:
 - **Queue:** the job running now, what's waiting in slot order, and recent results, with cancel.
 - **Models:** the enabled set. The engine picks models itself, so you switch models on and off rather than load them.
   Research and work-in-progress models start off. Turning one on shows its licence notice and records that you accepted
   it, and it then runs only when a request names it. Each model's card says what it does at which tier, how to name it,
-  how to prompt it, and whether it's downloaded or in memory. The choices are kept in
-  `~/Library/Application Support/Pixel Agency/Image Engine/State/enabled-models.json`.
-- **System:** live CPU, GPU, memory (with the engine's footprint), disk and sensors.
+  how to prompt it, and whether it's downloaded or in memory. The choices are kept in the app's container, in
+  `State/enabled-models.json`.
+- **System:** live CPU, GPU, memory (with the engine's footprint), disk, temperatures and power. In the sandbox the fans
+  and the SoC power rails read as missing (below).
 
 Closing the window leaves the engine serving from the menu bar. Don't run the app and the headless engine at once:
 they'd both want port 17610.
@@ -65,6 +65,61 @@ they'd both want port 17610.
 ```bash
 open "App/Pixel Agency Image Engine.xcodeproj"
 ```
+
+### Sandbox and the models folder (ENG-11, ENG-13)
+
+- **Entitlements:** README APP-1's baseline (`app-sandbox`, `files.user-selected.read-write`,
+  `files.bookmarks.app-scope`) and APP-2's `network.server` and `network.client`. No temporary exceptions (APP-7).
+- **First launch** asks for the models folder before the engine starts (`ModelsFolderSetupWindow`).
+  - It suggests `~/Library/Application Support/MLXEngine/Models`, where the headless engine, the ML[X] apps and the other
+    Pixel Agency apps keep theirs, so they share weights. `MLXIMG_MODEL_STORE` replaces the suggestion when it's set.
+  - "Use Shared Folder…" opens the panel there, and one click keeps it. Any other folder works, an external volume too.
+  - The folder is kept as an app-scope security-scoped bookmark (`ModelsFolder`, under Desktop's and the editor's key
+    `PixelAgency.modelsFolderBookmark`) and passed to `ImageEngineHost(modelStore:)`.
+- **Every later launch** opens the bookmarked folder (APP-4).
+  - A folder that's missing, in the Trash or on a volume that isn't connected brings the window back: locate it,
+    choose another, or quit.
+  - A folder that moved is used at its new place only once you say so.
+- **Settings** (⌘,) shows the folder and changes it through the same panel (APP-5). A change moves nothing, and it
+  restarts the engine on the new folder, after asking.
+- **In the container:** the engine's state and its spool, in
+  `~/Library/Containers/com.xocialize.pixelagency.image-engine/Data/Library/Application Support/Pixel Agency/Image
+  Engine/`. So the app has an engine id and an enabled set of its own, apart from the headless engine's.
+- **Out of reach:** paths in environment overrides outside the models folder, such as `MLXIMG_WEIGHTS_ROOT`. A
+  Hugging Face token comes only from `HF_TOKEN` or the app's own Keychain, since `~/.cache/huggingface/token` is in
+  the container.
+
+**What the sandbox changes** (2026-10-19, Mac Studio M5 Max, macOS 27.2). MESEngineUI's own readers ran in a probe
+signed with the app's entitlements, against the same probe unsandboxed. The app's System page agrees with the probe.
+Nothing crashes: a refused reader leaves its reading empty ("—", "None reported").
+
+| Reading | Unsandboxed | Sandboxed |
+|---|---|---|
+| Temperatures (IOHIDEventSystem) | 23 sensors | 23 sensors |
+| System input power (AppleSmartBattery `SystemPowerIn`) | 56.3 W | 49.9 W |
+| SoC power rails (IOReport Energy Model) | GPU only, 0.6 W | none |
+| Fans (AppleSMC) | 999 and 1,002 rpm | none |
+| Thermal pressure | Nominal | Nominal |
+| `diskutil info` (volume, drive model) | read | read |
+| SMART details | none on this Mac | none |
+| `system_profiler SPHardwareDataType` | read | read, without `activation_lock_status` (unused) |
+| CPU, memory, GPU and disk counters, model, serial | read | read |
+
+Network, in the sandbox:
+- **Bonjour:** `dns-sd` finds `_mes-engine._tcp` on loopback, at port 17610, with the app's engine id.
+- **Hugging Face:** a model listing returns HTTP 200, and a `resolve/` download through the hub's CDN redirect (7.9 MB)
+  lands in the container.
+
+**Checked in the sandboxed app** (same Mac and date):
+- Onboarding appeared at first launch, with the real `~/Library` path.
+- The engine served on `127.0.0.1:17610`, and a real job ran: `image.upscale` ×2 on NERVE, 512×384 to 1024×768, in 1.5 s.
+- The engine wrote its marker into the bookmarked folder.
+- A relaunch, and a relaunch after the process was killed, opened the same folder with no onboarding.
+- Settings opens the panel as a sheet.
+
+Not yet exercised in the app: choosing an external volume, the restart after a change, the missing and moved
+screens, and a model download into the bookmarked folder. The open panel runs in another process, which UI automation
+can't drive.
 
 ## What it offers
 
@@ -266,11 +321,20 @@ offline, that test is skipped.
 | `Sources/PixelAgencyImageEngine/RunPlan.swift` | Each operation as model runs, and the profile's rules on the results |
 | `Sources/PixelAgencyImageEngine/Media.swift` | Pixels and masks: loading, compositing, padding, marking, encoding |
 | `Sources/PixelAgencyImageEngine/Runtime.swift` | Bootstraps the model runtime and the shared models folder |
+| `Sources/ImageEngineHost` | The engine in the app: the console over the runtime, and the models folder (`ModelsFolder`, onboarding, Settings) |
 | `Sources/ImageEngineCLI` | `pixel-agency-image-engine`, the headless engine |
+| `App/` | The Mac app around `ImageEngineHost`: entitlements, Info.plist, the Xcode project |
 
 ## Not yet
 
-- **The sandbox** (ENG-11): the app isn't sandboxed until its first-launch onboarding picks the models folder (ENG-13).
+- **Fans and SoC power in the sandboxed app.** AppleSMC and IOReport are refused, so the System page has temperatures,
+  system input power and thermal pressure, but no fans or power rails. Getting them back needs a helper outside the
+  sandbox, since a temporary exception is ruled out (APP-7).
+- **A Hugging Face token in the app.** Gated weights, such as FLUX 3 Klein's mlx-community mirror, need one. The
+  sandboxed app has nowhere to enter it yet: MLXEngineUI's `HuggingFaceSettingsView` would fit.
+- **Moving models to a new folder.** Changing the folder moves nothing, and there's no move yet (APP-5).
+- **Live checks of the folder's other paths:** an external volume, the restart after a change, and the missing and
+  moved screens (above).
 - **A download-only prefetch.** A model's "Download Now" also loads it, so it waits for an idle engine.
 - **Paired clients and remote providers in the app** (the rest of ENG-9).
 - **Channel clearance** (ENG-14).

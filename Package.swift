@@ -45,6 +45,8 @@ let package = Package(
         // weightless imageUpscale registration that reads as nothing to download (AB-A-0183).
         .package(url: "https://github.com/xocialize/ForgeCore.git", from: "0.41.1"),
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.5.0"),
+        // The app's onboarding wears the fleet's tokens (already in the graph through MESEngineUI).
+        .package(url: "https://github.com/xocialize/DesignScaffold.git", from: "0.25.0"),
         // The CLI's quant-gate arms (`--quant-gate-arms`, AB-A-0178) configure these packages directly; all three are
         // already in the graph through mlx-image-runtime.
         .package(url: "https://github.com/xocialize/mlx-engine-swift.git", from: "0.67.0"),
@@ -64,6 +66,7 @@ let package = Package(
             .product(name: "MESCore", package: "media-engine-spec"),
             .product(name: "MESEngineKit", package: "media-engine-spec"),
             .product(name: "MESEngineUI", package: "media-engine-spec"),
+            .product(name: "DesignScaffold", package: "DesignScaffold"),
             .product(name: "ImageServerAPI", package: "mlx-image-runtime"),
             .product(name: "ImageServerCatalog", package: "mlx-image-runtime"),
             .product(name: "ImageServerModels", package: "mlx-image-runtime"),
