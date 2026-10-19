@@ -66,9 +66,6 @@ they'd both want port 17610.
 open "App/Pixel Agency Image Engine.xcodeproj"
 ```
 
-Until media-engine-spec 0.3.0 is tagged, the project also references `../../media-engine-spec` locally (for
-MESEngineUI). For `swift build`, run `swift package edit media-engine-spec --path ../media-engine-spec`.
-
 ## What it offers
 
 Measured on this Mac (ENG R1b): the evidence for every row is in [`docs/TIERS.md`](docs/TIERS.md).

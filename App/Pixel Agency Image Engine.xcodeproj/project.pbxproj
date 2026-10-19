@@ -102,7 +102,6 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				F9C0E6FC62D8337C7630E081 /* XCLocalSwiftPackageReference ".." */,
-				2C18A07DF6E8D727275F9445 /* XCLocalSwiftPackageReference "../../media-engine-spec" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4CFFD3D0E4B655A12966CABD /* Products */;
@@ -266,10 +265,6 @@
 		F9C0E6FC62D8337C7630E081 /* XCLocalSwiftPackageReference ".." */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = ..;
-		};
-		2C18A07DF6E8D727275F9445 /* XCLocalSwiftPackageReference "../../media-engine-spec" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = "../../media-engine-spec";
 		};
 /* End XCLocalSwiftPackageReference section */
 
