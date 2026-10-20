@@ -26,7 +26,7 @@ public enum PromptBackbones {
         return CatalogEntry(
             id: id, packageID: packageID, displayName: "Qwen3.5 4B",
             summary: "Rewrites short prompts into the detailed captions image models are trained on, with each model's own "
-                + "profile, before the image model runs (x-pixelagency.prompt_enhance). Alibaba Qwen (Apache-2.0), int4, "
+                + "profile, before the image model runs (prompt_enhance). Alibaba Qwen (Apache-2.0), int4, "
                 + "about 2 GB.",
             capabilities: [.llm], maturity: .prod,
             envelope: SizeEnvelope(maxPixels: 1, multipleOf: 1, maxInputs: 0),

@@ -55,9 +55,8 @@ struct ImageEngineCommand: AsyncParsableCommand {
         let offered = await runtime.normalizer.descriptors()
         print("\(offered.count) operations, \(Set(offered.flatMap { $0.models.map(\.id) }).count) models offered"
               + (allowResearch ? " (research models named-only)" : ""))
-        let adapters = offered.compactMap { d in d.extensions?.first { $0.name == Adapters.name } }
-            .flatMap { $0.schema["x-pixelagency-adapters"]?.arrayValue ?? [] }.compactMap { $0["id"]?.stringValue }
-        print("\(Set(adapters).count) adapters offered (\(Adapters.name))")
+        let adapters = offered.flatMap { $0.models.flatMap { $0.adapters ?? [] }.map(\.id) }
+        print("\(Set(adapters).count) adapters offered")
         let deep = runtime.normalizer.options.sixteenBitUpscalers.sorted()
         print(deep.isEmpty ? "upscale runs at 8 bits" : "16-bit upscale (output.bit_depth 16): \(deep.joined(separator: ", "))")
         let deepRestore = runtime.normalizer.options.sixteenBitRestorers.sorted()

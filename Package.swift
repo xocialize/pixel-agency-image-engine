@@ -22,7 +22,10 @@ let package = Package(
     dependencies: [
         // ≥ 0.2.0: ModelOffer.notes, and MCP tool descriptions carry each offer's licence notice and notes (AB-A-0186).
         // ≥ 0.3.0: MESEngineUI, the engine app's console; MESEngineServer's operator API; ModelEnablement (AB-D-0154).
-        .package(url: "https://github.com/xocialize/media-engine-spec.git", from: "0.3.0"),
+        // ≥ 0.4.0: first-class adapters (Base §6.3: ModelOffer.adapters and max_adapters, request.adapters checked and the
+        // model chosen by MESEngineCore, RunContext.adapters, RunOutput.revisions → provenance.adapters), the
+        // prompt_enhance vocabulary and RunOutput.helpers → provenance.helpers (Image §1.9), ic slots (Image §1.10).
+        .package(url: "https://github.com/xocialize/media-engine-spec.git", from: "0.4.0"),
         // ≥ 0.3.9: CIDNet relights any image size, where 570×320 used to kill the engine (AB-T-0223); ≥ 0.3.8:
         // Z-Image, Klein and Qwen-Image report denoise step progress (AB-A-0139); ≥ 0.3.7: the restore
         // fleet reads the weights the engine downloaded instead of fetching a second copy (AB-A-0112); ≥ 0.3.4:

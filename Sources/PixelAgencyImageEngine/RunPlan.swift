@@ -16,6 +16,10 @@ struct RunPlan {
     var modelParams: [String: MESValue] = [:]
     /// The seed a generative step used, reported as the job's (Image §2).
     var seedUsed: UInt64?
+    /// Models that shaped the result without producing it (the prompt enhancer's backbone), for `provenance.helpers`.
+    var helpers: [HelperRef] = []
+    /// The pinned commits of the weights that ran, by model or adapter id, for provenance's `revision` fields.
+    var revisions: [String: String] = [:]
     /// Models this job admitted to memory (ENG-3), released when it ends.
     var admitted: [RoutedModel] = []
 
@@ -42,7 +46,13 @@ struct RunPlan {
         default: throw MESError(.unknownOperation, "No plan for \(spec.operation).")
         }
         if !modelParams.isEmpty { effective["model_params"] = .object(modelParams) }
-        return MESEngineCore.RunOutput(outputs: outputs, effective: effective, seed: seedUsed.map { Int($0) }, warnings: warnings)
+        return MESEngineCore.RunOutput(outputs: outputs, effective: effective, seed: seedUsed.map { Int($0) }, warnings: warnings,
+                                       helpers: helpers, revisions: revisions)
+    }
+
+    /// `revision` when it pins a commit (40 hex digits), not a branch.
+    static func pinned(_ revision: String) -> String? {
+        revision.count == 40 && revision.allSatisfy(\.isHexDigit) ? revision : nil
     }
 
     // MARK: - Shared steps
@@ -225,17 +235,31 @@ struct RunPlan {
         let count = context.param("count")?.intValue ?? 1
         let base = seed(count: count)
         // The request's prompt, enhanced for this model (`PromptEnhance`), before the model loads: one heavy model at a time.
-        var prompt = try await enhancedPrompt(context.input("prompt")?.text ?? "", task: .textToImage, seed: base)
+        let typed = context.input("prompt")?.text ?? ""
+        var prompt = try await enhancedPrompt(typed, param: "prompt", task: .textToImage, seed: base)
         let route = try await route(.textToImage)
-        // The request's adapters (`Adapters`): their trigger or template goes into the prompt after enhancement.
-        let adapters = await applyAdapters(route, prompt: &prompt, param: "prompt")
+        // The request's adapters (`Adapters`): their trigger or template goes into the prompt after enhancement; an IC
+        // adapter's slots take the `references`, in order (Image §1.10).
+        var references: [MLXToolKit.Image] = []
+        for (i, input) in (context.inputs["references"] ?? []).enumerated() {
+            guard let url = input.fileURL else { continue }
+            let loaded = try Media.load(url)
+            if loaded.colorConverted { warn(ImageProfile.WarningCode.colorConverted, "Reference \(i + 1) was converted to sRGB.", param: "references") }
+            references.append(Media.modelImage(loaded.pixels))
+        }
+        let adapters = await applyAdapters(route, prompt: &prompt, param: "prompt", images: references)
+        if !adapters.images.isEmpty {
+            warn("references_ignored", "\(adapters.images.count) reference image(s) filled no adapter's slot and weren't used.",
+                 param: "references")
+        }
+        reportPrompt(prompt, typed: typed, param: "prompt")
         let (w, h) = size(for: route, required: true)!
         var params: ISValueObject = ["prompt": .string(prompt)]
         if let negative = negativePrompt(for: route) { params["negativePrompt"] = .string(negative) }
         record(route)
         var outputs: [ProducedOutput] = []
         for i in 0..<count {
-            let result = try image(try await invoke(route, params: params, metaData: requestPromptKeys(route),
+            let result = try image(try await invoke(route, params: params, inputs: adapters.inputs, metaData: requestPromptKeys(route),
                                                     adapters: adapters.adapters, seed: base + UInt64(i),
                                                     width: w, height: h, index: i, count: count))
             outputs.append(try write(result, name: "images", index: i))
@@ -260,9 +284,11 @@ struct RunPlan {
         let size = size(for: route, required: false)
         let base = seed(count: 1)
         // An edit's rewriter would need to see the image (E4): for now this reports `needs_vision` and keeps the instruction.
-        var instruction = try await enhancedPrompt(context.input("instruction")?.text ?? "", task: .imageEdit, seed: base)
+        let typed = context.input("instruction")?.text ?? ""
+        var instruction = try await enhancedPrompt(typed, param: "instruction", task: .imageEdit, seed: base)
         // The request's adapters: an IC adapter takes its slots' images, in order, from the edit's images.
         let adapters = await applyAdapters(route, prompt: &instruction, param: "instruction", images: images)
+        reportPrompt(instruction, typed: typed, param: "instruction")
         var params: ISValueObject = ["prompt": .string(instruction)]
         if let strength = context.param("strength")?.numberValue { params["strength"] = .number(strength) }
         record(route)
@@ -668,6 +694,8 @@ struct RunPlan {
     /// The model-specific detail of a run (Base §10.1: `effective.model_params`).
     mutating func record(_ route: RoutedModel) {
         modelParams["model"] = .string(route.id.rawValue)
+        // provenance.model.revision: the weights' pinned commit, when the model's manifest pins one.
+        if route.id.rawValue == context.model.id, let revision = Self.pinned(route.revision) { revisions[context.model.id] = revision }
         if let steps = route.defaults.steps { modelParams["steps"] = .number(Double(steps)) }
         if let guidance = route.defaults.guidance { modelParams["guidance"] = .number(guidance) }
     }

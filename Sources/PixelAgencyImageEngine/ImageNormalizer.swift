@@ -175,35 +175,19 @@ public struct ImageNormalizer: MediaEngine {
         return supports
     }
 
-    /// The adapters `capability`'s offers take, in the offers' order, each with the models that take it and the
-    /// strengths they all apply; and how many each of those models stacks. Reference-conditioned (IC) adapters only
-    /// where the operation takes images.
-    static func adapterOffers(_ capability: Capability, offers: [String], models: [ModelInfo], takesImages: Bool,
-                              supports: [String: AdapterSupport], offering: (AdapterInfo) -> Bool)
-        -> (offers: [Adapters.Offer], maxAdapters: [String: Int]) {
-        var byID: [String: Adapters.Offer] = [:]
-        var order: [String] = []
-        var maxAdapters: [String: Int] = [:]
-        for id in offers {
-            guard let info = models.first(where: { $0.id.rawValue == id }), let support = supports[id] else { continue }
-            for adapter in info.adapters where adapter.capabilities.contains(capability) && offering(adapter)
-                && (takesImages || adapter.kind != "ic") {
-                let low = max(support.strengthRange.min, adapter.strengthMin ?? -.infinity)
-                let high = min(support.strengthRange.max, adapter.strengthMax ?? .infinity)
-                guard low <= high else { continue }
-                maxAdapters[id] = support.maxCount
-                if var offer = byID[adapter.id] {
-                    offer.models.append(id)
-                    offer.strengthMin = max(offer.strengthMin, low)
-                    offer.strengthMax = min(offer.strengthMax, high)
-                    byID[adapter.id] = offer
-                } else {
-                    byID[adapter.id] = Adapters.Offer(info: adapter, models: [id], strengthMin: low, strengthMax: high)
-                    order.append(adapter.id)
-                }
-            }
-        }
-        return (order.compactMap { byID[$0] }, maxAdapters)
+    /// The adapters model `info` offers for `capability` (Base §6.3): those it takes that `offering` lets through, each
+    /// with the strengths its surface (`support`) and the adapter both allow. `input` is the operation's input an IC
+    /// adapter's slots fill (Image §1.10).
+    static func adapterOffers(_ info: ModelInfo, capability: Capability, support: AdapterSupport, input: String,
+                              offering: (AdapterInfo) -> Bool) -> [AdapterOffer] {
+        info.adapters.filter { $0.capabilities.contains(capability) && offering($0) }
+            .compactMap { Adapters.offer($0, support: support, input: input) }
+    }
+
+    /// How many images one request's IC adapters can take on `offer`: its `max_adapters` adapters with the most slots.
+    static func slotCapacity(_ offer: ModelOffer) -> Int {
+        let slots: [Int] = (offer.adapters ?? []).filter { $0.kind == .ic }.map { $0.slots?.count ?? 0 }
+        return slots.sorted(by: >).prefix(offer.adapterLimit).reduce(0, +)
     }
 
     /// The prompt enhancer can run: a text runner, and its backbone registered, usable here and on.
@@ -241,20 +225,31 @@ public struct ImageNormalizer: MediaEngine {
             func rank(_ o: ModelOffer) -> Int { o.isDefault == true ? 0 : o.namedOnly == true ? 2 : 1 }
             return rank(a) < rank(b)
         }
-        // Adapters (AB-D-0155, L4): on generate and edit, those the offered models take; each offer names its own.
-        var adapters: (offers: [Adapters.Offer], maxAdapters: [String: Int]) = ([], [:])
-        if let capability = Adapters.operations[spec.operation] {
-            adapters = Self.adapterOffers(capability, offers: offers.map(\.id), models: candidates,
-                                          takesImages: spec.inputs["images"] != nil, supports: supports[capability] ?? [:],
-                                          offering: adapterOffering)
+        // Adapters (Base §6.3; AB-D-0155, L4–L5): on generate and edit, each offer lists those its model takes, and how many
+        // it stacks. An IC adapter's slots fill from the profile's adapter input (Image §1.10).
+        let adapterInput = ImageProfile.operations.operations[spec.operation]?.adapterInput
+        if let capability = Adapters.operations[spec.operation], let adapterInput {
             for i in offers.indices {
-                let ids = adapters.offers.filter { $0.models.contains(offers[i].id) }.map(\.info.id)
-                guard !ids.isEmpty else { continue }
-                let line = "Adapters (\(Adapters.name), at most \(adapters.maxAdapters[offers[i].id] ?? 1) per request): "
-                    + ids.joined(separator: ", ") + "."
-                offers[i].notes = [offers[i].notes, line].compactMap { $0 }.joined(separator: " ")
+                guard let info = candidates.first(where: { $0.id.rawValue == offers[i].id }),
+                      let support = supports[capability]?[offers[i].id] else { continue }
+                let list = Self.adapterOffers(info, capability: capability, support: support, input: adapterInput,
+                                              offering: adapterOffering)
+                guard !list.isEmpty else { continue }
+                offers[i].adapters = list
+                offers[i].maxAdapters = support.maxCount
             }
         }
+        // `references` on generate only feed IC adapters' slots, so they're declared while one is offered: at most as many
+        // as the most slots one request's adapters can take.
+        let slotCapacity = offers.map(Self.slotCapacity).max() ?? 0
+        var declaredInputs = spec.inputs
+        if let adapterInput, declaredInputs[adapterInput] == nil, slotCapacity > 0 { declaredInputs[adapterInput] = false }
+        // Prompt enhancement (Image §1.9): `prompt_enhance` wherever the engine may rewrite the prompt or instruction.
+        let offeredAdapters = Set(offers.flatMap { ($0.adapters ?? []).map(\.id) })
+        let adaptersRewrite = candidates.flatMap(\.adapters).contains { offeredAdapters.contains($0.id) && Adapters.rewrites($0) }
+        let enhancesHere = enhancing && spec.operation == "image.generate"
+        let upsamples = offers.contains { $0.id == PromptEnhance.flux3 }
+        let rewrites = PromptEnhance.operations.contains(spec.operation) && (enhancesHere || upsamples || adaptersRewrite)
         var tiers = Set(offers.filter { $0.namedOnly != true }.flatMap(\.qualityTiers))
         if tiers.isEmpty { tiers = Set(offers.flatMap(\.qualityTiers)) }
 
@@ -269,12 +264,18 @@ public struct ImageNormalizer: MediaEngine {
             schema["x-mes-ui"] = .object(Self.hints(name, order: order))
             properties[name] = .object(schema)
         }
+        if rewrites, case .object(var schema)? = ImageProfile.vocabularySchema(ImageProfile.Param.promptEnhance, operation: spec.operation) {
+            schema["description"] = .string(PromptEnhance.paramDescription)
+            schema["x-mes-ui"] = .object(Self.hints(ImageProfile.Param.promptEnhance, order: spec.params.count))
+            properties[ImageProfile.Param.promptEnhance] = .object(schema)
+        }
         let maxInputs = candidates.map(\.envelope.maxInputs).max() ?? 1
         let inputs = profile.inputs.sorted { $0.key < $1.key }.compactMap { name, io -> InputSpec? in
-            guard let required = spec.inputs[name] else { return nil }
+            guard let required = declaredInputs[name] else { return nil }
             return InputSpec(name: name, kind: io.kind, required: required,
                              min: io.kind == .text || io.kind == .data ? nil : (required ? 1 : 0),
-                             max: io.kind == .text || io.kind == .data ? nil : (name == "images" ? maxInputs : 1),
+                             max: io.kind == .text || io.kind == .data ? nil
+                                 : name == "images" ? maxInputs : name == "references" ? slotCapacity : 1,
                              mediaTypes: io.kind == .image ? Self.imageTypes : io.kind == .mask ? ["image/png", "image/jpeg"] : nil)
         }
         let outputs = profile.outputs.sorted { $0.key < $1.key }.map { name, io in
@@ -311,8 +312,7 @@ public struct ImageNormalizer: MediaEngine {
         // The creative upscale: offered when its models are here and fit this Mac; otherwise the summary says why.
         let creative = spec.operation == "image.upscale" && creativeAvailable(models, offering: offering)
         let creativeOffered = creative && options.creativeUnavailable == nil
-        let extensions = (creativeOffered ? [Creative.spec] : []) + (enhancing ? [PromptEnhance.spec] : [])
-            + (adapters.offers.isEmpty ? [] : [Adapters.spec(adapters.offers, maxAdapters: adapters.maxAdapters)])
+        let extensions = creativeOffered ? [Creative.spec] : []
         var summary = Self.summaries[spec.operation]
         if creative, let why = options.creativeUnavailable { summary = [summary, why].compactMap { $0 }.joined(separator: " ") }
         return Descriptor(
@@ -407,11 +407,15 @@ public struct ImageNormalizer: MediaEngine {
         let widgets: [String: String] = ["negative_prompt": "textarea", "seed": "seed", "quality": "picker", "size": "size",
                                          "aspect": "aspect", "megapixels": "slider", "strength": "slider", "count": "stepper",
                                          "scale": "picker", "content": "picker", "kind": "picker", "outputs": "picker",
-                                         "language": "text"]
+                                         "language": "text", "prompt_enhance": "picker"]
         var hints: [String: MESValue] = ["label": .string(name.replacingOccurrences(of: "_", with: " ").capitalized),
                                          "order": .number(Double(order))]
         if let w = widgets[name] { hints["widget"] = .string(w) }
         if ["negative_prompt", "seed", "megapixels", "output"].contains(name) { hints["advanced"] = true }
+        if name == ImageProfile.Param.promptEnhance {
+            hints["label"] = "Enhance prompt"
+            hints["help"] = "Rewrite a short prompt into the detailed caption the model works best with."
+        }
         return hints
     }
 
@@ -436,7 +440,6 @@ public struct ImageNormalizer: MediaEngine {
     public func validate(_ request: JobRequest, descriptor: Descriptor) throws {
         try ImageProfileRules.validate(request, descriptor: descriptor)
         try validateBitDepth(request, descriptor: descriptor)
-        try Adapters.validate(request, descriptor: descriptor)
         // The creative upscale runs at 8 bits: Mage and VOSR2 are 8-bit models (AB-T-0230).
         if request.extensions?[Creative.name] != nil, request.params?["output"]?["bit_depth"]?.intValue == 16 {
             throw MESError(.unsupportedParameter, "The creative upscale runs at 8 bits.", param: "output")
@@ -501,17 +504,11 @@ public struct ImageNormalizer: MediaEngine {
                              candidates: [ModelOffer]) -> ModelOffer? {
         guard let spec = OperationTable.specs.first(where: { $0.operation == request.operation }) else { return nil }
         let tier = request.params?["quality"]?.stringValue.flatMap(QualityTier.init(rawValue:)) ?? .standard
-        // An adapter implies its model (AB-D-0155): the default when it takes them all, else the most preferred offer
-        // that does (`Adapters.validate` made sure there is one).
-        let choices = Adapters.choices(request.extensions)
-        if !choices.isEmpty, let declared = Adapters.offers(in: descriptor) {
-            let taking = candidates.filter { model in
-                choices.allSatisfy { declared.offers[$0.id]?.models.contains(model.id) == true }
-                    && choices.count <= (declared.maxAdapters[model.id] ?? 1)
-            }
-            if taking.contains(where: { $0.id == kitChoice.id }) { return kitChoice }
-            return (spec.preferred(at: tier) + candidates.map(\.id)).lazy.compactMap { id in taking.first { $0.id == id } }.first
-        }
+        // With adapters, MESEngineCore has narrowed `candidates` to the offers that list them all (Base §6.3); of those,
+        // prefer one that stacks as many as asked, so a request isn't refused for a limit another offer would meet.
+        let asked = request.adapters?.count ?? 0
+        let candidates = asked > 1 && candidates.contains(where: { asked <= $0.adapterLimit })
+            ? candidates.filter { asked <= $0.adapterLimit } : candidates
         var preferred: [String] = []
         switch request.operation {
         case "image.restore":
@@ -535,6 +532,7 @@ public struct ImageNormalizer: MediaEngine {
             break
         }
         return (preferred + spec.preferred(at: tier)).lazy.compactMap { id in candidates.first { $0.id == id } }.first
+            ?? (candidates.contains { $0.id == kitChoice.id } ? nil : candidates.first)
     }
 
     public func residentModels() async -> [String] {
@@ -585,7 +583,7 @@ public struct ImageNormalizer: MediaEngine {
             }
         case let e as JobError:
             // The runtime's own adapter check (`RequestMapping.adapterRefs`), should the routed model disagree with submit.
-            if e.code == "unsupported_parameter" { return MESError(.unsupportedParameter, e.message, param: Adapters.name) }
+            if e.code == "unsupported_parameter" { return MESError(.unsupportedParameter, e.message, param: "adapters") }
             return MESError(.engineError, "\(e.message) (\(e.code))")
         case let e as NormalizerError:
             if case .input(let m) = e { return MESError(.inputInvalid, m) }

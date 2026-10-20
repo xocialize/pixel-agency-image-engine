@@ -22,7 +22,19 @@ Progress:
   - **Opt-in adapters:** gated ones, ones whose terms forbid commercial use or don't say, and `candidate`s (all 27 Qwen
     Flash adapters). Each adapter has an `adapter:<id>` card of its own in the console, since MESEngineUI has no
     nested cards.
-  - **Provenance** is `effective.model_params.adapters` until MES 0.4's `provenance.adapters`.
+  - **Provenance** was `effective.model_params.adapters` until MES 0.4's `provenance.adapters`.
+- **L5** shipped in the engine's 0.6.0 (2026-10-19), on media-engine-spec 0.4.0. Adapters are MES 0.4's first-class
+  fields, and prompt enhancement follows Image §1.9:
+  - **Adapters.** `ModelOffer.adapters` and `max_adapters` on each offer; requests send `adapters`. MESEngineCore checks
+    them and chooses the model, so an unknown id is `unsupported_parameter` now. The engine keeps the IC slots (from
+    `images`, or `references` on generate), triggers and templates, and returns each adapter's pinned commit for
+    `provenance.adapters`.
+  - **Prompt enhancement.** The `prompt_enhance` vocabulary is declared wherever the engine may rewrite. A rewrite is
+    reported in `effective.prompt` (or `instruction`) and `effective.prompt_enhance`, and the backbone is a
+    `prompt_enhance` helper in `provenance.helpers`. FLUX 3 Klein's upsampler isn't a helper.
+  - **Removed:** `x-pixelagency.adapters` and `x-pixelagency.prompt_enhance` (no client sent either), and with them
+    `effective.model_params.adapters` and `adapter_prompt`.
+  - Still open: `image.enhance_prompt` (E5).
 
 ## Summary
 

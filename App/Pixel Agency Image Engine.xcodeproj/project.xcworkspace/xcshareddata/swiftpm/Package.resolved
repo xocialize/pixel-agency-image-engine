@@ -1,5 +1,5 @@
 {
-  "originHash" : "2b3f92942034d9d5dab1929b0901a449f3b521f26e4940868e24814eb950c0a9",
+  "originHash" : "b55ac67430a1c1a94126ec42c81a231a8a340dbeb3fb2d8f186c3419469bef1e",
   "pins" : [
     {
       "identity" : "anima-mlx-swift",
@@ -231,8 +231,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/media-engine-spec.git",
       "state" : {
-        "revision" : "c296857caa3cbc630faff26554dbdec83185b989",
-        "version" : "0.3.0"
+        "revision" : "dd058db99ec41c3462158b3a389a13e34a0056d9",
+        "version" : "0.4.0"
       }
     },
     {

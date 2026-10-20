@@ -206,7 +206,8 @@ The normalizer (`ImageNormalizer`, `RunPlan`) holds every model to the profile, 
   - `negative_prompt` reaches only models that use guidance; otherwise it warns `negative_prompt_ignored`.
   - A prompt a model can't use warns `prompt_ignored`.
   - Seeds are reported and stay within 2⁵³ − 1.
-- **Results.** `effective.model_params` records the model, steps and guidance actually used.
+- **Results.** `effective.model_params` records the model, steps and guidance actually used, and
+  `provenance.model.revision` the weights' commit when the model's manifest pins one (0.6.0).
 - **16 bits (upscale, G-6).** `output: {media_type: image/png | image/tiff, bit_depth: 16}` is offered on `image.upscale`
   when a model keeps 16 bits end to end. That means its package declares `.rawRGBA16` (MLXToolKit contract 1.52.0,
   AB-A-0158). The engine reads this from the registered manifests at start and names the models in the `bit_depth`
@@ -293,12 +294,14 @@ The normalizer (`ImageNormalizer`, `RunPlan`) holds every model to the profile, 
     A job that finds the Mac short of free memory after Residency has made room warns `memory_tight`.
   - Needs mlx-image-runtime ≥ 0.5.0 and mage-flow-swift ≥ 0.11.0.
 
-- **Prompt enhancement (0.4.0, AB-D-0155, E2).** Before `image.generate` runs, a short prompt is rewritten into the detailed
-  caption the model was trained on. Each model has its own profile from prompt-enhance-kit
+- **Prompt enhancement (0.4.0, AB-D-0155, E2; Image §1.9 since 0.6.0).** Before `image.generate` runs, a short prompt
+  is rewritten into the detailed caption the model was trained on. Each model has its own profile from prompt-enhance-kit
   (`ProfileLibrary.imageModels()`, prompt-enhance-kit-swift ≥ 0.5.1). The text model that rewrites it, the **backbone**, is Qwen3.5-4B int4
   (`qwen3.5-4b`, Apache-2.0, about 2 GB, through mlx-qwen-llm-swift ≥ 0.6.2). The design is [docs/PROMPTS-AND-ADAPTERS.md](docs/PROMPTS-AND-ADAPTERS.md) §1.5.
-  - **The extension** `x-pixelagency.prompt_enhance {mode: auto | on | off, seed?}`, on `image.generate` and
-    `image.edit`. The engine declares it while the backbone is on. A request without it is `auto`:
+  - **The vocabulary** `prompt_enhance: auto | on | off` (Image §1.9, media-engine-spec ≥ 0.4.0), a param like any
+    other, so MCP tools can pass it too. It's declared wherever the engine may rewrite the text: on `image.generate`
+    while the backbone is on, and on generate or edit while FLUX 3 Klein is offered, or an offered adapter has a trigger
+    or prompt template. A request without it is `auto`:
 
     | Profile | Models | `auto` |
     |---|---|---|
@@ -307,18 +310,29 @@ The normalizer (`ImageNormalizer`, `RunPlan`) holds every model to the profile, 
     | `z-image` (Tongyi's own expander) | z-image-turbo, z-image | as typed; `on` rewrites |
     | `mage-flow` | mage-flow, mage-flow-turbo | as typed; `on` rewrites |
 
-    `off` sends the prompt as typed, and a prompt that's already JSON (a layout) always goes as typed. Models without a
-    profile, such as MOSS-Image and SenseNova, take prompts as typed.
-  - **Reported.** `effective.model_params.prompt_enhancement` is `{applied, outcome, profile, version, backbone, seed,
-    prompt}`, with the rewrite in `prompt`. The warning `prompt_rewritten` says the prompt was changed.
+    `off` sends the text as typed, adapters' triggers and templates included, and a prompt that's already JSON (a
+    layout) always goes as typed. Models without a profile, such as MOSS-Image and SenseNova, take prompts as typed.
+    The 0.4.0–0.5.0 extension `x-pixelagency.prompt_enhance` is gone (no client sent it); a request that still carries
+    it is refused, 422 `unsupported_parameter`.
+  - **Reported** as Image §1.9 asks:
+    - the warning `prompt_rewritten` (param `prompt`, or `instruction`);
+    - the text the model received in `effective.prompt` (or `effective.instruction`);
+    - the mode that applied in `effective.prompt_enhance`;
+    - the backbone in `provenance.helpers` with the role `prompt_enhance`, its licence and pinned revision.
+
+    `effective.model_params.prompt_enhancement` keeps the engine's detail: `{applied, outcome, profile, version,
+    backbone, seed}`.
     - `outcome` is `enhanced`, `passed_through`, `not_recommended`, `off` or `no_profile`, or why a rewrite didn't
-      happen: `needs_vision`, `unavailable`, `failed`, `timed_out` or `empty`.
+      happen: `needs_vision`, `unavailable`, `policy`, `failed`, `timed_out` or `empty`.
     - A failed rewrite never fails the job. The prompt goes as typed, with `prompt_enhance_failed`.
     - `on` that can't be honoured warns `prompt_enhance_ignored`.
-    - Each `image.generate` offer's `notes` say how the engine treats that model's prompts. The MCP tool descriptions
-      carry them too, but MCP tools can't pass extensions yet (MES §15).
-  - **Reproducible.** The rewrite is seeded from the job's seed, or the extension's `seed`, so a fixed seed reproduces
-    the image end to end.
+    - Each `image.generate` offer's `notes` say how the engine treats that model's prompts, and so do the MCP tool
+      descriptions.
+  - **Licence policy.** The backbone is held to the request's policy like the model (Base §10.3): under
+    `policy.license: commercial-use`, a backbone whose terms don't allow it is skipped, with `helper_skipped_by_policy`
+    and `outcome: policy`. Qwen3.5-4B is Apache-2.0, so it runs.
+  - **Reproducible.** The rewrite is seeded from the job's seed, so a fixed seed reproduces the image end to end. (The
+    extension's own `seed` went with it.)
   - **Only the request's own prompt is rewritten.** The engine's own instructions go as written: fill and extend's
     marker instructions, erase by name, and the creative upscale.
   - **Edits** keep their instruction (`needs_vision`): an edit rewriter has to see the image (E4).
@@ -326,9 +340,12 @@ The normalizer (`ImageNormalizer`, `RunPlan`) holds every model to the profile, 
     for the next job (`Residency.Policy.warmHelperBytes`, 4 GB); a larger backbone would be released straight away. A
     prompt that goes as typed never loads it. Once loaded, a rewrite takes about 2 s; the timeout is 60 s.
   - **The backbone is a model like any other.** It has a card in the app's console, it's in the enabled set, and it's
-    downloaded on first use. Turned off, prompts go as typed and the extension isn't declared.
-  - **FLUX 3 Klein** keeps BFL's own upsampler inside its package (`outcome: built_in`). Since 0.4.1 the mode switches
-    it per request, through the package's `upsample` key (mlx-image-runtime ≥ 0.14.0, AB-T-0336):
+    downloaded on first use. Turned off, prompts go as typed, and `prompt_enhance` is declared only where something
+    else may rewrite.
+  - **FLUX 3 Klein** keeps BFL's own upsampler inside its package (`outcome: built_in`). It's part of the model, not a
+    helper, and the package doesn't hand the rewrite back, so it warns `prompt_rewritten` without `effective.prompt`
+    (Image §1.9 allows that). Since 0.4.1 the mode switches it per request, through the package's `upsample` key
+    (mlx-image-runtime ≥ 0.14.0, AB-T-0336):
     - `auto` leaves the engine's setting;
     - `on` asks for it;
     - `off` skips it (`outcome: off`), with `prompt_upsampler_off`: BFL requires it, so a prompt should then be a
@@ -342,48 +359,54 @@ The normalizer (`ImageNormalizer`, `RunPlan`) holds every model to the profile, 
     byte for byte. That was on kit 0.5.0's v1 profiles; 0.5.1's v2 `flux2-klein` and `z-image` stop the closing "No
     text is present." sentence and Z-Image's tag lists (AB-R-0589).
 
-- **Adapters (0.5.0, AB-D-0155, L4).** Requests can apply LoRA adapters from the runtime's curated adapter catalog
-  (mlx-image-runtime ≥ 0.15.0): FLUX.2 Klein's 7 edit adapters and Qwen-Image Flash's 27 style adapters, pinned to a
-  commit and hash-checked. There are no client uploads. The design is
+- **Adapters (0.5.0, AB-D-0155, L4; MES 0.4's first-class adapters since 0.6.0, L5).** Requests can apply LoRA adapters
+  from the runtime's curated adapter catalog (mlx-image-runtime ≥ 0.15.0): FLUX.2 Klein's 7 edit adapters and Qwen-Image
+  Flash's 27 style adapters, pinned to a commit and hash-checked. There are no client uploads. The design is
   [docs/PROMPTS-AND-ADAPTERS.md](docs/PROMPTS-AND-ADAPTERS.md) §2.2. The code is `Sources/PixelAgencyImageEngine/Adapters.swift`.
-  - **The extension** `x-pixelagency.adapters: [{id, strength?}]`, on `image.generate` and `image.edit` when an offered
-    model takes adapters. They apply in order.
-    - Its schema lists the ids on offer and each one's strength range. `x-pixelagency-adapters` carries each adapter's
-      metadata: kind, slots, the models that take it, trigger, prompt template, licence, status, clearance and bytes.
-    - Each model's offer names its adapters in `notes`.
-    - The shape follows MES 0.4's first-class adapters (Base §6.3, still a draft, AB-A-0194), so moving to them is a
-      rename.
+  - **Offers (Base §6.3).** On `image.generate` and `image.edit`, each model offer lists the adapters its model takes
+    in `adapters`, and how many one request may stack in `max_adapters` (4 on Klein and on Flash).
+    Each adapter offer has:
+    - `id`, `title`, and `kind`: `plain`, or `ic` with its `slots`;
+    - `strength {min, max, default}`, where the model's surface and the adapter's own range overlap;
+    - `license`: its own, which applies on top of the model's;
+    - `notes`: where an IC adapter's images come from, its prompt template or trigger, and whether it's a `candidate`.
+  - **Requests** list them in `adapters: [{id, strength?}]`, in the order they apply. MCP tools take the same argument.
 
     ```json
     {"operation": "image.edit", "inputs": {"images": [{"upload": "upl_…"}], "instruction": ""},
-     "extensions": {"x-pixelagency.adapters": [{"id": "flux2-klein:background-remove"}]}}
+     "adapters": [{"id": "flux2-klein:background-remove"}]}
     ```
-  - **An adapter implies its model.** With no model named, the engine picks the default if it takes every adapter,
-    else the most preferred offer that does. For example, a Qwen-Image Flash style adapter routes a generate to Flash.
-    A named-only offer still runs only when named.
-  - **Refused at submit,** as MES 0.4 does:
+  - **An adapter implies its model.** With no model named, MESEngineCore chooses among the offers that list every
+    requested adapter (Base §6.3 rule 2), and the engine refines that choice as for any request, preferring an offer
+    that stacks as many as asked. A Qwen-Image Flash style adapter routes a generate to Flash. A named-only offer still
+    runs only when named.
+  - **Refused at submit,** by MESEngineCore (Base §6.3, Image §1.10):
 
     | Request | Refusal |
     |---|---|
     | An id listed twice | 400 `invalid_request` |
-    | An id not on offer (withdrawn adapters never are) | 422 `out_of_limits` (the schema's enum) |
-    | A named model that doesn't take the adapter, or no model the engine may pick takes the set (e.g. Flash at `draft`) | 422 `unsupported_parameter` |
-    | More adapters than the model stacks, or a strength outside the range | 422 `out_of_limits` |
+    | An id no offer lists (withdrawn adapters never are), one the named model doesn't list, or a set no model the engine may pick takes (e.g. Flash at `draft`) | 422 `unsupported_parameter` |
+    | More adapters than the model's `max_adapters`, or a strength outside the range | 422 `out_of_limits` |
     | `policy.license: commercial-use` with an adapter whose terms don't allow it (`prohibited` or `unknown`) | 422 `policy_unmet` (Base §10.3) |
-    | Too few images for an IC adapter's slots | 400 `invalid_request` |
+    | Too few `images` (edit) or `references` (generate) for an IC adapter's required slots | 400 `invalid_request` |
 
     `conditional` terms (OpenRAIL's use restrictions) pass, with a notice to read them.
   - **Reference-conditioned (IC) adapters,** such as try-on and pose, take their slots, in order, from the edit's
-    `images`. Images left over stay the edit's own.
+    `images` (Image §1.10). Images left over stay the edit's own. On generate, their slots fill from `references`, which
+    the engine declares only while an IC adapter is offered there (none in the catalog yet).
   - **Prompts.**
     - An adapter's prompt template wraps the prompt (`{prompt}`), or stands in for an empty one: Klein's
       `background-remove` with an empty `instruction` runs "Remove the background from the image".
     - Its trigger is added when the prompt lacks it.
-    - Both happen after prompt enhancement, with the warning `prompt_rewritten`; the text that ran is in
-      `effective.model_params.adapter_prompt`.
-  - **Reported.** `effective.model_params.adapters` lists each adapter applied: `{id, title, strength, source, revision,
-    sha256, license}`. `strength` is the one it ran at, the adapter's default when the request named none; `revision`
-    and `sha256` pin the file. This is MES 0.4's `provenance.adapters`, which MES 0.3 has no field for.
+    - Both happen after prompt enhancement, with the warning `prompt_rewritten`, and the text that ran is in
+      `effective.prompt` or `effective.instruction`. `prompt_enhance: off` sends the text as typed, so a client can
+      always have its own words.
+  - **Reported** in `provenance.adapters` (Base §10.1): `{id, title, revision, license, strength}`. `strength` is the
+    one it ran at, the adapter's default when the request named none; `revision` is the pinned commit of the adapter's
+    repo. `effective.model_params.adapters` and `adapter_prompt` from 0.5.0 are gone: no client read them.
+  - **The old extension.** `x-pixelagency.adapters` (0.5.0) isn't declared any more. No client sent it (Pixel Agency
+    Lite and Desktop at their main branches), and accepting it would need the model choice and checks MESEngineCore
+    now does. A request that still carries it is refused, 422 `unsupported_parameter`.
   - **The enabled set.** Each adapter is an `adapter:<id>` entry, with a card of its own after its model's in the
     app's console. The model's card lists its adapters ("Adapters: 5 of 7 on"). An adapter card switches it, and
     Download Now fetches its file.
@@ -393,7 +416,7 @@ The normalizer (`ImageNormalizer`, `RunPlan`) holds every model to the profile, 
     - The headless engine offers opt-in adapters only with `--allow-research`.
   - **Files.** An adapter downloads into the models folder (`adapters/<sha256>/`) the first time a job names it, about
     75–390 MB each.
-  - **Measured live** (2026-10-19, Mac Studio M5 Max, release build, the headless engine). The input was a 512×1024
+  - **Measured live in 0.5.0** (2026-10-19, Mac Studio M5 Max, release build, the headless engine). The input was a 512×1024
     photo of a dog in front of a patterned rug, sent as `image.edit` with `flux2-klein:background-remove`, an empty
     `instruction` and seed 42.
     - It ran on klein-4b. The engine fetched the 73 MB file at its pinned commit into `adapters/79d8cd4a…/`.
@@ -401,7 +424,19 @@ The normalizer (`ImageNormalizer`, `RunPlan`) holds every model to the profile, 
     - The background came out flat white: the top fifth's luma was 254.0, sd 0.1. Klein without the adapter, given the
       same sentence, left a faint fake-transparency grid (247.2, sd 7.0).
     - A fixed seed reproduced both outputs byte for byte.
-    - The refusals in the table above came back as listed.
+    - The refusals came back as 0.5.0's table listed them.
+  - **Live again in 0.6.0** (2026-10-19, same Mac, release build, the headless engine on a spare port), with the same
+    input and seed, sent as first-class `adapters: [{"id": "flux2-klein:background-remove"}]`:
+    - The output was byte-identical to 0.5.0's (sha256 3a56b6cb…), the background flat white (254.0, sd 0.1). It took
+      15.9 s with the file already local and 10.7 s warm.
+    - `provenance.adapters` listed the adapter at strength 1.1 (its default), revision 10f38b4… and its Apache-2.0
+      licence with the NOTICE. `effective.instruction` held the template, with `prompt_rewritten`.
+    - Klein 4B's offer listed all 7 Klein adapters with `max_adapters` 4.
+    - Refusals came back as the table above lists them: an unknown id, one listed twice, strength 2.5, five adapters
+      on Klein, a named model that doesn't take the adapter, and try-on with one image. A request still carrying
+      `x-pixelagency.adapters` was 422 `unsupported_parameter`.
+    - A short Klein generate ("a lighthouse at dusk") was rewritten by the backbone. `provenance.helpers` listed
+      `qwen3.5-4b` (role `prompt_enhance`, Apache-2.0), and `effective.prompt` held the rewrite.
 
 ## Conformance
 
@@ -418,7 +453,9 @@ swift test
 mes-conformance engine http://127.0.0.1:17610/mes/v0
 ```
 
-`swift test` runs the suite against the normalizer over a fake catalog and runner (no MLX). The fake answers like
+`swift test` runs the suite against the normalizer over a fake catalog and runner (no MLX). Since 0.6.0 that's
+media-engine-spec 0.4.0's suite, and with adapters on offer it runs and passes BASE-013 and BASE-029 (adapters),
+IMAGE-012 (`prompt_enhance: off`) and IMAGE-013 (IC slots). The fake answers like
 real packages do, with sizes a little off, alpha dropped and mattes at their own resolution, so the tests prove the
 normalizer's rules rather than the models'. With network access it also registers the real catalog into an empty
 models folder and lists, on the hub, everything each default offer would download, without downloading (AB-T-0221);
@@ -433,8 +470,8 @@ offline, that test is skipped.
 | `Sources/PixelAgencyImageEngine/RunPlan.swift` | Each operation as model runs, and the profile's rules on the results |
 | `Sources/PixelAgencyImageEngine/Media.swift` | Pixels and masks: loading, compositing, padding, marking, encoding |
 | `Sources/PixelAgencyImageEngine/Runtime.swift` | Bootstraps the model runtime and the shared models folder; `EngineTextRunner` runs the backbone |
-| `Sources/PixelAgencyImageEngine/PromptEnhance.swift` | Prompt enhancement: the extension, the profiles' decisions, the backbone call, provenance |
-| `Sources/PixelAgencyImageEngine/Adapters.swift` | Adapters: the extension, licence policy, the model an adapter implies, IC slots, prompts, provenance |
+| `Sources/PixelAgencyImageEngine/PromptEnhance.swift` | Prompt enhancement: `prompt_enhance`, the profiles' decisions, the backbone call and its licence, what's reported |
+| `Sources/PixelAgencyImageEngine/Adapters.swift` | Adapters: offers, licences, the enabled set, IC slots, prompts, pinned revisions |
 | `Sources/PromptBackbones` | The prompt enhancer's backbone as a catalog entry (links MLX through MLXQwenLLM) |
 | `Sources/ImageEngineHost` | The engine in the app: the console over the runtime, and the models folder (`ModelsFolder`, onboarding, Settings) |
 | `Sources/ImageEngineCLI` | `pixel-agency-image-engine`, the headless engine |
@@ -455,11 +492,11 @@ offline, that test is skipped.
 - **Channel clearance** (ENG-14).
 - **A real edit benchmark**, before edit's best tier is final (docs/TIERS.md, Open).
 - **Prompt enhancement, the rest of AB-D-0155:**
+  - `image.enhance_prompt` (Image §3.1, E5), so a client can show and edit a rewrite before it runs;
   - structured profiles on a larger backbone (E3);
   - edit rewriters that see the image (E4);
   - the console line "Prompting: …" as MESEngineUI's own row (it's a tag on each card for now).
 - **Adapters, the rest of AB-D-0155:**
-  - first-class `adapters` and `provenance.adapters` once MES 0.4 is tagged (L5), replacing the extension;
   - adapter cards nested under their model's card in MESEngineUI (they're cards of their own for now);
   - operator-installed adapters (§2.2 item 6);
   - Mage-Flow's adapters, once a Mage registry is vendored.

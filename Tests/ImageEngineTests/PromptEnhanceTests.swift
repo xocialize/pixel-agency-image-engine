@@ -10,18 +10,23 @@ import MLXToolKit
 import PromptEnhanceKit
 import Testing
 
-// Prompt enhancement (AB-D-0155, E2; docs/PROMPTS-AND-ADAPTERS.md §1.5): `x-pixelagency.prompt_enhance` on generate and
-// edit, the model's profile from prompt-enhance-kit, the backbone a model in the catalog, provenance in
-// `effective.model_params.prompt_enhancement`.
+// Prompt enhancement (Image §1.9; AB-D-0155, E2; docs/PROMPTS-AND-ADAPTERS.md §1.5): the `prompt_enhance` vocabulary on
+// generate and edit, the model's profile from prompt-enhance-kit, the backbone a model in the catalog and a helper in
+// provenance, the rewrite in `effective.prompt`, the detail in `effective.model_params.prompt_enhancement`.
 
 @Suite("Prompt enhancement (E2)", .serialized)
 struct PromptEnhanceTests {
-    static func generate(_ prompt: String, model: String? = nil, seed: Int? = 42,
-                         _ ext: [String: MESValue]? = nil) -> JobRequest {
+    static func generate(_ prompt: String, model: String? = nil, seed: Int? = 42, mode: String? = nil,
+                         policy: Policy? = nil) -> JobRequest {
         var params: [String: MESValue] = ["size": ["width": 256, "height": 256]]
         if let seed { params["seed"] = .number(Double(seed)) }
-        return JobRequest(operation: "image.generate", inputs: ["prompt": .text(prompt)], params: params, model: model,
-                          extensions: ext.map { [PromptEnhance.name: .object($0)] })
+        if let mode { params["prompt_enhance"] = .string(mode) }
+        return JobRequest(operation: "image.generate", inputs: ["prompt": .text(prompt)], params: params, model: model, policy: policy)
+    }
+
+    /// Whether `operation` declares the `prompt_enhance` vocabulary.
+    static func declares(_ ops: [Descriptor], _ operation: String) -> Bool {
+        ops.first { $0.operation == operation }?.params["properties"]?["prompt_enhance"] != nil
     }
 
     static func enhancement(_ job: Job) -> MESValue? { job.result?.effective["model_params"]?["prompt_enhancement"] }
@@ -34,32 +39,38 @@ struct PromptEnhanceTests {
 
     static let qwenSuffix = ImageModelProfiles.qwenImage.instructions[.textToImage]!.standard.suffix!
 
-    @Test("Generate and edit declare the extension while the backbone is on; offers say how each model's prompts are treated")
+    @Test("Generate declares prompt_enhance while the backbone is on, edit where something may rewrite it; offers say how each model's prompts are treated")
     func descriptor() async throws {
         let ops = await ImageNormalizer(directory: FakeModels(), runner: FakeRunner(), textRunner: FakeRunner()).descriptors()
-        for operation in ["image.generate", "image.edit"] {
-            let ext = try #require(ops.first { $0.operation == operation }?.extensions?.first { $0.name == PromptEnhance.name })
-            #expect(ext.schema["properties"]?["mode"]?["enum"] == ["auto", "on", "off"] && ext.schema["additionalProperties"] == false)
-        }
-        #expect(ops.filter { !PromptEnhance.operations.contains($0.operation) }
-            .allSatisfy { $0.extensions?.contains { $0.name == PromptEnhance.name } != true })
+        let schema = try #require(ops.first { $0.operation == "image.generate" }?.params["properties"]?["prompt_enhance"])
+        #expect(schema["enum"] == ["auto", "on", "off"] && schema["default"] == "auto")
+        #expect(schema["x-mes-ui"]?["widget"] == "picker" && schema["description"]?.stringValue?.contains("effective.prompt") == true)
+        #expect(!Self.declares(ops, "image.edit"), "no edit model here rewrites an instruction")
+        #expect(ops.filter { !PromptEnhance.operations.contains($0.operation) }.allSatisfy { !Self.declares(ops, $0.operation) })
+        #expect(ops.allSatisfy { $0.extensions?.contains { $0.name == "x-pixelagency.prompt_enhance" } != true })
         let generate = try #require(ops.first { $0.operation == "image.generate" })
         let qwen = try #require(generate.models.first { $0.id == "qwen-image-flash" })
         #expect(qwen.notes?.contains("rewrites a short prompt with the Qwen-Image profile") == true)
-        #expect(generate.models.first { $0.id == "z-image-turbo" }?.notes?.contains("mode on rewrites") == true, "optional")
+        #expect(generate.models.first { $0.id == "z-image-turbo" }?.notes?.contains("prompt_enhance on rewrites") == true, "optional")
         #expect(generate.models.first { $0.id == "moss-image-sft" }?.notes == nil, "no profile")
         #expect(ops.first { $0.operation == "image.edit" }?.models.allSatisfy { $0.notes == nil } == true, "generate's notes only")
         #expect(!ops.flatMap(\.models).contains { $0.id == PromptEnhance.backboneID }, "the backbone serves no operation")
 
-        // No text runner, or the backbone switched off: no extension, and offers say nothing about prompts.
+        // No text runner, or the backbone switched off: nothing rewrites, so nothing declares it, and offers say nothing
+        // about prompts.
         let bare = await ImageNormalizer(directory: FakeModels(), runner: FakeRunner()).descriptors()
-        #expect(bare.allSatisfy { $0.extensions?.contains { $0.name == PromptEnhance.name } != true })
+        #expect(bare.allSatisfy { !Self.declares(bare, $0.operation) })
         let enablement = ModelEnablement(file: nil)
         try enablement.set(PromptEnhance.backboneID, enabled: false, optIn: false)
         let off = await ImageNormalizer(directory: FakeModels(), runner: FakeRunner(), textRunner: FakeRunner(),
                                         options: .init(enablement: enablement)).descriptors()
-        #expect(off.allSatisfy { $0.extensions?.contains { $0.name == PromptEnhance.name } != true })
+        #expect(off.allSatisfy { !Self.declares(off, $0.operation) })
         #expect(off.first { $0.operation == "image.generate" }?.models.first { $0.id == "qwen-image-flash" }?.notes == nil)
+
+        // FLUX 3 Klein's own upsampler rewrites on generate and edit, backbone or not.
+        let research = await ImageNormalizer(directory: FakeModels(), runner: FakeRunner(), options: .init(allowResearch: true))
+            .descriptors()
+        #expect(Self.declares(research, "image.generate") && Self.declares(research, "image.edit"))
     }
 
     @Test("\"a lighthouse at dusk\" on Qwen-Image Flash: rewritten before the model loads, seeded from the job, reported with a warning")
@@ -71,8 +82,13 @@ struct PromptEnhanceTests {
             let record = try #require(Self.enhancement(job))
             #expect(record["applied"] == true && record["outcome"] == "enhanced" && record["profile"] == "qwen-image")
             #expect(record["version"] == 1 && record["backbone"] == .string(PromptEnhance.backboneID) && record["seed"] == 42)
-            #expect(record["prompt"] == .string(expected))
+            #expect(record["prompt"] == nil, "the text is effective.prompt now")
+            // Image §1.9: the text the model received, the mode that applied, the warning, and the backbone as a helper.
+            #expect(job.result?.effective["prompt"] == .string(expected) && job.result?.effective["prompt_enhance"] == "auto")
             #expect(job.warnings.contains { $0.code == "prompt_rewritten" && $0.param == "prompt" })
+            let helper = try #require(job.result?.provenance.helpers?.first)
+            #expect(job.result?.provenance.helpers?.count == 1 && helper.id == PromptEnhance.backboneID && helper.role == "prompt_enhance")
+            #expect(helper.license.spdx == "Apache-2.0" && helper.license.commercialUse == .yes && helper.revision == nil)
             // The kit's request: Qwen's own rewriter around the brief, the enhancer's mode, the job's seed.
             let request = try #require(runner.textCalls.withLock { $0.first })
             #expect(request.mode == .promptEnhance && request.parameters.seed == 42)
@@ -83,13 +99,14 @@ struct PromptEnhanceTests {
         }
     }
 
-    @Test("The enhancer's seed is the job's unless the extension pins one; mode on rewrites for an optional profile")
+    @Test("The enhancer's seed is the job's; prompt_enhance on rewrites for an optional profile")
     func seeds() async throws {
         try await withEngine { probe, runner in
-            _ = try await probe.succeed(Self.generate("a fox", model: "z-image-turbo", seed: 7, ["mode": "on"]))
-            _ = try await probe.succeed(Self.generate("a fox", model: "z-image-turbo", seed: 7, ["mode": "on", "seed": 1234]))
+            _ = try await probe.succeed(Self.generate("a fox", model: "z-image-turbo", seed: 7, mode: "on"))
+            let job = try await probe.succeed(Self.generate("a fox", model: "z-image-turbo", seed: 1234, mode: "on"))
             #expect(runner.textCalls.withLock { $0.map(\.parameters.seed) } == [7, 1234])
             #expect(Self.ranPrompt(runner) == FakeRunner.lighthouse, "Z-Image's profile has no suffix")
+            #expect(job.result?.effective["prompt_enhance"] == "on")
         }
     }
 
@@ -99,17 +116,17 @@ struct PromptEnhanceTests {
         let cases: [(JobRequest, String, warned: Bool)] = [
             (Self.generate("a fox"), "not_recommended", false),                                           // z-image-turbo, optional
             (Self.generate(detailed, model: "qwen-image-flash"), "passed_through", false),
-            (Self.generate(#"{"caption": "a fox", "items": []}"#, model: "qwen-image-flash", ["mode": "on"]), "passed_through", false),
-            (Self.generate("a fox", model: "qwen-image-flash", ["mode": "off"]), "off", false),
+            (Self.generate(#"{"caption": "a fox", "items": []}"#, model: "qwen-image-flash", mode: "on"), "passed_through", false),
+            (Self.generate("a fox", model: "qwen-image-flash", mode: "off"), "off", false),
             (Self.generate("a fox", model: "moss-image-sft"), "no_profile", false),
-            (Self.generate("a fox", model: "moss-image-sft", ["mode": "on"]), "no_profile", true),
+            (Self.generate("a fox", model: "moss-image-sft", mode: "on"), "no_profile", true),
         ]
         for (request, outcome, warned) in cases {
             try await withEngine { probe, runner in
                 let job = try await probe.succeed(request)
                 let record = try #require(Self.enhancement(job))
                 #expect(record["outcome"] == .string(outcome) && record["applied"] == false, "\(outcome)")
-                #expect(record["prompt"] == nil)
+                #expect(record["prompt"] == nil && job.result?.effective["prompt"] == nil && job.result?.provenance.helpers == nil)
                 #expect(Self.ranPrompt(runner) == request.inputs?["prompt"].flatMap { if case .text(let t) = $0 { t } else { nil } })
                 #expect(runner.textCalls.withLock { $0.isEmpty } && !runner.prepared.withLock { $0 }.contains(PromptEnhance.backboneID))
                 #expect(job.warnings.contains { $0.code == "prompt_enhance_ignored" } == warned, "\(outcome)")
@@ -120,13 +137,35 @@ struct PromptEnhanceTests {
 
     @Test("Edits keep their instruction (the rewriter would need to see the image): needs_vision")
     func edit() async throws {
-        try await withEngine { probe, runner in
+        // Edit declares prompt_enhance here because FLUX 3 Klein's upsampler may rewrite an instruction; Klein 4B's doesn't.
+        try await withEngine(research: true) { probe, runner in
             let job = try await probe.succeed(JobRequest(
                 operation: "image.edit", inputs: ["images": image(), "instruction": .text("make it night")],
-                extensions: [PromptEnhance.name: ["mode": "on"]]))
+                params: ["prompt_enhance": "on"], model: "klein-4b"))
             #expect(Self.ranPrompt(runner) == "make it night")
             #expect(Self.enhancement(job)?["outcome"] == "needs_vision" && runner.textCalls.withLock { $0.isEmpty })
-            #expect(job.warnings.contains { $0.code == "prompt_enhance_ignored" })
+            #expect(job.warnings.contains { $0.code == "prompt_enhance_ignored" && $0.param == "prompt_enhance" })
+            #expect(job.result?.effective["prompt_enhance"] == "on" && job.result?.effective["instruction"] == nil)
+        }
+    }
+
+    @Test("Under policy.license commercial-use a backbone whose terms don't allow it is skipped: helper_skipped_by_policy, the prompt as typed")
+    func helperPolicy() async throws {
+        let models = FakeModels(FakeModels.catalog.map { info in
+            guard info.id.rawValue == PromptEnhance.backboneID else { return info }
+            var info = info
+            info.license = FakeModels.research
+            return info
+        })
+        try await withEngine(research: true, models: models) { probe, runner in
+            let job = try await probe.succeed(Self.generate("a lighthouse at dusk", model: "qwen-image-flash",
+                                                            policy: Policy(license: .commercialUse)))
+            #expect(Self.ranPrompt(runner) == "a lighthouse at dusk" && runner.textCalls.withLock { $0.isEmpty })
+            #expect(job.warnings.contains { $0.code == "helper_skipped_by_policy" && $0.param == "prompt_enhance" })
+            #expect(job.result?.provenance.helpers == nil && Self.enhancement(job)?["outcome"] == "policy")
+            // Without the policy the same backbone rewrites, and is listed.
+            let any = try await probe.succeed(Self.generate("a lighthouse at dusk", model: "qwen-image-flash"))
+            #expect(any.result?.provenance.helpers?.first?.license.commercialUse == .no)
         }
     }
 
@@ -158,7 +197,7 @@ struct PromptEnhanceTests {
         }
     }
 
-    @Test("Backbone switched off: auto reports unavailable and uses the prompt as typed; the extension is refused")
+    @Test("Backbone switched off: auto reports unavailable and uses the prompt as typed; prompt_enhance isn't declared, so it's refused")
     func backboneOff() async throws {
         let enablement = ModelEnablement(file: nil)
         try enablement.set(PromptEnhance.backboneID, enabled: false, optIn: false)
@@ -166,7 +205,8 @@ struct PromptEnhanceTests {
             let job = try await probe.succeed(Self.generate("a lighthouse at dusk", model: "qwen-image-flash"))
             #expect(Self.enhancement(job)?["outcome"] == "unavailable" && Self.ranPrompt(runner) == "a lighthouse at dusk")
             #expect(runner.textCalls.withLock { $0.isEmpty })
-            let reply = try await probe.wire.json("POST", "jobs", Self.generate("a fox", model: "qwen-image-flash", ["mode": "on"]))
+            #expect(Self.declares(probe.operations, "image.generate") == false && job.result?.effective["prompt_enhance"] == nil)
+            let reply = try await probe.wire.json("POST", "jobs", Self.generate("a fox", model: "qwen-image-flash", mode: "on"))
             #expect(reply.status == 422)
         }
     }
@@ -212,34 +252,36 @@ struct PromptEnhanceTests {
             var job = try await probe.succeed(Self.generate("a lighthouse at dusk", model: "flux-3-klein"))
             var record = try #require(Self.enhancement(job))
             #expect(record["outcome"] == "built_in" && record["profile"] == "flux3-upsampler" && record["applied"] == true)
-            #expect(job.warnings.contains { $0.code == "prompt_rewritten" } && upsample() == nil)
+            #expect(job.warnings.contains { $0.code == "prompt_rewritten" && $0.param == "prompt" } && upsample() == nil)
             #expect(Self.ranPrompt(runner) == "a lighthouse at dusk" && runner.textCalls.withLock { $0.isEmpty })
+            // Part of the model, not a helper, and its rewrite isn't handed back (Image §1.9 allows that).
+            #expect(job.result?.provenance.helpers == nil && job.result?.effective["prompt"] == nil)
 
             // off: upsample false, not applied, and a warning that its makers require it.
-            job = try await probe.succeed(Self.generate("a lighthouse at dusk", model: "flux-3-klein", ["mode": "off"]))
+            job = try await probe.succeed(Self.generate("a lighthouse at dusk", model: "flux-3-klein", mode: "off"))
             record = try #require(Self.enhancement(job))
             #expect(record["outcome"] == "off" && record["applied"] == false && upsample() == .bool(false))
             #expect(job.warnings.contains { $0.code == "prompt_upsampler_off" } && !job.warnings.contains { $0.code == "prompt_rewritten" })
 
             // on: upsample true.
-            job = try await probe.succeed(Self.generate("a lighthouse at dusk", model: "flux-3-klein", ["mode": "on"]))
+            job = try await probe.succeed(Self.generate("a lighthouse at dusk", model: "flux-3-klein", mode: "on"))
             #expect(Self.enhancement(job)?["applied"] == true && upsample() == .bool(true))
 
             // An edit's own instruction follows the mode too.
             job = try await probe.succeed(JobRequest(
-                operation: "image.edit", inputs: ["images": image(), "instruction": .text("make it night")], model: "flux-3-klein",
-                extensions: [PromptEnhance.name: ["mode": "off"]]))
+                operation: "image.edit", inputs: ["images": image(), "instruction": .text("make it night")],
+                params: ["prompt_enhance": "off"], model: "flux-3-klein"))
             #expect(Self.ranPrompt(runner) == "make it night" && upsample() == .bool(false))
             #expect(Self.enhancement(job)?["outcome"] == "off")
 
-            // A prompt the engine wrote (fill's marker instruction; fill takes no extension) is never upsampled.
+            // A prompt the engine wrote (fill's marker instruction; fill declares no prompt_enhance) is never upsampled.
             _ = try await probe.succeed(JobRequest(
                 operation: "image.fill", inputs: ["image": image(), "mask": .one(.inline(mediaType: "image/png", data: Fixtures.mask())),
                                                   "prompt": .text("a snowy owl")], model: "flux-3-klein"))
             #expect(Self.ranPrompt(runner)?.contains("magenta area with a snowy owl") == true && upsample() == .bool(false))
 
             // Another model declares no such key, so none is sent.
-            _ = try await probe.succeed(Self.generate("a lighthouse at dusk", model: "klein-4b", ["mode": "off"]))
+            _ = try await probe.succeed(Self.generate("a lighthouse at dusk", model: "klein-4b", mode: "off"))
             #expect(runner.calls.withLock { $0.last?.spec.metaData } == nil)
         }
     }

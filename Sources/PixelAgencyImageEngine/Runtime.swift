@@ -19,7 +19,7 @@ public final class ImageRuntime {
     }
 
     /// The engine's version, as `GET {path}` and provenance report it.
-    public nonisolated static let version = "0.5.0"
+    public nonisolated static let version = "0.6.0"
 
     /// A stable engine id (Base §4), made once and kept with the state.
     public nonisolated static func engineID(in state: URL) throws -> String {
@@ -51,7 +51,7 @@ public final class ImageRuntime {
     /// offered research model is `named_only`, so it runs only when a request names it.
     ///
     /// `adapters` is the adapter catalog (`ModelCatalog.adapters()`, AB-D-0155): registered after the packages, so each
-    /// model lists the adapters it takes and `x-pixelagency.adapters` offers them. Their files download into the models
+    /// model lists the adapters it takes and its offers list them (`ModelOffer.adapters`). Their files download into the models
     /// folder when a job first names them, pinned and hash-checked.
     public static func start(modelStore: URL = defaultModelStore, catalog: [CatalogEntry], adapters: [AdapterEntry] = [],
                              options: ImageNormalizer.Options = .init()) async -> ImageRuntime {

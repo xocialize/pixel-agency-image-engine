@@ -62,12 +62,7 @@ struct ImageConsoleBackend: EngineConsoleBackend {
             if backbone { tags.append("Prompt enhancer") }
             // The adapters it takes, by title, with how many are on.
             let adapters = info.adapters.filter { !Adapters.isRefused($0) }
-            // The offer's own line about adapters names those of one operation, by id; the card names them all, by title.
-            var notes = backbone ? PromptEnhance.backboneNote : offer?.notes.flatMap { notes in
-                let mine = notes.range(of: "Adapters (\(Adapters.name)").map { String(notes[..<$0.lowerBound]) } ?? notes
-                let trimmed = mine.trimmingCharacters(in: .whitespaces)
-                return trimmed.isEmpty ? nil : trimmed
-            }
+            var notes = backbone ? PromptEnhance.backboneNote : offer?.notes
             if !adapters.isEmpty {
                 let on = adapters.filter { enablement.isEnabled(Adapters.key($0.id), optIn: Adapters.isOptIn($0)) }.count
                 tags.append("Adapters: \(on) of \(adapters.count) on")
@@ -137,8 +132,8 @@ struct ImageConsoleBackend: EngineConsoleBackend {
             let downloaded = !(await service.engine.adapterNeedsDownload(id: adapter.id))
             let card = EngineModel(
                 id: key, title: adapter.title,
-                summary: "\(what) for \(takers.map(\.displayName).joined(separator: ", ")). Requests name it as \(adapter.id) "
-                    + "in \(Adapters.name).",
+                summary: "\(what) for \(takers.map(\.displayName).joined(separator: ", ")). Requests name it in adapters as "
+                    + "\(adapter.id).",
                 license: Adapters.license(adapter), optIn: optIn,
                 enabled: enablement.isEnabled(key, optIn: optIn), acceptedAt: enablement.acceptedAt(key), roles: roles,
                 notes: Adapters.notes(adapter), footprintBytes: adapter.bytes,
