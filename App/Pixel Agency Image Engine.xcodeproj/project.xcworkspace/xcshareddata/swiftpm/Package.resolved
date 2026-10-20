@@ -1,5 +1,5 @@
 {
-  "originHash" : "a167c05690dd2c61767c2b45813e04558134d00fbf2fdcee1017713af3879657",
+  "originHash" : "2b3f92942034d9d5dab1929b0901a449f3b521f26e4940868e24814eb950c0a9",
   "pins" : [
     {
       "identity" : "anima-mlx-swift",
@@ -96,8 +96,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/flux2-klein-swift.git",
       "state" : {
-        "revision" : "96113ddb1d592640c331011bbdf122ef7fad35dd",
-        "version" : "0.8.1"
+        "revision" : "74d4b23f07dcdce44d27817d00d33977aa8b3260",
+        "version" : "0.10.1"
       }
     },
     {
@@ -186,8 +186,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mage-flow-swift.git",
       "state" : {
-        "revision" : "31f3ba055f9278396300306d613ebfea97f6ed7e",
-        "version" : "0.11.1"
+        "revision" : "3e7e81114175bf788cbffbc15d284fc72b706777",
+        "version" : "0.12.0"
       }
     },
     {
@@ -312,8 +312,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-engine-swift.git",
       "state" : {
-        "revision" : "aba512f37c8228adce4cac682583acea612bd6f7",
-        "version" : "0.67.0"
+        "revision" : "5b8fc5277ec68f7fa0417e03be2cee157dccb2b1",
+        "version" : "0.70.0"
       }
     },
     {
@@ -357,8 +357,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-image-runtime.git",
       "state" : {
-        "revision" : "f69a316fc9eefb849044445a65f79e7bc69caed6",
-        "version" : "0.14.0"
+        "revision" : "9f023944312ab86ea2ebd1302018904134cb2057",
+        "version" : "0.15.0"
       }
     },
     {
@@ -555,8 +555,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/qwen-image-edit-swift.git",
       "state" : {
-        "revision" : "0f13389ae613590124420da9ece42a1ee739658e",
-        "version" : "0.9.4"
+        "revision" : "16584ad025fa6b9ca66bf5f13e052a958f85df30",
+        "version" : "0.11.0"
       }
     },
     {

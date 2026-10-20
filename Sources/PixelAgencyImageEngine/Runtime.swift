@@ -19,7 +19,7 @@ public final class ImageRuntime {
     }
 
     /// The engine's version, as `GET {path}` and provenance report it.
-    public nonisolated static let version = "0.4.1"
+    public nonisolated static let version = "0.5.0"
 
     /// A stable engine id (Base §4), made once and kept with the state.
     public nonisolated static func engineID(in state: URL) throws -> String {
@@ -49,11 +49,15 @@ public final class ImageRuntime {
     ///
     /// The router may run restricted models: what's offered is the normalizer's call (`allowResearch`), and an
     /// offered research model is `named_only`, so it runs only when a request names it.
-    public static func start(modelStore: URL = defaultModelStore, catalog: [CatalogEntry],
+    ///
+    /// `adapters` is the adapter catalog (`ModelCatalog.adapters()`, AB-D-0155): registered after the packages, so each
+    /// model lists the adapters it takes and `x-pixelagency.adapters` offers them. Their files download into the models
+    /// folder when a job first names them, pinned and hash-checked.
+    public static func start(modelStore: URL = defaultModelStore, catalog: [CatalogEntry], adapters: [AdapterEntry] = [],
                              options: ImageNormalizer.Options = .init()) async -> ImageRuntime {
         try? FileManager.default.createDirectory(at: modelStore, withIntermediateDirectories: true)
         let (service, forge) = await ImageEngineService.bootstrap(storeRoot: modelStore, catalog: catalog,
-                                                                  allowRestricted: true)
+                                                                  allowRestricted: true, adapters: adapters)
         // ForgeCore's still enhancer, as ML[X] Image Server runs it: a generative upscale (VOSR2, Nacre) runs behind
         // the text-legibility guard, never bare (AB-D-0111), and reports what ran.
         let enhancer = EngineImageEnhancer(service: forge)

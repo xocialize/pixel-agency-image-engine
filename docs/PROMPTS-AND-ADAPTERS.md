@@ -11,6 +11,18 @@ Progress:
   - FLUX 3 Klein's upsampler is switched per request since the engine's 0.4.1 (AB-T-0336), through the package's
     `upsample` key (mlx-image-runtime 0.14.0, AB-A-0191).
   - Still open: the console line is a tag on each card for now.
+- **L1 to L3** are mlx-engine-swift 0.68.0 (contract 1.53.0; 1.55.0 adds conditioning groups), the L2 packages
+  (flux2-klein-swift 0.10.1, qwen-image-edit-swift 0.11.0, mage-flow-swift 0.12.0, AB-A-0192), and mlx-image-runtime
+  0.15.0's adapter catalog (AB-A-0191).
+- **L4** shipped in the engine's 0.5.0 (2026-10-19): `x-pixelagency.adapters` on generate and edit. See the README's
+  "Adapters" and `Sources/PixelAgencyImageEngine/Adapters.swift`. Where it settles what §2.2 left open:
+  - **Error codes** follow MES 0.4's draft §6.3. A licence refusal is `policy_unmet` (Base §10.3), not
+    `unsupported_parameter`. An id not on offer fails the schema's enum, so it's `out_of_limits` until MES 0.4 makes
+    adapters first-class.
+  - **Opt-in adapters:** gated ones, ones whose terms forbid commercial use or don't say, and `candidate`s (all 27 Qwen
+    Flash adapters). Each adapter has an `adapter:<id>` card of its own in the console, since MESEngineUI has no
+    nested cards.
+  - **Provenance** is `effective.model_params.adapters` until MES 0.4's `provenance.adapters`.
 
 ## Summary
 

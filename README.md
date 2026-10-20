@@ -342,6 +342,67 @@ The normalizer (`ImageNormalizer`, `RunPlan`) holds every model to the profile, 
     byte for byte. That was on kit 0.5.0's v1 profiles; 0.5.1's v2 `flux2-klein` and `z-image` stop the closing "No
     text is present." sentence and Z-Image's tag lists (AB-R-0589).
 
+- **Adapters (0.5.0, AB-D-0155, L4).** Requests can apply LoRA adapters from the runtime's curated adapter catalog
+  (mlx-image-runtime ≥ 0.15.0): FLUX.2 Klein's 7 edit adapters and Qwen-Image Flash's 27 style adapters, pinned to a
+  commit and hash-checked. There are no client uploads. The design is
+  [docs/PROMPTS-AND-ADAPTERS.md](docs/PROMPTS-AND-ADAPTERS.md) §2.2. The code is `Sources/PixelAgencyImageEngine/Adapters.swift`.
+  - **The extension** `x-pixelagency.adapters: [{id, strength?}]`, on `image.generate` and `image.edit` when an offered
+    model takes adapters. They apply in order.
+    - Its schema lists the ids on offer and each one's strength range. `x-pixelagency-adapters` carries each adapter's
+      metadata: kind, slots, the models that take it, trigger, prompt template, licence, status, clearance and bytes.
+    - Each model's offer names its adapters in `notes`.
+    - The shape follows MES 0.4's first-class adapters (Base §6.3, still a draft, AB-A-0194), so moving to them is a
+      rename.
+
+    ```json
+    {"operation": "image.edit", "inputs": {"images": [{"upload": "upl_…"}], "instruction": ""},
+     "extensions": {"x-pixelagency.adapters": [{"id": "flux2-klein:background-remove"}]}}
+    ```
+  - **An adapter implies its model.** With no model named, the engine picks the default if it takes every adapter,
+    else the most preferred offer that does. For example, a Qwen-Image Flash style adapter routes a generate to Flash.
+    A named-only offer still runs only when named.
+  - **Refused at submit,** as MES 0.4 does:
+
+    | Request | Refusal |
+    |---|---|
+    | An id listed twice | 400 `invalid_request` |
+    | An id not on offer (withdrawn adapters never are) | 422 `out_of_limits` (the schema's enum) |
+    | A named model that doesn't take the adapter, or no model the engine may pick takes the set (e.g. Flash at `draft`) | 422 `unsupported_parameter` |
+    | More adapters than the model stacks, or a strength outside the range | 422 `out_of_limits` |
+    | `policy.license: commercial-use` with an adapter whose terms don't allow it (`prohibited` or `unknown`) | 422 `policy_unmet` (Base §10.3) |
+    | Too few images for an IC adapter's slots | 400 `invalid_request` |
+
+    `conditional` terms (OpenRAIL's use restrictions) pass, with a notice to read them.
+  - **Reference-conditioned (IC) adapters,** such as try-on and pose, take their slots, in order, from the edit's
+    `images`. Images left over stay the edit's own.
+  - **Prompts.**
+    - An adapter's prompt template wraps the prompt (`{prompt}`), or stands in for an empty one: Klein's
+      `background-remove` with an empty `instruction` runs "Remove the background from the image".
+    - Its trigger is added when the prompt lacks it.
+    - Both happen after prompt enhancement, with the warning `prompt_rewritten`; the text that ran is in
+      `effective.model_params.adapter_prompt`.
+  - **Reported.** `effective.model_params.adapters` lists each adapter applied: `{id, title, strength, source, revision,
+    sha256, license}`. `strength` is the one it ran at, the adapter's default when the request named none; `revision`
+    and `sha256` pin the file. This is MES 0.4's `provenance.adapters`, which MES 0.3 has no field for.
+  - **The enabled set.** Each adapter is an `adapter:<id>` entry, with a card of its own after its model's in the
+    app's console. The model's card lists its adapters ("Adapters: 5 of 7 on"). An adapter card switches it, and
+    Download Now fetches its file.
+    - **Opt-in** (off until the operator turns it on and accepts its terms): gated adapters, ones whose licence doesn't
+      allow commercial use or doesn't say, and `candidate`s not yet judged on this stack. That includes all 27 Flash
+      adapters.
+    - The headless engine offers opt-in adapters only with `--allow-research`.
+  - **Files.** An adapter downloads into the models folder (`adapters/<sha256>/`) the first time a job names it, about
+    75–390 MB each.
+  - **Measured live** (2026-10-19, Mac Studio M5 Max, release build, the headless engine). The input was a 512×1024
+    photo of a dog in front of a patterned rug, sent as `image.edit` with `flux2-klein:background-remove`, an empty
+    `instruction` and seed 42.
+    - It ran on klein-4b. The engine fetched the 73 MB file at its pinned commit into `adapters/79d8cd4a…/`.
+    - It took 27.2 s cold (the fetch and the model load) and 11.0 s warm.
+    - The background came out flat white: the top fifth's luma was 254.0, sd 0.1. Klein without the adapter, given the
+      same sentence, left a faint fake-transparency grid (247.2, sd 7.0).
+    - A fixed seed reproduced both outputs byte for byte.
+    - The refusals in the table above came back as listed.
+
 ## Conformance
 
 The engine passes the MES conformance suite. Most recently, with prompt enhancement (2026-10-19): 35 passed, 0 failed,
@@ -373,6 +434,7 @@ offline, that test is skipped.
 | `Sources/PixelAgencyImageEngine/Media.swift` | Pixels and masks: loading, compositing, padding, marking, encoding |
 | `Sources/PixelAgencyImageEngine/Runtime.swift` | Bootstraps the model runtime and the shared models folder; `EngineTextRunner` runs the backbone |
 | `Sources/PixelAgencyImageEngine/PromptEnhance.swift` | Prompt enhancement: the extension, the profiles' decisions, the backbone call, provenance |
+| `Sources/PixelAgencyImageEngine/Adapters.swift` | Adapters: the extension, licence policy, the model an adapter implies, IC slots, prompts, provenance |
 | `Sources/PromptBackbones` | The prompt enhancer's backbone as a catalog entry (links MLX through MLXQwenLLM) |
 | `Sources/ImageEngineHost` | The engine in the app: the console over the runtime, and the models folder (`ModelsFolder`, onboarding, Settings) |
 | `Sources/ImageEngineCLI` | `pixel-agency-image-engine`, the headless engine |
@@ -396,6 +458,11 @@ offline, that test is skipped.
   - structured profiles on a larger backbone (E3);
   - edit rewriters that see the image (E4);
   - the console line "Prompting: …" as MESEngineUI's own row (it's a tag on each card for now).
+- **Adapters, the rest of AB-D-0155:**
+  - first-class `adapters` and `provenance.adapters` once MES 0.4 is tagged (L5), replacing the extension;
+  - adapter cards nested under their model's card in MESEngineUI (they're cards of their own for now);
+  - operator-installed adapters (§2.2 item 6);
+  - Mage-Flow's adapters, once a Mage registry is vendored.
 
 Residency (ENG-3) is in: one heavy model at a time, eviction when a load won't fit, and idle models released after 10
 minutes (3 at ≥ 20 GB). Evictions are logged.

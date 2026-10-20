@@ -88,14 +88,20 @@ public struct ImageNormalizer: MediaEngine {
 
     public func descriptors() async -> [Descriptor] {
         let models = await directory.models()
-        return OperationTable.specs.compactMap { descriptor($0, models: models, offering: offered) }
+        let supports = await adapterSupport(models)
+        return OperationTable.specs.compactMap {
+            descriptor($0, models: models, offering: offered, adapters: offeredAdapter, supports: supports)
+        }
     }
 
     /// The operations as they'd be with every usable model on: what each model does once its operator turns it on (the
     /// engine app's model cards). Never served.
     public func catalogDescriptors() async -> [Descriptor] {
         let models = await directory.models()
-        return OperationTable.specs.compactMap { descriptor($0, models: models, offering: offerable) }
+        let supports = await adapterSupport(models)
+        return OperationTable.specs.compactMap {
+            descriptor($0, models: models, offering: offerable, adapters: { !Adapters.isRefused($0) }, supports: supports)
+        }
     }
 
     /// Every model the runtime registered, with its state: downloaded, resident, or why it can't run here.
@@ -145,6 +151,61 @@ public struct ImageNormalizer: MediaEngine {
         return info.isDefaultRoutable || options.allowResearch
     }
 
+    /// An adapter is offered (AB-D-0155, L4): not withdrawn, and on in the operator's enabled set (`adapter:<id>`), where
+    /// an opt-in one (`Adapters.isOptIn`) starts off. Without an enabled set, opt-in adapters only with `allowResearch`.
+    func offeredAdapter(_ adapter: AdapterInfo) -> Bool {
+        guard !Adapters.isRefused(adapter) else { return false }
+        if let enablement = options.enablement {
+            return enablement.isEnabled(Adapters.key(adapter.id), optIn: Adapters.isOptIn(adapter))
+        }
+        return !Adapters.isOptIn(adapter) || options.allowResearch
+    }
+
+    /// What each model that takes adapters accepts, per capability (its surface's `AdapterSupport`: how many it stacks,
+    /// the strengths it applies faithfully), read from its route.
+    func adapterSupport(_ models: [ModelInfo]) async -> [Capability: [String: AdapterSupport]] {
+        var supports: [Capability: [String: AdapterSupport]] = [:]
+        for info in models where !info.adapters.isEmpty {
+            for capability in Set(Adapters.operations.values) where info.capabilities.contains(capability) {
+                if let support = try? await directory.route(capability, model: info.id).adapterSupport {
+                    supports[capability, default: [:]][info.id.rawValue] = support
+                }
+            }
+        }
+        return supports
+    }
+
+    /// The adapters `capability`'s offers take, in the offers' order, each with the models that take it and the
+    /// strengths they all apply; and how many each of those models stacks. Reference-conditioned (IC) adapters only
+    /// where the operation takes images.
+    static func adapterOffers(_ capability: Capability, offers: [String], models: [ModelInfo], takesImages: Bool,
+                              supports: [String: AdapterSupport], offering: (AdapterInfo) -> Bool)
+        -> (offers: [Adapters.Offer], maxAdapters: [String: Int]) {
+        var byID: [String: Adapters.Offer] = [:]
+        var order: [String] = []
+        var maxAdapters: [String: Int] = [:]
+        for id in offers {
+            guard let info = models.first(where: { $0.id.rawValue == id }), let support = supports[id] else { continue }
+            for adapter in info.adapters where adapter.capabilities.contains(capability) && offering(adapter)
+                && (takesImages || adapter.kind != "ic") {
+                let low = max(support.strengthRange.min, adapter.strengthMin ?? -.infinity)
+                let high = min(support.strengthRange.max, adapter.strengthMax ?? .infinity)
+                guard low <= high else { continue }
+                maxAdapters[id] = support.maxCount
+                if var offer = byID[adapter.id] {
+                    offer.models.append(id)
+                    offer.strengthMin = max(offer.strengthMin, low)
+                    offer.strengthMax = min(offer.strengthMax, high)
+                    byID[adapter.id] = offer
+                } else {
+                    byID[adapter.id] = Adapters.Offer(info: adapter, models: [id], strengthMin: low, strengthMax: high)
+                    order.append(adapter.id)
+                }
+            }
+        }
+        return (order.compactMap { byID[$0] }, maxAdapters)
+    }
+
     /// The prompt enhancer can run: a text runner, and its backbone registered, usable here and on.
     func backboneOffered() async -> Bool {
         guard textRunner != nil, let info = await directory.model(ModelID(PromptEnhance.backboneID)) else { return false }
@@ -159,7 +220,9 @@ public struct ImageNormalizer: MediaEngine {
         descriptor(spec, models: models, offering: offered)
     }
 
-    func descriptor(_ spec: OperationSpec, models: [ModelInfo], offering: (ModelInfo) -> Bool) -> Descriptor? {
+    func descriptor(_ spec: OperationSpec, models: [ModelInfo], offering: (ModelInfo) -> Bool,
+                    adapters adapterOffering: (AdapterInfo) -> Bool = { _ in false },
+                    supports: [Capability: [String: AdapterSupport]] = [:]) -> Descriptor? {
         let candidates = models.filter { spec.serves($0.id.rawValue, capabilities: $0.capabilities) && offering($0) }
         guard !candidates.isEmpty, let profile = ImageProfile.operations.operations[spec.operation] else { return nil }
         let defaultID = spec.defaults.first { id in candidates.contains { $0.id.rawValue == id && $0.isDefaultRoutable } }
@@ -177,6 +240,20 @@ public struct ImageNormalizer: MediaEngine {
         offers.sort { a, b in
             func rank(_ o: ModelOffer) -> Int { o.isDefault == true ? 0 : o.namedOnly == true ? 2 : 1 }
             return rank(a) < rank(b)
+        }
+        // Adapters (AB-D-0155, L4): on generate and edit, those the offered models take; each offer names its own.
+        var adapters: (offers: [Adapters.Offer], maxAdapters: [String: Int]) = ([], [:])
+        if let capability = Adapters.operations[spec.operation] {
+            adapters = Self.adapterOffers(capability, offers: offers.map(\.id), models: candidates,
+                                          takesImages: spec.inputs["images"] != nil, supports: supports[capability] ?? [:],
+                                          offering: adapterOffering)
+            for i in offers.indices {
+                let ids = adapters.offers.filter { $0.models.contains(offers[i].id) }.map(\.info.id)
+                guard !ids.isEmpty else { continue }
+                let line = "Adapters (\(Adapters.name), at most \(adapters.maxAdapters[offers[i].id] ?? 1) per request): "
+                    + ids.joined(separator: ", ") + "."
+                offers[i].notes = [offers[i].notes, line].compactMap { $0 }.joined(separator: " ")
+            }
         }
         var tiers = Set(offers.filter { $0.namedOnly != true }.flatMap(\.qualityTiers))
         if tiers.isEmpty { tiers = Set(offers.flatMap(\.qualityTiers)) }
@@ -235,6 +312,7 @@ public struct ImageNormalizer: MediaEngine {
         let creative = spec.operation == "image.upscale" && creativeAvailable(models, offering: offering)
         let creativeOffered = creative && options.creativeUnavailable == nil
         let extensions = (creativeOffered ? [Creative.spec] : []) + (enhancing ? [PromptEnhance.spec] : [])
+            + (adapters.offers.isEmpty ? [] : [Adapters.spec(adapters.offers, maxAdapters: adapters.maxAdapters)])
         var summary = Self.summaries[spec.operation]
         if creative, let why = options.creativeUnavailable { summary = [summary, why].compactMap { $0 }.joined(separator: " ") }
         return Descriptor(
@@ -358,6 +436,7 @@ public struct ImageNormalizer: MediaEngine {
     public func validate(_ request: JobRequest, descriptor: Descriptor) throws {
         try ImageProfileRules.validate(request, descriptor: descriptor)
         try validateBitDepth(request, descriptor: descriptor)
+        try Adapters.validate(request, descriptor: descriptor)
         // The creative upscale runs at 8 bits: Mage and VOSR2 are 8-bit models (AB-T-0230).
         if request.extensions?[Creative.name] != nil, request.params?["output"]?["bit_depth"]?.intValue == 16 {
             throw MESError(.unsupportedParameter, "The creative upscale runs at 8 bits.", param: "output")
@@ -422,6 +501,17 @@ public struct ImageNormalizer: MediaEngine {
                              candidates: [ModelOffer]) -> ModelOffer? {
         guard let spec = OperationTable.specs.first(where: { $0.operation == request.operation }) else { return nil }
         let tier = request.params?["quality"]?.stringValue.flatMap(QualityTier.init(rawValue:)) ?? .standard
+        // An adapter implies its model (AB-D-0155): the default when it takes them all, else the most preferred offer
+        // that does (`Adapters.validate` made sure there is one).
+        let choices = Adapters.choices(request.extensions)
+        if !choices.isEmpty, let declared = Adapters.offers(in: descriptor) {
+            let taking = candidates.filter { model in
+                choices.allSatisfy { declared.offers[$0.id]?.models.contains(model.id) == true }
+                    && choices.count <= (declared.maxAdapters[model.id] ?? 1)
+            }
+            if taking.contains(where: { $0.id == kitChoice.id }) { return kitChoice }
+            return (spec.preferred(at: tier) + candidates.map(\.id)).lazy.compactMap { id in taking.first { $0.id == id } }.first
+        }
         var preferred: [String] = []
         switch request.operation {
         case "image.restore":
@@ -493,7 +583,10 @@ public struct ImageNormalizer: MediaEngine {
             case 400, 422: return MESError(.outOfLimits, e.message, param: e.param)
             default: return MESError(.modelUnavailable, e.message)
             }
-        case let e as JobError: return MESError(.engineError, "\(e.message) (\(e.code))")
+        case let e as JobError:
+            // The runtime's own adapter check (`RequestMapping.adapterRefs`), should the routed model disagree with submit.
+            if e.code == "unsupported_parameter" { return MESError(.unsupportedParameter, e.message, param: Adapters.name) }
+            return MESError(.engineError, "\(e.message) (\(e.code))")
         case let e as NormalizerError:
             if case .input(let m) = e { return MESError(.inputInvalid, m) }
             return MESError(.engineError, e.description)

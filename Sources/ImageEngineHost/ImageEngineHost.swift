@@ -70,7 +70,7 @@ public final class ImageEngineHost {
             let enablement = ModelEnablement(file: stateDir.appendingPathComponent("enabled-models.json"))
             console.status = .starting("Registering models…")
             let runtime = await ImageRuntime.start(modelStore: modelStore, catalog: ModelCatalog.all() + PromptBackbones.entries(),
-                                                   options: .init(enablement: enablement))
+                                                   adapters: ModelCatalog.adapters(), options: .init(enablement: enablement))
             self.runtime = runtime
 
             // The spool stays in the container too (ENG-11), apart from a headless engine's: a start wipes it (Base §13
@@ -84,7 +84,8 @@ public final class ImageEngineHost {
             config.concurrency = 1                       // one heavy model slot (ENG-3)
             config.handlesShutdownSignals = false        // the app stops the server by cancelling its task
             let server = MESEngineServer(engine: runtime.normalizer, configuration: config)
-            let backend = ImageConsoleBackend(server: server, normalizer: runtime.normalizer, enablement: enablement)
+            let backend = ImageConsoleBackend(server: server, normalizer: runtime.normalizer, service: runtime.service,
+                                              enablement: enablement)
             console.status = .starting("Starting the server…")
             let console = self.console
             serverTask = Task {

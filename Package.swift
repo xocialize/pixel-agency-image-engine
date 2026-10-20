@@ -35,7 +35,10 @@ let package = Package(
         // 2048², declared activation 12.0 GB, int4 admitted on a 24 GB Mac (AB-R-0579).
         // ≥ 0.14.0: `JobSpec.metaData`, the per-request keys each model declares (`RoutedModel.requestKeys`): FLUX 3
         // Klein's `upsample` switches its upsampler per request (AB-A-0191, AB-T-0336).
-        .package(url: "https://github.com/xocialize/mlx-image-runtime.git", from: "0.14.0"),
+        // ≥ 0.15.0: the adapter catalog (FLUX.2 Klein's 7, Qwen-Image Flash's 27), `ModelInfo.adapters`, typed
+        // `JobSpec.adapters`, behind `x-pixelagency.adapters` (AB-D-0155 L4). Its graph brings mlx-engine-swift 0.70.0
+        // (contract 1.55.0) and the L2 packages: flux2-klein-swift 0.10.1, qwen-image-edit-swift 0.11.0, mage-flow-swift 0.12.0.
+        .package(url: "https://github.com/xocialize/mlx-image-runtime.git", from: "0.15.0"),
         // ForgeCore's still enhancer: generative upscales behind the text-legibility guard (AB-D-0111). ≥ 0.35.0: the 16-bit
         // model boundary (AB-A-0158) — its graph brings mlx-engine-swift 0.67.0 (`.rawRGBA16`, contract 1.52.0) and
         // mlx-realplksr-swift 0.2.0, the first upscaler that keeps 16 bits. ≥ 0.36.0: mlx-nerve-swift and mlx-heart-swift

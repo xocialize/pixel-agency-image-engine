@@ -18,7 +18,8 @@ struct ImageEngineCommand: AsyncParsableCommand {
 
             Models download to the shared models folder on first use. Research-licensed and work-in-progress models \
             are offered only with --allow-research (you, the operator, accept their terms), and then only to requests \
-            that name them.
+            that name them. So are adapters whose terms you should read first (no commercial use, or not stated) and \
+            candidates not yet judged here.
             """)
 
     @Option(help: "Port (0 = any free port).") var port = 17610
@@ -46,7 +47,7 @@ struct ImageEngineCommand: AsyncParsableCommand {
         let modelStore = store.map { URL(fileURLWithPath: $0, isDirectory: true) } ?? ImageRuntime.defaultModelStore
         print("Registering models (models folder: \(modelStore.path))…")
         let catalog = ModelCatalog.all() + PromptBackbones.entries() + (quantGateArms ? QuantGateArms.entries() : [])
-        let runtime = await ImageRuntime.start(modelStore: modelStore, catalog: catalog,
+        let runtime = await ImageRuntime.start(modelStore: modelStore, catalog: catalog, adapters: ModelCatalog.adapters(),
                                                options: .init(allowResearch: allowResearch))
         for (model, reason) in ImageNormalizer.quarantined.sorted(by: { $0.key < $1.key }) {
             print("not offering \(model): \(reason)")
@@ -54,6 +55,9 @@ struct ImageEngineCommand: AsyncParsableCommand {
         let offered = await runtime.normalizer.descriptors()
         print("\(offered.count) operations, \(Set(offered.flatMap { $0.models.map(\.id) }).count) models offered"
               + (allowResearch ? " (research models named-only)" : ""))
+        let adapters = offered.compactMap { d in d.extensions?.first { $0.name == Adapters.name } }
+            .flatMap { $0.schema["x-pixelagency-adapters"]?.arrayValue ?? [] }.compactMap { $0["id"]?.stringValue }
+        print("\(Set(adapters).count) adapters offered (\(Adapters.name))")
         let deep = runtime.normalizer.options.sixteenBitUpscalers.sorted()
         print(deep.isEmpty ? "upscale runs at 8 bits" : "16-bit upscale (output.bit_depth 16): \(deep.joined(separator: ", "))")
         let deepRestore = runtime.normalizer.options.sixteenBitRestorers.sorted()

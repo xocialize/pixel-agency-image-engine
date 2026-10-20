@@ -11,8 +11,12 @@ import UniformTypeIdentifiers
 /// A catalog without MLX: the models the engine would register, with their licences and envelopes.
 actor FakeModels: ImageModelDirectory, ModelRouter {
     var infos: [ModelInfo]
+    /// What each model's surfaces accept in the way of adapters (AB-D-0155), by model id.
+    let supports: [String: AdapterSupport]
 
-    init(_ infos: [ModelInfo] = FakeModels.catalog) { self.infos = infos }
+    init(_ infos: [ModelInfo] = FakeModels.catalog, supports: [String: AdapterSupport] = [:]) {
+        self.infos = infos; self.supports = supports
+    }
 
     func models() -> [ModelInfo] { infos }
     func model(_ id: ModelID) -> ModelInfo? { infos.first { $0.id == id } }
@@ -31,7 +35,19 @@ actor FakeModels: ImageModelDirectory, ModelRouter {
         return RoutedModel(id: info.id, packageID: "fake.\(info.id.rawValue)", capability: capability, displayName: info.displayName,
                            license: info.license, envelope: info.envelope, defaults: info.defaults, sourceRepo: info.sourceRepo,
                            revision: info.revision, footprintBytes: info.footprintBytes,
-                           requestKeys: info.requestKeys.filter { $0.capabilities.contains(capability) })
+                           requestKeys: info.requestKeys.filter { $0.capabilities.contains(capability) },
+                           adapterSupport: supports[info.id.rawValue],
+                           adapters: info.adapters.filter { $0.capabilities.contains(capability) }.map(Self.descriptor))
+    }
+
+    /// The engine's descriptor for a catalog adapter, pinned like the real registries.
+    static func descriptor(_ info: AdapterInfo) -> AdapterDescriptor {
+        AdapterDescriptor(id: info.id, title: info.title, kind: AdapterKind(rawValue: info.kind), format: .bflFused,
+                          baseModels: info.baseModels, capabilities: info.capabilities,
+                          source: AdapterSource(repo: "xocialize/\(info.id.split(separator: ":").last!)-lora",
+                                                revision: String(repeating: "ab", count: 20), file: "lora.safetensors",
+                                                sha256: String(repeating: "cd", count: 32), bytes: info.bytes),
+                          license: SPDXLicense(info.license), defaultStrength: info.defaultStrength)
     }
 
     func modelID(forPackage packageID: String) -> ModelID? {
@@ -50,13 +66,13 @@ actor FakeModels: ImageModelDirectory, ModelRouter {
 
     static func model(_ id: String, _ capabilities: [Capability], license: LicenseStamp = apache, maturity: Maturity = .prod,
                       guidance: Double? = nil, maxPixels: Int = 2_100_000, maxInputs: Int = 1, gb: Double = 2,
-                      requestKeys: [RequestKey] = []) -> ModelInfo {
+                      requestKeys: [RequestKey] = [], adapters: [AdapterInfo] = []) -> ModelInfo {
         ModelInfo(id: ModelID(id), displayName: id.capitalized, summary: "", capabilities: capabilities, defaultFor: [],
                   maturity: maturity, license: license, sourceRepo: "example/\(id)", revision: "main",
                   envelope: SizeEnvelope(maxPixels: maxPixels, multipleOf: 16, maxInputs: maxInputs),
                   defaults: GenerationDefaults(steps: 4, guidance: guidance, width: 1024, height: 1024),
                   footprintBytes: UInt64(gb * 1_073_741_824), state: ModelState(downloaded: true, resident: false),
-                  requestKeys: requestKeys)
+                  requestKeys: requestKeys, adapters: adapters)
     }
 
     static let catalog: [ModelInfo] = [

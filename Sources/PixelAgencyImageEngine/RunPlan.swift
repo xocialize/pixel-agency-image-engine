@@ -75,11 +75,13 @@ struct RunPlan {
     }
 
     /// Runs one model invocation, reporting its progress as output `index` of `count`. `metaData` carries package keys the
-    /// routed model declares (`RoutedModel.requestKeys`), such as FLUX 3 Klein's `upsample`.
+    /// routed model declares (`RoutedModel.requestKeys`), such as FLUX 3 Klein's `upsample`; `adapters` the request's
+    /// adapters (`applyAdapters`), an IC adapter's images among `inputs`.
     func invoke(_ route: RoutedModel, params: ISValueObject, mode: String? = nil, inputs: [String: [MLXToolKit.Image]] = [:],
-                metaData: ISValueObject? = nil, seed: UInt64 = 0, width: Int? = nil, height: Int? = nil, index: Int = 0,
-                count: Int = 1) async throws -> RunOutputValue {
-        let spec = JobSpec(capability: route.capability, model: route.id, mode: mode, params: params, count: 1, metaData: metaData)
+                metaData: ISValueObject? = nil, adapters: [JobAdapter]? = nil, seed: UInt64 = 0, width: Int? = nil,
+                height: Int? = nil, index: Int = 0, count: Int = 1) async throws -> RunOutputValue {
+        let spec = JobSpec(capability: route.capability, model: route.id, mode: mode, params: params, count: 1, metaData: metaData,
+                           adapters: adapters)
         let work = RunWork(route: route, spec: spec, seed: seed, width: width, height: height, inputs: inputs, outputIndex: index)
         let relay = ProgressRelay(context.reporter)
         do {
@@ -223,15 +225,18 @@ struct RunPlan {
         let count = context.param("count")?.intValue ?? 1
         let base = seed(count: count)
         // The request's prompt, enhanced for this model (`PromptEnhance`), before the model loads: one heavy model at a time.
-        let prompt = try await enhancedPrompt(context.input("prompt")?.text ?? "", task: .textToImage, seed: base)
+        var prompt = try await enhancedPrompt(context.input("prompt")?.text ?? "", task: .textToImage, seed: base)
         let route = try await route(.textToImage)
+        // The request's adapters (`Adapters`): their trigger or template goes into the prompt after enhancement.
+        let adapters = await applyAdapters(route, prompt: &prompt, param: "prompt")
         let (w, h) = size(for: route, required: true)!
         var params: ISValueObject = ["prompt": .string(prompt)]
         if let negative = negativePrompt(for: route) { params["negativePrompt"] = .string(negative) }
         record(route)
         var outputs: [ProducedOutput] = []
         for i in 0..<count {
-            let result = try image(try await invoke(route, params: params, metaData: requestPromptKeys(route), seed: base + UInt64(i),
+            let result = try image(try await invoke(route, params: params, metaData: requestPromptKeys(route),
+                                                    adapters: adapters.adapters, seed: base + UInt64(i),
                                                     width: w, height: h, index: i, count: count))
             outputs.append(try write(result, name: "images", index: i))
         }
@@ -255,12 +260,15 @@ struct RunPlan {
         let size = size(for: route, required: false)
         let base = seed(count: 1)
         // An edit's rewriter would need to see the image (E4): for now this reports `needs_vision` and keeps the instruction.
-        let instruction = try await enhancedPrompt(context.input("instruction")?.text ?? "", task: .imageEdit, seed: base)
+        var instruction = try await enhancedPrompt(context.input("instruction")?.text ?? "", task: .imageEdit, seed: base)
+        // The request's adapters: an IC adapter takes its slots' images, in order, from the edit's images.
+        let adapters = await applyAdapters(route, prompt: &instruction, param: "instruction", images: images)
         var params: ISValueObject = ["prompt": .string(instruction)]
         if let strength = context.param("strength")?.numberValue { params["strength"] = .number(strength) }
         record(route)
-        var result = try image(try await invoke(route, params: params, inputs: ["images": images],
-                                                 metaData: requestPromptKeys(route), seed: base, width: size?.0, height: size?.1))
+        var result = try image(try await invoke(route, params: params, inputs: adapters.inputs.merging(["images": adapters.images]) { a, _ in a },
+                                                 metaData: requestPromptKeys(route), adapters: adapters.adapters, seed: base,
+                                                 width: size?.0, height: size?.1))
         if size == nil, result.width != first.width || result.height != first.height {
             result = result.resized(first.width, first.height)                     // the first image sets the size
         }
