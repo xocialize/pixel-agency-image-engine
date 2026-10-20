@@ -33,9 +33,31 @@ import PromptEnhanceKit
 ///   `prompt_enhance: on`, without running it, so a client can show it and let its user edit it first. Its offers are the
 ///   backbones; it's declared while one is on. See `RunPlan.previewPrompt`.
 public enum PromptEnhance {
-    /// The backbone every text-to-image profile runs on: Qwen3.5-4B int4 (`PromptBackbones`).
+    /// The small backbone, which the prose profiles run on: Qwen3.5-4B int4 (`PromptBackbones`).
     public static let backboneID = "qwen3.5-4b"
+    /// The large backbone, which the structured profiles run on (SenseNova U1.5's Render JSON; E3): Qwen3.5-9B int4. On
+    /// the 4B, 1 of 16 Render JSON answers lost its canvas, so a structured profile never falls back to it.
+    public static let largeBackboneID = "qwen3.5-9b"
+    /// Every backbone, small first.
+    public static let backboneIDs = [backboneID, largeBackboneID]
     static let library = ProfileLibrary.imageModels()
+
+    /// The backbone `profile` runs on, by its class: `large` on the 9B, everything else on the 4B.
+    static func backbone(for profile: EnhanceProfile) -> String {
+        profile.backbone == .large ? largeBackboneID : backboneID
+    }
+
+    /// The backbone that rewrites prompts for `model`, or nil when it has no profile (or keeps its own upsampler).
+    public static func backbone(forModel model: String) -> String? {
+        library.profile(forModel: model).map(backbone(for:))
+    }
+
+    /// The backbone a preview for `target` runs on: its profile's, or, with no target named, the one image.generate's
+    /// preferred default rewrites on. nil for a target with no profile (any backbone answers; nothing is rewritten).
+    static func previewBackbone(target: String?) -> String? {
+        let model = target ?? OperationTable.specs.first { $0.operation == previewTargets[0] }?.defaults.first
+        return model.flatMap(backbone(forModel:))
+    }
     /// The model whose enhancer lives in its own package.
     static let flux3 = "flux-3-klein"
     /// The package key that switches a model's own upsampler for one request (FLUX 3 Klein's, AB-A-0191).
@@ -48,10 +70,14 @@ public enum PromptEnhance {
     /// needs vision, E4). The first is the default `target_operation`.
     static let previewTargets = ["image.generate"]
 
-    /// The backbone's offer on `image.enhance_prompt`.
-    static let previewNote = "Returns the prompt image.generate would run with prompt_enhance on, rewritten with "
-        + "target_model's own profile and the job's seed, without generating. Run the target with that text, the same "
-        + "model named, and prompt_enhance off. FLUX 3 Klein's own upsampler can't be previewed."
+    /// A backbone's offer on `image.enhance_prompt`: which target models it previews, and how to use the result.
+    static func previewNote(_ id: String) -> String {
+        let models = library.profiles.filter { backbone(for: $0) == id }.flatMap(\.models).sorted().joined(separator: ", ")
+        return "Returns the prompt image.generate would run with prompt_enhance on, rewritten with target_model's own "
+            + "profile and the job's seed, without generating; this backbone rewrites them for " + models + ", and the "
+            + "engine picks it when target_model is one of them. Run the target with that text (and the size, when one "
+            + "is suggested), the same model named, and prompt_enhance off. FLUX 3 Klein's own upsampler can't be previewed."
+    }
 
     typealias Mode = ImageProfile.PromptEnhanceMode
 
@@ -69,20 +95,36 @@ public enum PromptEnhance {
         return (profile.policy.rawValue, "the \(profile.title) profile")
     }
 
-    /// The backbone's card: what turning it off does.
-    public static let backboneNote = "The prompt enhancer: it rewrites short prompts for "
-        + library.profiles.flatMap(\.models).sorted().joined(separator: ", ")
-        + " before they run, with each model's own profile, and reports the rewrite in effective.prompt. "
-        + "Turned off, prompts go to the image models as typed. FLUX 3 Klein uses its own upsampler instead."
+    /// A backbone's card: which models it rewrites prompts for, and what turning it off does.
+    public static func backboneNote(_ id: String) -> String {
+        let models = library.profiles.filter { backbone(for: $0) == id }.flatMap(\.models).sorted().joined(separator: ", ")
+        if id == largeBackboneID {
+            return "The prompt enhancer for structured prompts: it rewrites prompts for " + models + " into the JSON each "
+                + "model reads (SenseNova U1.5's Render JSON), with each model's own profile, and "
+                + "reports the rewrite in effective.prompt. Turned off, prompts go to those models as typed."
+        }
+        return "The prompt enhancer: it rewrites short prompts for " + models + " before they run, with each model's own "
+            + "profile, and reports the rewrite in effective.prompt. Turned off, prompts go to the image models as typed. "
+            + "FLUX 3 Klein uses its own upsampler instead."
+    }
 
-    /// The offer's line about prompts (image.generate), while the backbone is on.
+    /// The offer's line about prompts (image.generate), while its backbone is on.
     static func note(forModel id: String) -> String? {
         guard id != flux3, let profile = library.profile(forModel: id) else { return nil }
-        switch profile.policy {
-        case .required, .recommended:
+        let structured: Bool = if case .json = profile.output { true } else { false }
+        switch (profile.policy, structured) {
+        case (.required, true), (.recommended, true):
+            return "The engine rewrites a prompt that isn't already JSON into the \(profile.title) profile's JSON on "
+                + "\(backbone(for: profile)) before it runs, as the model's makers recommend, and uses the aspect ratio it "
+                + "suggests when the request names no size; the rewrite is reported in effective.prompt, and prompt_enhance "
+                + "off sends a prompt as typed."
+        case (.required, false), (.recommended, false):
             return "The engine rewrites a short prompt with the \(profile.title) profile before it runs, as the model's makers "
                 + "recommend; the rewrite is reported in effective.prompt, and prompt_enhance off sends a prompt as typed."
-        case .optional:
+        case (.optional, true):
+            return "Prompts go as typed; prompt_enhance on rewrites them into the \(profile.title) profile's JSON on "
+                + "\(backbone(for: profile)) first."
+        case (.optional, false):
             return "Prompts go as typed; prompt_enhance on rewrites them with the \(profile.title) profile first."
         }
     }
@@ -112,6 +154,8 @@ public enum PromptEnhance {
         var version: Int?
         var backbone: String?
         var seed: UInt64?
+        /// The size the rewrite suggested (a structured profile's canvas), as `W:H` and `WxH` where it named them.
+        var suggestedSize: SuggestedSize?
 
         var value: MESValue {
             var object: [String: MESValue] = ["applied": .bool(applied), "outcome": .string(outcome)]
@@ -119,6 +163,12 @@ public enum PromptEnhance {
             if let version { object["version"] = .number(Double(version)) }
             if let backbone { object["backbone"] = .string(backbone) }
             if let seed { object["seed"] = .number(Double(seed)) }
+            if let size = suggestedSize {
+                var suggested: [String: MESValue] = [:]
+                if let w = size.width, let h = size.height { suggested["width"] = .number(Double(w)); suggested["height"] = .number(Double(h)) }
+                if let aspect = size.aspectRatio { suggested["aspect"] = .string(aspect) }
+                object["suggested_size"] = .object(suggested)
+            }
             return .object(object)
         }
     }
@@ -136,7 +186,11 @@ extension RunPlan {
     /// released or kept warm (`Residency.releaseHelper`) first. `param` is the input it came from (`prompt` or
     /// `instruction`). Reports the mode in `effective.prompt_enhance`, the backbone in `helpers`, and the detail in
     /// `model_params.prompt_enhancement`; `reportPrompt` reports the text once adapters have had their say.
-    mutating func enhancedPrompt(_ prompt: String, param: String, task: EnhanceTask, seed: UInt64) async throws -> String {
+    ///
+    /// A structured profile (one whose answer suggests a size: SenseNova's canvas) is told the size the
+    /// request asked for, if it asked (`targetSize`), and what it suggests is kept in `suggestedSize` for `size(for:)`.
+    mutating func enhancedPrompt(_ prompt: String, param: String, task: EnhanceTask, seed: UInt64,
+                                 targetSize: (width: Int, height: Int)? = nil) async throws -> String {
         let mode = promptEnhanceMode
         if context.descriptor.params["properties"]?[ImageProfile.Param.promptEnhance] != nil {
             effective[ImageProfile.Param.promptEnhance] = .string(mode.rawValue)
@@ -145,7 +199,9 @@ extension RunPlan {
             modelParams["prompt_enhancement"] = flux3Upsampler(mode, param: param).value
             return prompt
         }
-        let (text, record) = try await rewrite(prompt, param: param, task: task, seed: seed, mode: mode, for: context.model)
+        let (text, record) = try await rewrite(prompt, param: param, task: task, seed: seed, mode: mode, for: context.model,
+                                               targetSize: targetSize)
+        suggestedSize = record.suggestedSize
         modelParams["prompt_enhancement"] = record.value
         return text
     }
@@ -160,9 +216,13 @@ extension RunPlan {
     /// The rewrite `model`'s profile makes of `prompt` under `mode`, and what to report of it: the job's own prompt
     /// (`enhancedPrompt`) and the preview (`previewPrompt`, always `on`) both come through here, so a preview is what its
     /// target would run. The backbone loads only when the kit would call it; it runs with the job's `seed`, under the
-    /// request's licence policy, and is listed in `helpers` when it rewrote.
+    /// request's licence policy, and is listed in `helpers` when it rewrote. The backbone is the one the profile's class
+    /// needs (`PromptEnhance.backbone(for:)`): a structured profile runs on the 9B, and isn't moved to the 4B when the 9B
+    /// is off. `targetSize` reaches only a profile whose answer suggests a size (`sizeFields`), so prose rewrites don't
+    /// change with the request's size.
     mutating func rewrite(_ prompt: String, param: String, task: EnhanceTask, seed: UInt64, mode: PromptEnhance.Mode,
-                          for model: ModelOffer) async throws -> (prompt: String, record: PromptEnhance.Record) {
+                          for model: ModelOffer, targetSize: (width: Int, height: Int)? = nil) async throws
+        -> (prompt: String, record: PromptEnhance.Record) {
         guard let profile = PromptEnhance.library.profile(forModel: model.id) else {
             if mode == .on {
                 warn(ImageProfile.WarningCode.promptEnhanceIgnored, "\(model.title) has no prompt enhancement profile; "
@@ -189,13 +249,14 @@ extension RunPlan {
             return (prompt, record)
         }
 
-        record.backbone = PromptEnhance.backboneID
+        let backboneID = PromptEnhance.backbone(for: profile)
+        record.backbone = backboneID
         record.seed = seed
-        guard let text = normalizer.textRunner, await normalizer.backboneOffered(),
-              let info = await normalizer.directory.model(ModelID(PromptEnhance.backboneID)) else {
+        guard let text = normalizer.textRunner, await normalizer.backboneOffered(backboneID),
+              let info = await normalizer.directory.model(ModelID(backboneID)) else {
             record.outcome = "unavailable"
             if mode == .on {
-                warn(ImageProfile.WarningCode.promptEnhanceIgnored, "The prompt enhancer (\(PromptEnhance.backboneID)) is off "
+                warn(ImageProfile.WarningCode.promptEnhanceIgnored, "The prompt enhancer (\(backboneID)) is off "
                      + "on this engine; \(asTyped(param)).", param: enhanceParam)
             }
             return (prompt, record)
@@ -210,7 +271,7 @@ extension RunPlan {
         }
         let backbone: RoutedModel
         do {
-            backbone = try await route(.llm, named: PromptEnhance.backboneID)
+            backbone = try await route(.llm, named: backboneID)
         } catch is CancellationError {
             throw CancellationError()
         } catch {
@@ -229,8 +290,11 @@ extension RunPlan {
         await context.reporter.progress(previewing ? .running : .preparing, message: "enhancing the prompt")
         let enhancer = PromptEnhancer(parameters: LLMParameters(temperature: 0.7, maxTokens: 512, seed: seed))
         // The kit rethrows cancellation, so a cancelled job stops here instead of generating from the prompt as typed.
-        let result = try await enhancer.enhance(prompt, profile: profile, task: task, mode: enhanceMode,
-                                                timeout: normalizer.options.promptEnhanceTimeout) { request in
+        let target = profile.sizeFields.isEmpty ? nil : targetSize
+        let timeout = profile.backbone == .large ? normalizer.options.structuredPromptEnhanceTimeout
+            : normalizer.options.promptEnhanceTimeout
+        let result = try await enhancer.enhance(prompt, profile: profile, task: task, mode: enhanceMode, targetSize: target,
+                                                timeout: timeout) { request in
             try await text.generate(request, on: backbone)
         }
         if let i = admitted.lastIndex(where: { $0.packageID == backbone.packageID }) { admitted.remove(at: i) }
@@ -238,9 +302,10 @@ extension RunPlan {
 
         record.outcome = PromptEnhance.wire(result.outcome)
         record.applied = result.applied
+        if result.applied { record.suggestedSize = result.suggestedSize }
         switch result.outcome {
         case .enhanced:
-            helpers.append(HelperRef(id: PromptEnhance.backboneID, title: backbone.displayName,
+            helpers.append(HelperRef(id: backboneID, title: backbone.displayName,
                                      revision: Self.pinned(backbone.revision), license: license,
                                      role: ImageProfile.HelperRole.promptEnhance))
             // No model receives a preview's rewrite, so only a job warns that one did.
@@ -263,9 +328,11 @@ extension RunPlan {
     /// without running it. The target is `target_operation` (image.generate) and `target_model`, or else the model that
     /// operation runs for a request naming none (`previewTarget`); the rewrite is `rewrite`'s, with that model's profile
     /// and the job's seed, so the same seed gives the same text. `enhanced` is `{prompt, applied}`: `applied` says whether
-    /// the text changed, and when it didn't a `prompt_enhance_ignored` warning says why. FLUX 3 Klein's upsampler runs
-    /// inside its model and doesn't hand its rewrite back, so it can't be previewed. No `size`: no profile suggests one yet
-    /// (Qwen-Image 2.1's `wh_ratio` comes with E3).
+    /// the text changed, and when it didn't a `prompt_enhance_ignored` warning says why. A structured profile's suggested
+    /// aspect comes back as `size` at the target's default area, snapped to its envelope: what the job would run at when
+    /// it names no size, so a client sends it with the text. (The preview takes no size, so it rewrites as a job that names none; a job that
+    /// names one tells a structured profile its size.) FLUX 3 Klein's upsampler runs inside its model and doesn't hand
+    /// its rewrite back, so it can't be previewed.
     mutating func previewPrompt() async throws -> [ProducedOutput] {
         let operation = context.param(ImageProfile.Param.targetOperation)?.stringValue ?? PromptEnhance.previewTargets[0]
         let target = try await previewTarget(operation)
@@ -297,7 +364,14 @@ extension RunPlan {
                  + "returned as typed; \(operation) would run it so.", param: ImageProfile.Param.targetModel)
         }
         modelParams["prompt_enhancement"] = record.value
-        return [.data(["prompt": .string(text), "applied": .bool(record.applied)], name: "enhanced")]
+        var enhanced: [String: MESValue] = ["prompt": .string(text), "applied": .bool(record.applied)]
+        if record.applied, let suggested = record.suggestedSize, let info = await normalizer.directory.model(ModelID(target.id)),
+           let pixels = Self.pixels(suggested, defaultWidth: info.defaults.width, defaultHeight: info.defaults.height) {
+            let fitted = info.envelope.fit(width: pixels.width, height: pixels.height)
+                ?? info.envelope.clamp(width: pixels.width, height: pixels.height)
+            enhanced["size"] = ["width": .number(Double(fitted.width)), "height": .number(Double(fitted.height))]
+        }
+        return [.data(.object(enhanced), name: "enhanced")]
     }
 
     /// The preview's target model: `target_model`, one of `operation`'s offers; or, when it names none, the model that

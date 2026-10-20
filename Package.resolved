@@ -1,5 +1,5 @@
 {
-  "originHash" : "1a9440807b5135b7ec6ed5aff9fc0d0f4a8f948303700525645ca3e66afea87d",
+  "originHash" : "132100cacb0e597145e6e80bec59da721a337cc9eed1492a8eddbdfac4a200fc",
   "pins" : [
     {
       "identity" : "anima-mlx-swift",
@@ -546,8 +546,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/prompt-enhance-kit-swift.git",
       "state" : {
-        "revision" : "bcf937624f3ec0cba0544ae1a525f06475d786e3",
-        "version" : "0.5.1"
+        "revision" : "80d1760ed7d39d529fa2f8fbc4ea037a82f35368",
+        "version" : "0.6.0"
       }
     },
     {

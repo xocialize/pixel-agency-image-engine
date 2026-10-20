@@ -34,10 +34,11 @@ struct EnhancePromptTests {
     func descriptor() async throws {
         let ops = await ImageNormalizer(directory: FakeModels(), runner: FakeRunner(), textRunner: FakeRunner()).descriptors()
         let d = try #require(ops.first { $0.operation == "image.enhance_prompt" })
-        #expect(d.title == "Enhance prompt" && d.models.map(\.id) == [PromptEnhance.backboneID])
+        #expect(d.title == "Enhance prompt" && d.models.map(\.id) == PromptEnhance.backboneIDs)
         let offer = try #require(d.models.first)
         #expect(offer.isDefault == true && offer.license.spdx == "Apache-2.0" && offer.license.commercialUse == .yes)
-        #expect(offer.notes == PromptEnhance.previewNote && offer.memoryClass == .small)
+        #expect(offer.notes == PromptEnhance.previewNote(PromptEnhance.backboneID) && offer.memoryClass == .small)
+        #expect(d.models.last?.notes?.contains("sensenova-u1") == true, "the 9B previews the structured profiles")
         #expect(d.inputs.map(\.name) == ["prompt"] && d.inputs.first?.required == true, "the enhancer reads no image")
         #expect(d.outputs.map(\.name) == ["enhanced"] && d.outputs.first?.kind == .data && d.limits == nil)
         let properties = try #require(d.params["properties"]?.objectValue)
@@ -57,7 +58,7 @@ struct EnhancePromptTests {
         let bare = await ImageNormalizer(directory: FakeModels(), runner: FakeRunner()).descriptors()
         #expect(!bare.contains { $0.operation == "image.enhance_prompt" })
         let enablement = ModelEnablement(file: nil)
-        try enablement.set(PromptEnhance.backboneID, enabled: false, optIn: false)
+        for id in PromptEnhance.backboneIDs { try enablement.set(id, enabled: false, optIn: false) }
         let off = await ImageNormalizer(directory: FakeModels(), runner: FakeRunner(), textRunner: FakeRunner(),
                                         options: .init(enablement: enablement)).descriptors()
         #expect(!off.contains { $0.operation == "image.enhance_prompt" })

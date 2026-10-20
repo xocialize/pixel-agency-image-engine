@@ -40,7 +40,7 @@ struct ImageConsoleBackend: EngineConsoleBackend {
             let unavailable = info.state.problem ?? ImageNormalizer.quarantined[id]
             // A model that serves no operation (a helper inside another one) has nothing to switch; the prompt enhancer's
             // backbone has, since turning it off stops prompt enhancement.
-            let backbone = id == PromptEnhance.backboneID
+            let backbone = PromptEnhance.backboneIDs.contains(id)
             guard !offers.isEmpty || unavailable != nil || backbone else { return nil }
             let optIn = ImageNormalizer.isOptIn(info)
             let enabled = enablement.isEnabled(id, optIn: optIn)
@@ -62,7 +62,7 @@ struct ImageConsoleBackend: EngineConsoleBackend {
             if backbone { tags.append("Prompt enhancer") }
             // The adapters it takes, by title, with how many are on.
             let adapters = info.adapters.filter { !Adapters.isRefused($0) }
-            var notes = backbone ? PromptEnhance.backboneNote : offer?.notes
+            var notes = backbone ? PromptEnhance.backboneNote(id) : offer?.notes
             if !adapters.isEmpty {
                 let on = adapters.filter { enablement.isEnabled(Adapters.key($0.id), optIn: Adapters.isOptIn($0)) }.count
                 tags.append("Adapters: \(on) of \(adapters.count) on")

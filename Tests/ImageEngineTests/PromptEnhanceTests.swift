@@ -62,7 +62,7 @@ struct PromptEnhanceTests {
         let bare = await ImageNormalizer(directory: FakeModels(), runner: FakeRunner()).descriptors()
         #expect(bare.allSatisfy { !Self.declares(bare, $0.operation) })
         let enablement = ModelEnablement(file: nil)
-        try enablement.set(PromptEnhance.backboneID, enabled: false, optIn: false)
+        for id in PromptEnhance.backboneIDs { try enablement.set(id, enabled: false, optIn: false) }
         let off = await ImageNormalizer(directory: FakeModels(), runner: FakeRunner(), textRunner: FakeRunner(),
                                         options: .init(enablement: enablement)).descriptors()
         #expect(off.allSatisfy { !Self.declares(off, $0.operation) })
@@ -201,7 +201,7 @@ struct PromptEnhanceTests {
     @Test("Backbone switched off: auto reports unavailable and uses the prompt as typed; prompt_enhance isn't declared, so it's refused")
     func backboneOff() async throws {
         let enablement = ModelEnablement(file: nil)
-        try enablement.set(PromptEnhance.backboneID, enabled: false, optIn: false)
+        for id in PromptEnhance.backboneIDs { try enablement.set(id, enabled: false, optIn: false) }
         try await withEngine(enablement: enablement) { probe, runner in
             let job = try await probe.succeed(Self.generate("a lighthouse at dusk", model: "qwen-image-flash"))
             #expect(Self.enhancement(job)?["outcome"] == "unavailable" && Self.ranPrompt(runner) == "a lighthouse at dusk")

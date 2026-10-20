@@ -45,9 +45,13 @@ public struct ImageNormalizer: MediaEngine {
         /// How long the prompt enhancer's backbone may take to answer, once loaded (`PromptEnhance`); past it the prompt goes
         /// as typed. Measured answers take 1.3–2.6 s on Qwen3.5-4B int4 (AB-R-0588).
         public var promptEnhanceTimeout: Duration = .seconds(60)
+        /// The same for a structured profile on the large backbone (SenseNova's Render JSON), whose answers run to
+        /// 1,000–2,000 tokens: 10–35 s on Qwen3.5-9B int4 in the E3 gate.
+        public var structuredPromptEnhanceTimeout: Duration = .seconds(180)
         public init(allowResearch: Bool = false, enablement: ModelEnablement? = nil, residency: Residency.Policy = .init(),
                     sixteenBitUpscalers: Set<String> = [], sixteenBitRestorers: Set<String> = [], tiledEditors: Set<String> = [],
-                    creativeUnavailable: String? = nil, promptEnhanceTimeout: Duration = .seconds(60)) {
+                    creativeUnavailable: String? = nil, promptEnhanceTimeout: Duration = .seconds(60),
+                    structuredPromptEnhanceTimeout: Duration = .seconds(180)) {
             self.allowResearch = allowResearch
             self.enablement = enablement
             self.residency = residency
@@ -56,6 +60,7 @@ public struct ImageNormalizer: MediaEngine {
             self.tiledEditors = tiledEditors
             self.creativeUnavailable = creativeUnavailable
             self.promptEnhanceTimeout = promptEnhanceTimeout
+            self.structuredPromptEnhanceTimeout = structuredPromptEnhanceTimeout
         }
 
         /// The models of `operation` that keep 16 bits (upscale and restore offer them; nothing else does).
@@ -190,15 +195,19 @@ public struct ImageNormalizer: MediaEngine {
         return slots.sorted(by: >).prefix(offer.adapterLimit).reduce(0, +)
     }
 
-    /// The prompt enhancer can run: a text runner, and its backbone registered, usable here and on.
-    func backboneOffered() async -> Bool {
-        guard textRunner != nil, let info = await directory.model(ModelID(PromptEnhance.backboneID)) else { return false }
+    /// The prompt enhancer can run on backbone `id`: a text runner, and that backbone registered, usable here and on.
+    func backboneOffered(_ id: String = PromptEnhance.backboneID) async -> Bool {
+        guard textRunner != nil, let info = await directory.model(ModelID(id)) else { return false }
         return offered(info)
     }
 
-    func enhancing(_ models: [ModelInfo], offering: (ModelInfo) -> Bool) -> Bool {
-        textRunner != nil && models.contains { $0.id.rawValue == PromptEnhance.backboneID && offering($0) }
+    /// The backbones `offering` lets through, with a text runner to run them.
+    func backbones(_ models: [ModelInfo], offering: (ModelInfo) -> Bool) -> Set<String> {
+        guard textRunner != nil else { return [] }
+        return Set(models.filter { PromptEnhance.backboneIDs.contains($0.id.rawValue) && offering($0) }.map(\.id.rawValue))
     }
+
+    func enhancing(_ models: [ModelInfo], offering: (ModelInfo) -> Bool) -> Bool { !backbones(models, offering: offering).isEmpty }
 
     func descriptor(_ spec: OperationSpec, models: [ModelInfo]) -> Descriptor? {
         descriptor(spec, models: models, offering: offered)
@@ -223,15 +232,15 @@ public struct ImageNormalizer: MediaEngine {
         }
         let defaultID = spec.defaults.first { id in candidates.contains { $0.id.rawValue == id && $0.isDefaultRoutable } }
             ?? candidates.first { $0.isDefaultRoutable }?.id.rawValue
-        // Prompt enhancement (AB-D-0155): on generate and edit while its backbone is on.
-        let enhancing = PromptEnhance.operations.contains(spec.operation) && enhancing(models, offering: offering)
+        // Prompt enhancement (AB-D-0155): on generate and edit, for the models whose profile's backbone is on.
+        let backbones = PromptEnhance.operations.contains(spec.operation) ? backbones(models, offering: offering) : []
         var offers = candidates.map { info in
             ModelOffer(id: info.id.rawValue, title: info.displayName, license: Self.license(info),
                        memoryClass: Self.memoryClass(info.footprintBytes), speedClass: Self.speedClass(spec, info),
                        qualityTiers: spec.tiers[info.id.rawValue] ?? spec.otherTiers,
                        isDefault: info.id.rawValue == defaultID ? true : nil,
                        namedOnly: info.isDefaultRoutable ? nil : true,
-                       notes: Self.notes(info.id.rawValue, operation: spec.operation, enhancing: enhancing))
+                       notes: Self.notes(info.id.rawValue, operation: spec.operation, backbones: backbones))
         }
         offers.sort { a, b in
             func rank(_ o: ModelOffer) -> Int { o.isDefault == true ? 0 : o.namedOnly == true ? 2 : 1 }
@@ -259,7 +268,8 @@ public struct ImageNormalizer: MediaEngine {
         // Prompt enhancement (Image §1.9): `prompt_enhance` wherever the engine may rewrite the prompt or instruction.
         let offeredAdapters = Set(offers.flatMap { ($0.adapters ?? []).map(\.id) })
         let adaptersRewrite = candidates.flatMap(\.adapters).contains { offeredAdapters.contains($0.id) && Adapters.rewrites($0) }
-        let enhancesHere = enhancing && spec.operation == "image.generate"
+        let enhancesHere = spec.operation == "image.generate"
+            && candidates.contains { PromptEnhance.backbone(forModel: $0.id.rawValue).map(backbones.contains) == true }
         let upsamples = offers.contains { $0.id == PromptEnhance.flux3 }
         let rewrites = PromptEnhance.operations.contains(spec.operation) && (enhancesHere || upsamples || adaptersRewrite)
         var tiers = Set(offers.filter { $0.namedOnly != true }.flatMap(\.qualityTiers))
@@ -373,9 +383,10 @@ public struct ImageNormalizer: MediaEngine {
     }
 
     /// An offer's `notes` (Base §6 rule 5): the model's usage guidance, and on `image.generate` how the engine treats its
-    /// prompts while the prompt enhancer is on.
-    static func notes(_ id: String, operation: String, enhancing: Bool) -> String? {
-        if operation == PromptEnhance.preview { return PromptEnhance.previewNote }
+    /// prompts while the backbone its profile runs on is one of `backbones`.
+    static func notes(_ id: String, operation: String, backbones: Set<String>) -> String? {
+        if operation == PromptEnhance.preview { return PromptEnhance.previewNote(id) }
+        let enhancing = PromptEnhance.backbone(forModel: id).map(backbones.contains) == true
         let prompts = enhancing && operation == "image.generate" ? PromptEnhance.note(forModel: id) : nil
         let parts = [notes[id], prompts].compactMap { $0 }
         return parts.isEmpty ? nil : parts.joined(separator: " ")
@@ -466,6 +477,14 @@ public struct ImageNormalizer: MediaEngine {
     public func validate(_ request: JobRequest, descriptor: Descriptor) throws {
         try ImageProfileRules.validate(request, descriptor: descriptor)
         try validateBitDepth(request, descriptor: descriptor)
+        // A preview runs on the backbone its target's profile needs, so a named one must be it (Image §3.1: the same
+        // enhancer as the target job).
+        if descriptor.operation == PromptEnhance.preview, let named = request.model,
+           let needed = PromptEnhance.previewBackbone(target: request.params?[ImageProfile.Param.targetModel]?.stringValue),
+           named != needed {
+            throw MESError(.unsupportedParameter, "image.generate rewrites prompts for that target on \(needed), not \(named); "
+                           + "name \(needed), or no model.", param: "model")
+        }
         // The creative upscale runs at 8 bits: Mage and VOSR2 are 8-bit models (AB-T-0230).
         if request.extensions?[Creative.name] != nil, request.params?["output"]?["bit_depth"]?.intValue == 16 {
             throw MESError(.unsupportedParameter, "The creative upscale runs at 8 bits.", param: "output")
@@ -546,6 +565,10 @@ public struct ImageNormalizer: MediaEngine {
             }
         case "image.erase":
             preferred = OperationTable.eraseByTier[tier] ?? []
+        case PromptEnhance.preview:
+            // The backbone the target's profile runs on, so provenance names the model that rewrites.
+            preferred = PromptEnhance.previewBackbone(target: request.params?[ImageProfile.Param.targetModel]?.stringValue)
+                .map { [$0] } ?? []
         case "image.upscale":
             if request.params?["content"]?.stringValue == "drawn" { preferred = OperationTable.drawnUpscale[tier] ?? [] }
             // A 16-bit request runs on a model that keeps 16 bits (`validateBitDepth` made sure the tier has one).

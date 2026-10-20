@@ -63,9 +63,11 @@ let package = Package(
         .package(url: "https://github.com/xocialize/sensenova-u1-swift.git", from: "0.5.1"),
         // Prompt enhancement (AB-D-0155, E2). ≥ 0.5.1: the kit's model profiles (EnhanceProfile,
         // ProfileLibrary.imageModels(), enhance(_:profile:...) with outcomes, a timeout and rethrown cancellation), the
-        // public pass-through `decision`, and the v2 flux2-klein and z-image profiles (AB-A-0195).
-        .package(url: "https://github.com/xocialize/prompt-enhance-kit-swift.git", from: "0.5.1"),
-        // The backbone, Qwen3.5-4B int4. ≥ 0.6.2: promptEnhance answers without thinking (0.6.1, AB-L-0301; before it,
+        // public pass-through `decision`, and the v2 flux2-klein and z-image profiles (AB-A-0195). ≥ 0.6.0: the structured
+        // profiles (E3): SenseNova U1.5's Render JSON on a large backbone, JSON in the backbone's key order, and the size an
+        // answer suggests (`EnhanceResult.suggestedSize`).
+        .package(url: "https://github.com/xocialize/prompt-enhance-kit-swift.git", from: "0.6.0"),
+        // The backbones, Qwen3.5-4B and 9B int4. ≥ 0.6.2: promptEnhance answers without thinking (0.6.1, AB-L-0301; before it,
         // the rewrite was the model's thinking trace), and the configured checkpoint is a WeightSource, so the install
         // marker and needsDownload follow the 4B that loads, not the manifest's 0.8B (0.6.2). MLXQwenLLM links MLXLLM and
         // MLXVLM. MLXVLM is already in the graph (flux3-klein, ming, qwen-image-edit, boogu), and no image package

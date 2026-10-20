@@ -297,8 +297,10 @@ The normalizer (`ImageNormalizer`, `RunPlan`) holds every model to the profile, 
 
 - **Prompt enhancement (0.4.0, AB-D-0155, E2; Image §1.9 since 0.6.0).** Before `image.generate` runs, a short prompt
   is rewritten into the detailed caption the model was trained on. Each model has its own profile from prompt-enhance-kit
-  (`ProfileLibrary.imageModels()`, prompt-enhance-kit-swift ≥ 0.5.1). The text model that rewrites it, the **backbone**, is Qwen3.5-4B int4
-  (`qwen3.5-4b`, Apache-2.0, about 2 GB, through mlx-qwen-llm-swift ≥ 0.6.2). The design is [docs/PROMPTS-AND-ADAPTERS.md](docs/PROMPTS-AND-ADAPTERS.md) §1.5.
+  (`ProfileLibrary.imageModels()`, prompt-enhance-kit-swift ≥ 0.6.0). The text model that rewrites it, the **backbone**, is
+  Qwen3.5-4B int4 for prose profiles (`qwen3.5-4b`, Apache-2.0, about 2 GB) and, since 0.8.0, Qwen3.5-9B int4 for
+  structured ones (`qwen3.5-9b`, Apache-2.0, about 5.6 GB), both through mlx-qwen-llm-swift ≥ 0.6.2. The design is
+  [docs/PROMPTS-AND-ADAPTERS.md](docs/PROMPTS-AND-ADAPTERS.md) §1.5.
   - **The vocabulary** `prompt_enhance: auto | on | off` (Image §1.9, media-engine-spec ≥ 0.4.0), a param like any
     other, so MCP tools can pass it too. It's declared wherever the engine may rewrite the text: on `image.generate`
     while the backbone is on, and on generate or edit while FLUX 3 Klein is offered, or an offered adapter has a trigger
@@ -310,9 +312,11 @@ The normalizer (`ImageNormalizer`, `RunPlan`) holds every model to the profile, 
     | `flux2-klein` | klein-4b, klein-4b-base | rewrites a prompt under 60 words |
     | `z-image` (Tongyi's own expander) | z-image-turbo, z-image | as typed; `on` rewrites |
     | `mage-flow` | mage-flow, mage-flow-turbo | as typed; `on` rewrites |
+    | `sensenova-u1.5` (SenseTime's own Render JSON enhancer, on the 9B) | sensenova-u1, sensenova-u1-fast, sensenova-u1-fast-v1 | rewrites every prompt that isn't already JSON |
 
     `off` sends the text as typed, adapters' triggers and templates included, and a prompt that's already JSON (a
-    layout) always goes as typed. Models without a profile, such as MOSS-Image and SenseNova, take prompts as typed.
+    layout) always goes as typed. Models without a profile, such as MOSS-Image, Ming-Image and SenseNova's edits, take
+    prompts as typed.
     The 0.4.0–0.5.0 extension `x-pixelagency.prompt_enhance` is gone (no client sent it); a request that still carries
     it is refused, 422 `unsupported_parameter`.
   - **Reported** as Image §1.9 asks:
@@ -337,12 +341,43 @@ The normalizer (`ImageNormalizer`, `RunPlan`) holds every model to the profile, 
   - **Only the request's own prompt is rewritten.** The engine's own instructions go as written: fill and extend's
     marker instructions, erase by name, and the creative upscale.
   - **Edits** keep their instruction (`needs_vision`): an edit rewriter has to see the image (E4).
-  - **Memory.** The backbone loads, rewrites and is released before the image model loads. At about 2 GB it stays warm
-    for the next job (`Residency.Policy.warmHelperBytes`, 4 GB); a larger backbone would be released straight away. A
-    prompt that goes as typed never loads it. Once loaded, a rewrite takes about 2 s; the timeout is 60 s.
-  - **The backbone is a model like any other.** It has a card in the app's console, it's in the enabled set, and it's
-    downloaded on first use. Turned off, prompts go as typed, and `prompt_enhance` is declared only where something
-    else may rewrite.
+  - **Memory.** The backbone loads, rewrites and is released before the image model loads. The 4B, at about 2 GB, stays
+    warm for the next job (`Residency.Policy.warmHelperBytes`, 4 GB); the 9B, at 5.6 GB, is released straight away. A
+    prompt that goes as typed never loads one. Once loaded, a 4B rewrite takes about 2 s; the timeout is 60 s.
+  - **The backbone is a model like any other.** Each has a card in the app's console, it's in the enabled set, and it's
+    downloaded on first use. Turned off, its models' prompts go as typed, and `prompt_enhance` is declared only where
+    something else may rewrite.
+  - **Structured profiles (0.8.0, E3).** SenseNova U1.5 reads Render JSON as its prompt: subjects, scene, lighting,
+    composition, style, camera, the visible copy, a canvas and a negative.
+    - **On the 9B.** The `sensenova-u1.5` profile asks the 9B for it with SenseTime's own instruction, as constrained
+      JSON of up to 4,096 tokens. The answer goes to the model compact, in the backbone's key order.
+    - **Measured.** In the E3 gate (prompt-enhance-e2e `--structured`, 8 briefs × 2 seeds) the 9B answered in the
+      vendor's exact format 16 of 16 times, in 23 s on average, with a 7.9 GB peak. The 4B managed 15 of 16 (one answer
+      lost its canvas), so a structured profile never falls back to the 4B. With the 9B off, its models' prompts go as
+      typed (`outcome: unavailable`).
+    - **The size.** Render JSON's `canvas` names one of five 2K sizes: 1:1 2048², 3:2 2496×1664, 2:3 1664×2496,
+      16:9 2720×1536, 9:16 1536×2720. When the request names no `size`, `aspect` or `megapixels`, the job takes the
+      canvas's **aspect ratio** at the model's default area (2:3 → 832×1248 on SenseNova), not its 2K pixels. Measured
+      on the 8-step tier, generating at the 2K row took 40–118 s against 14–16 s near 1 MP, rewrite included, and
+      SigLIP2 scored the 1 MP renders level or higher. A request that wants the vendor's 2K asks for it with `size`.
+      The canvas is reported in `model_params.prompt_enhancement.suggested_size`, and what ran in `effective.size`. A
+      request that names a size keeps it, and the profile is told it ("Target resolution: W×H"), snapped to the
+      model's grid. Prose profiles aren't told the size, so their rewrites don't change with it.
+    - **The timeout** is `Options.structuredPromptEnhanceTimeout`, 180 s; the 9B's answers took 10–35 s.
+    - **The preview** picks the backbone its `target_model`'s profile needs (a named backbone that isn't it is 422
+      `unsupported_parameter`). For SenseNova it returns the Render JSON and `size` (the canvas's aspect at the model's
+      default area), which a client sends with the text and `prompt_enhance: off`.
+    - **Live** (0.8.0, `sensenova-u1-fast`, seed 42; AB-R-0599):
+      - **The poster.** The book-fair poster ("PAPER TRAIL", "7 NOV", "CENTRAL LIBRARY") rendered every string
+        correctly with and without the rewrite. With it, the poster was vertical at 832×1248, as the brief asked;
+        without it, square at 1024².
+      - **SigLIP2** on three briefs: 0.915, 0.903 and 0.926 with the rewrite, against 0.872, 0.938 and 0.942 without.
+      - **Time.** A job with the rewrite took 14–88 s, against 3–22 s without. The 9B reloads for each job (it isn't
+        kept warm at 4.3 GB), and another engine was sharing the GPU. At the vendor's 2K canvas a job took 40–118 s.
+      - **The preview.** A seeded preview's Render JSON was the job's, character for character.
+    - **Ming-Image's layers aren't shipped.** On the 9B only 3 of 12 answers were in inclusionAI's format at
+      temperature 0.7, and 6 of 12 at 0.3: the backbone anchored layers at their corner rather than their centre. The
+      kit keeps the profile (`ImageModelProfiles.mingImage`) for a larger rewriter.
   - **FLUX 3 Klein** keeps BFL's own upsampler inside its package (`outcome: built_in`). It's part of the model, not a
     helper, and the package doesn't hand the rewrite back, so it warns `prompt_rewritten` without `effective.prompt`
     (Image §1.9 allows that). Since 0.4.1 the mode switches it per request, through the package's `upsample` key
@@ -463,9 +498,10 @@ The normalizer (`ImageNormalizer`, `RunPlan`) holds every model to the profile, 
 
 ## Conformance
 
-The engine passes the MES conformance suite. Most recently, 0.7.0 on media-engine-spec 0.4.0 with real models
+The engine passes the MES conformance suite. Most recently, 0.8.0 on media-engine-spec 0.4.0 with real models
 (2026-10-19): 40 passed, 0 failed, 4 skipped, Base 0.1 and Image 0.1 conform, IMAGE-011 (`image.enhance_prompt`) among
-them ([`docs/conformance/2026-10-19-live-0.7.0.md`](docs/conformance/2026-10-19-live-0.7.0.md)). The run before it,
+them ([`docs/conformance/2026-10-19-live-0.8.0.md`](docs/conformance/2026-10-19-live-0.8.0.md); 0.7.0's, the same, is
+[`2026-10-19-live-0.7.0.md`](docs/conformance/2026-10-19-live-0.7.0.md)). The run before it,
 on MES 0.3: 35 passed, 0 failed, 4 skipped ([`docs/conformance/2026-10-19-live.md`](docs/conformance/2026-10-19-live.md)).
 Against the live engine with real models (2026-10-09):
 - **Results:** 34 passed, 0 failed, 4 skipped. **Base 0.1 conforms, Image 0.1 conforms.** The report is in
@@ -518,7 +554,9 @@ offline, that test is skipped.
 - **Channel clearance** (ENG-14).
 - **A real edit benchmark**, before edit's best tier is final (docs/TIERS.md, Open).
 - **Prompt enhancement, the rest of AB-D-0155:**
-  - structured profiles on a larger backbone (E3), and with them a `size` in the preview;
+  - the rest of E3: MOSS-Image's layout (an agent skill with a converter script, not yet fetched), Qwen-Image 2.1's
+    `{rewritten_prompt, wh_ratio}` (its rewriter's text is under the Qwen Research licence), and Ming-Image's layers on
+    a stronger rewriter;
   - edit rewriters that see the image (E4), and with them `image.edit` as a preview target and `images` as its input;
   - an Enhance button in Lite and Desktop that calls the preview;
   - the console line "Prompting: …" as MESEngineUI's own row (it's a tag on each card for now).

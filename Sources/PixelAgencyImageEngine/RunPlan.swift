@@ -22,6 +22,8 @@ struct RunPlan {
     var revisions: [String: String] = [:]
     /// Models this job admitted to memory (ENG-3), released when it ends.
     var admitted: [RoutedModel] = []
+    /// The size a structured rewrite suggested (SenseNova's canvas), used when the request names none.
+    var suggestedSize: SuggestedSize?
 
     init(context: RunContext, spec: OperationSpec, normalizer: ImageNormalizer) {
         self.context = context; self.spec = spec; self.normalizer = normalizer
@@ -194,31 +196,58 @@ struct RunPlan {
 
     // MARK: - Generate and edit
 
-    /// `size`, or `aspect` + `megapixels`, or the model's default; then snapped to its envelope (`size_snapped`).
-    mutating func size(for route: RoutedModel, required: Bool) -> (Int, Int)? {
-        var w = route.defaults.width, h = route.defaults.height
-        var asked = false
+    /// The size the request asks for: `size`, or `aspect` + `megapixels`, or `megapixels` alone (a square); nil when it
+    /// names none.
+    func askedSize() -> (width: Int, height: Int)? {
         if let size = context.param("size"), let sw = size["width"]?.intValue, let sh = size["height"]?.intValue {
-            (w, h, asked) = (sw, sh, true)
-        } else if let aspect = context.param("aspect")?.stringValue {
+            return (sw, sh)
+        }
+        if let aspect = context.param("aspect")?.stringValue {
             let parts = aspect.split(separator: ":").compactMap { Double($0) }
             let mp = context.param("megapixels")?.numberValue ?? 1
-            if parts.count == 2, parts[0] > 0, parts[1] > 0 {
-                let area = mp * 1_000_000
-                w = Int((area * parts[0] / parts[1]).squareRoot())
-                h = Int(Double(w) * parts[1] / parts[0])
-                asked = true
-            }
-        } else if let mp = context.param("megapixels")?.numberValue {
-            let side = Int((mp * 1_000_000).squareRoot())
-            (w, h, asked) = (side, side, true)
+            guard parts.count == 2, parts[0] > 0, parts[1] > 0 else { return nil }
+            let w = Int((mp * 1_000_000 * parts[0] / parts[1]).squareRoot())
+            return (w, Int(Double(w) * parts[1] / parts[0]))
         }
-        guard asked || required else { return nil }
+        if let mp = context.param("megapixels")?.numberValue {
+            let side = Int((mp * 1_000_000).squareRoot())
+            return (side, side)
+        }
+        return nil
+    }
+
+    /// A structured rewrite's suggested size in pixels: its aspect ratio over the model's default area. SenseNova's canvas
+    /// rows are 2K (1664×2496 for 2:3); generating there took 40–118 s on the 8-step tier against 14–16 s at the same
+    /// aspect near 1 MP, and SigLIP2 scored the 1 MP renders level or higher (AB-D-0155 E3 live run), so the row's
+    /// pixels are left to requests that ask for them with `size`.
+    static func pixels(_ suggested: SuggestedSize, defaultWidth: Int, defaultHeight: Int) -> (width: Int, height: Int)? {
+        guard let ratio = suggested.ratio, ratio > 0 else { return nil }
+        let w = Int((Double(defaultWidth * defaultHeight) * ratio).squareRoot())
+        return (w, Int(Double(w) / ratio))
+    }
+
+    /// `size`, or `aspect` + `megapixels`, or else the size a structured rewrite suggested (`suggestedSize`), or the
+    /// model's default; then snapped to its envelope (`size_snapped` when the request asked for it).
+    mutating func size(for route: RoutedModel, required: Bool) -> (Int, Int)? {
+        var w = route.defaults.width, h = route.defaults.height
+        let asked = askedSize()
+        let suggested = asked == nil ? suggestedSize.flatMap { Self.pixels($0, defaultWidth: w, defaultHeight: h) } : nil
+        if let chosen = asked ?? suggested { (w, h) = chosen }
+        guard asked != nil || suggested != nil || required else { return nil }
         let fitted = route.envelope.fit(width: w, height: h) ?? route.envelope.clamp(width: w, height: h)
-        if asked, fitted.width != w || fitted.height != h {
+        if asked != nil, fitted.width != w || fitted.height != h {
             warn(ImageProfile.WarningCode.sizeSnapped, "\(w)×\(h) became \(fitted.width)×\(fitted.height) for \(route.displayName).", param: "size")
         }
         effective["size"] = ["width": .number(Double(fitted.width)), "height": .number(Double(fitted.height))]
+        return (fitted.width, fitted.height)
+    }
+
+    /// The size the request asks for, snapped to `model`'s envelope as `size(for:)` will: what a structured profile is
+    /// told to lay out for. nil when the request names none.
+    func targetSize(for model: String) async -> (width: Int, height: Int)? {
+        guard let asked = askedSize(), let info = await normalizer.directory.model(ModelID(model)) else { return nil }
+        let fitted = info.envelope.fit(width: asked.width, height: asked.height)
+            ?? info.envelope.clamp(width: asked.width, height: asked.height)
         return (fitted.width, fitted.height)
     }
 
@@ -237,7 +266,8 @@ struct RunPlan {
         let base = seed(count: count)
         // The request's prompt, enhanced for this model (`PromptEnhance`), before the model loads: one heavy model at a time.
         let typed = context.input("prompt")?.text ?? ""
-        var prompt = try await enhancedPrompt(typed, param: "prompt", task: .textToImage, seed: base)
+        var prompt = try await enhancedPrompt(typed, param: "prompt", task: .textToImage, seed: base,
+                                              targetSize: await targetSize(for: context.model.id))
         let route = try await route(.textToImage)
         // The request's adapters (`Adapters`): their trigger or template goes into the prompt after enhancement; an IC
         // adapter's slots take the `references`, in order (Image §1.10).

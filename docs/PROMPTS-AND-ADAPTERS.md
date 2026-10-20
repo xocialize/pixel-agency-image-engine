@@ -39,6 +39,13 @@ Progress:
   `image.generate` (edits wait for E4), and it goes through the job's own rewrite (`RunPlan.rewrite`), so a seeded
   preview matches the job. It returns `{prompt, applied}`; no profile suggests a `size` until E3. See the README's
   "Prompt enhancement".
+- **E3** (first part) shipped in prompt-enhance-kit-swift 0.6.0 and the engine's 0.8.0 (2026-10-19).
+  - **SenseNova U1.5's Render JSON.** SenseTime's own enhancer, verbatim (Apache-2.0), runs on a second backbone,
+    Qwen3.5-9B int4, and the job takes the canvas's aspect ratio. The gate (prompt-enhance-e2e `--structured`) had the
+    9B in the vendor's exact format 16 of 16 times, and the 4B 15 of 16.
+  - **Ming-Image's layers** failed the gate on the 9B (3/12, 6/12 at temperature 0.3), so they aren't shipped.
+  - **Still open:** MOSS-Image's layout (an agent skill with a converter script) and Qwen-Image 2.1's
+    `{rewritten_prompt, wh_ratio}` (Qwen Research licence).
 
 ## Summary
 

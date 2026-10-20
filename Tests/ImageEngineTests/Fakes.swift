@@ -63,6 +63,7 @@ actor FakeModels: ImageModelDirectory, ModelRouter {
                                        advisories: ["Research use only."])
     static let kommunity = LicenseStamp(licenseClass: .restricted, weightLicenses: ["LicenseRef-FLUX-Kommunity-1.0"],
                                         portCodeLicense: "MIT")
+    static let mit = LicenseStamp(licenseClass: .permissive, weightLicenses: ["MIT"], portCodeLicense: "MIT")
 
     static func model(_ id: String, _ capabilities: [Capability], license: LicenseStamp = apache, maturity: Maturity = .prod,
                       guidance: Double? = nil, maxPixels: Int = 2_100_000, maxInputs: Int = 1, gb: Double = 2,
@@ -104,8 +105,13 @@ actor FakeModels: ImageModelDirectory, ModelRouter {
         model("sam21-segment", [.promptSegment]),
         model("mage-vl", [.imageAnalysis]),
         model("siglip2-quality", [.imageQualityScore]),
-        // The prompt enhancer's backbone (PromptBackbones): a model in the catalog that serves no operation.
+        // The structured-profile models (AB-D-0155, E3): SenseNova U1.5 (text to image here; the real one also edits) and
+        // Ming-Image (work in progress).
+        model("sensenova-u1", [.textToImage], guidance: 4, maxPixels: 2048 * 2048, gb: 18),
+        model("ming-image", [.textToImage], license: mit, maturity: .wip, guidance: 4, maxPixels: 2048 * 2048, gb: 10),
+        // The prompt enhancer's backbones (PromptBackbones): models in the catalog that serve only the preview.
         model(PromptEnhance.backboneID, [.llm]),
+        model(PromptEnhance.largeBackboneID, [.llm], gb: 5.6),
     ]
 }
 
@@ -126,15 +132,31 @@ final class FakeRunner: ModelRunner, TextRunner {
     let fit: MemoryFit?
     /// The backbone's answer; nil, it fails.
     let rewrite: String?
+    /// The backbone's answer to a structured (JSON) request: SenseNova Render JSON with a 2:3 canvas by default.
+    let structured: String
     let textDelay: Duration
 
     init(delay: Duration = .milliseconds(30), editKeepsMarker: Bool = false, fit: MemoryFit? = nil,
-         rewrite: String? = FakeRunner.lighthouse, textDelay: Duration = .milliseconds(20)) {
+         rewrite: String? = FakeRunner.lighthouse, structured: String = FakeRunner.renderJSON,
+         textDelay: Duration = .milliseconds(20)) {
         self.delay = delay; self.editKeepsMarker = editKeepsMarker; self.fit = fit; self.rewrite = rewrite
-        self.textDelay = textDelay
+        self.structured = structured; self.textDelay = textDelay
     }
 
     static let lighthouse = "A white lighthouse stands on a rocky headland at dusk, its lamp just lit against a violet sky."
+
+    /// A Render JSON answer, its keys in the order the backbone wrote them (not sorted), with a 2:3 canvas.
+    static let renderJSON = #"{"subjects": [{"description": "a white lighthouse", "appearance_action": "lamp lit", "#
+        + #""relationship_position": "on a headland", "count_anatomy": "one"}], "scene": {"setting": "a rocky coast at dusk", "#
+        + #""spatial_layers": "sea, rocks, sky", "supporting_details": []}, "visible_copy": [], "#
+        + #""canvas": {"aspect_ratio": "2:3", "orientation": "portrait", "resolution": "1664 x 2496"}, "#
+        + #""negative": "blur, extra towers"}"#
+
+    /// `renderJSON` as the engine sends it: compact, in the backbone's order.
+    static let renderJSONCompact = #"{"subjects":[{"description":"a white lighthouse","appearance_action":"lamp lit","#
+        + #""relationship_position":"on a headland","count_anatomy":"one"}],"scene":{"setting":"a rocky coast at dusk","#
+        + #""spatial_layers":"sea, rocks, sky","supporting_details":[]},"visible_copy":[],"#
+        + #""canvas":{"aspect_ratio":"2:3","orientation":"portrait","resolution":"1664 x 2496"},"negative":"blur, extra towers"}"#
 
     func residentPackages() async -> Set<String> { resident.withLock { $0 } }
 
@@ -144,11 +166,15 @@ final class FakeRunner: ModelRunner, TextRunner {
         resident.withLock { _ = $0.insert(route.packageID) }   // like the runtime: loaded models stay until evicted
     }
 
+    /// Backbones that answered, in order (by model id).
+    let textRoutes = Mutex<[String]>([])
+
     func generate(_ request: LLMRequest, on route: RoutedModel) async throws -> String {
         textCalls.withLock { $0.append(request) }
+        textRoutes.withLock { $0.append(route.id.rawValue) }
         try await Task.sleep(for: textDelay)
         guard let rewrite else { throw APIError.unavailable("The fake backbone failed.") }
-        return rewrite
+        return request.responseFormat == nil ? rewrite : structured
     }
 
     func run(_ work: RunWork, progress: @escaping @Sendable (JobProgress) -> Void) async throws -> ImageServerModels.RunOutput {
