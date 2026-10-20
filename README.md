@@ -297,7 +297,7 @@ The normalizer (`ImageNormalizer`, `RunPlan`) holds every model to the profile, 
 
 - **Prompt enhancement (0.4.0, AB-D-0155, E2; Image §1.9 since 0.6.0).** Before `image.generate` runs, a short prompt
   is rewritten into the detailed caption the model was trained on. Each model has its own profile from prompt-enhance-kit
-  (`ProfileLibrary.imageModels()`, prompt-enhance-kit-swift ≥ 0.6.0). The text model that rewrites it, the **backbone**, is
+  (`ProfileLibrary.imageModels()`, prompt-enhance-kit-swift ≥ 0.7.0). The text model that rewrites it, the **backbone**, is
   Qwen3.5-4B int4 for prose profiles (`qwen3.5-4b`, Apache-2.0, about 2 GB) and, since 0.8.0, Qwen3.5-9B int4 for
   structured ones (`qwen3.5-9b`, Apache-2.0, about 5.6 GB), both through mlx-qwen-llm-swift ≥ 0.6.2. The design is
   [docs/PROMPTS-AND-ADAPTERS.md](docs/PROMPTS-AND-ADAPTERS.md) §1.5.
@@ -313,10 +313,11 @@ The normalizer (`ImageNormalizer`, `RunPlan`) holds every model to the profile, 
     | `z-image` (Tongyi's own expander) | z-image-turbo, z-image | as typed; `on` rewrites |
     | `mage-flow` | mage-flow, mage-flow-turbo | as typed; `on` rewrites |
     | `sensenova-u1.5` (SenseTime's own Render JSON enhancer, on the 9B) | sensenova-u1, sensenova-u1-fast, sensenova-u1-fast-v1 | rewrites every prompt that isn't already JSON |
+    | `moss-image` (OpenMOSS's own enhancer skill and its layout compiler, on the 9B) | moss-image-sft, moss-image-base | as typed; `on` lays it out for the job's size |
 
     `off` sends the text as typed, adapters' triggers and templates included, and a prompt that's already JSON (a
-    layout) always goes as typed. Models without a profile, such as MOSS-Image, Ming-Image and SenseNova's edits, take
-    prompts as typed.
+    layout) always goes as typed. Models without a profile, such as Ming-Image and SenseNova's edits, take prompts as
+    typed.
     The 0.4.0–0.5.0 extension `x-pixelagency.prompt_enhance` is gone (no client sent it); a request that still carries
     it is refused, 422 `unsupported_parameter`.
   - **Reported** as Image §1.9 asks:
@@ -375,6 +376,33 @@ The normalizer (`ImageNormalizer`, `RunPlan`) holds every model to the profile, 
       - **Time.** A job with the rewrite took 14–88 s, against 3–22 s without. The 9B reloads for each job (it isn't
         kept warm at 4.3 GB), and another engine was sharing the GPU. At the vendor's 2K canvas a job took 40–118 s.
       - **The preview.** A seeded preview's Render JSON was the job's, character for character.
+    - **MOSS-Image's layouts (0.9.0, E3, prompt-enhance-kit-swift ≥ 0.7.0).** MOSS-Image reads a layout as its
+      prompt: a `summary` and `items` (a label, a caption, any literal text and a box), boxes in whole pixels centred on
+      the canvas (`abs_centralized`, `yxyx`).
+      - **The vendor's enhancer, ported.** OpenMOSS ships it as an agent skill: the agent writes a draft with plain
+        pixel boxes and runs the skill's script to compile it. The `moss-image` profile sends the skill and its layout
+        reference to the 9B (temperature 0.3), and the kit runs the script's Swift port on the answer. A draft the
+        script rejects goes back to the 9B once with the script's message; if the second fails too, the prompt goes as
+        typed with `prompt_enhance_failed`. `model_params.prompt_enhancement.attempts` says which.
+      - **Optional.** The vendor ships the skill as an opt-in tool and calls layout prompts experimental, so `auto`
+        sends prompts as typed; `on` lays them out.
+      - **Always told a size.** A layout's boxes are in one canvas's pixels, so the 9B is always told the job's size:
+        the request's (snapped to 16), or the model's default 1024² when it names none. The job then runs at exactly
+        the canvas the layout is for (`model_params.prompt_enhancement.canvas`); a layout for another canvas is
+        rejected. The preview lays out the target's default canvas and returns it as `size`.
+      - **Measured.** In the gate (prompt-enhance-e2e `--structured`), the 9B's layouts compiled and kept every quoted
+        string 24 of 24 times on the gate's 8 briefs × 3 seeds, and 22 of 24 on two sets of briefs written after
+        tuning. Both misses were drafts the script rejected twice, so their prompts went as typed. A rewrite takes
+        about 8 s. The 4B managed 15 of 16 and 12 of 12, but a structured profile stays on the 9B.
+      - **Live** (0.9.0, `moss-image-sft`, 50 steps, seed 42):
+        - **The poster.** The book-fair poster ("PAPER TRAIL", "7 NOV", "CENTRAL LIBRARY", "add no other text") at
+          832×1248 rendered exactly those three strings, where the layout put them. Without the rewrite it also
+          printed garbled copy of its own ("Froung One Warkeer to Fish", "BOOK FAR FAIR", columns of near-words).
+        - **SigLIP2:** 0.913 and 0.938 with the rewrite against 0.912 and 0.932 without (poster, lighthouse).
+        - **Time.** 132 s and 127 s per job with the rewrite against 121 s and 116 s without. The 9B reloads for each
+          job.
+        - **The retry, live.** The lighthouse's first draft gave an object an empty `text`; the second compiled.
+        - **The preview.** A seeded preview's layout was the job's, character for character, at 1024².
     - **Ming-Image's layers aren't shipped.** On the 9B only 3 of 12 answers were in inclusionAI's format at
       temperature 0.7, and 6 of 12 at 0.3: the backbone anchored layers at their corner rather than their centre. The
       kit keeps the profile (`ImageModelProfiles.mingImage`) for a larger rewriter.
@@ -408,7 +436,7 @@ The normalizer (`ImageNormalizer`, `RunPlan`) holds every model to the profile, 
       a `prompt_enhance` helper, but warns no `prompt_rewritten`, since no model received the text.
       `effective.model_params.prompt_enhancement` has the same detail as on generate.
     - **Nothing rewritten** returns the prompt as typed with `applied: false` and `prompt_enhance_ignored` (param
-      `target_model`), saying why: no profile (MOSS-Image, SenseNova), a structured prompt, or a failed rewrite (with
+      `target_model`), saying why: no profile (Ming-Image), a structured prompt, or a failed rewrite (with
       `prompt_enhance_failed` too). FLUX 3 Klein's own upsampler runs inside the model and doesn't hand its rewrite
       back, so it can't be previewed. No profile suggests a `size` yet; Qwen-Image 2.1's `wh_ratio` comes with E3.
   - **Measured** ([docs/PROMPT-ENHANCE-AB.md](docs/PROMPT-ENHANCE-AB.md)). On four profiles × two prompts at one seed, SigLIP2

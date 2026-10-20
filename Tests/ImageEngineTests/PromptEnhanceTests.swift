@@ -52,7 +52,8 @@ struct PromptEnhanceTests {
         let qwen = try #require(generate.models.first { $0.id == "qwen-image-flash" })
         #expect(qwen.notes?.contains("rewrites a short prompt with the Qwen-Image profile") == true)
         #expect(generate.models.first { $0.id == "z-image-turbo" }?.notes?.contains("prompt_enhance on rewrites") == true, "optional")
-        #expect(generate.models.first { $0.id == "moss-image-sft" }?.notes == nil, "no profile")
+        #expect(generate.models.first { $0.id == "moss-image-sft" }?.notes?.contains("prompt_enhance on lays them out") == true,
+                "optional, structured")
         #expect(ops.first { $0.operation == "image.edit" }?.models.allSatisfy { $0.notes == nil } == true, "generate's notes only")
         #expect(ops.filter { $0.models.contains { $0.id == PromptEnhance.backboneID } }.map(\.operation) == ["image.enhance_prompt"],
                 "the backbone serves only the preview")
@@ -111,7 +112,7 @@ struct PromptEnhanceTests {
         }
     }
 
-    @Test("Prompts that go as typed never load the backbone: auto on an optional profile, a detailed or JSON prompt, off, no profile")
+    @Test("Prompts that go as typed never load the backbone: auto on an optional profile (prose or structured), a detailed or JSON prompt, off")
     func asTyped() async throws {
         let detailed = Array(repeating: "word", count: 70).joined(separator: " ")
         let cases: [(JobRequest, String, warned: Bool)] = [
@@ -119,8 +120,7 @@ struct PromptEnhanceTests {
             (Self.generate(detailed, model: "qwen-image-flash"), "passed_through", false),
             (Self.generate(#"{"caption": "a fox", "items": []}"#, model: "qwen-image-flash", mode: "on"), "passed_through", false),
             (Self.generate("a fox", model: "qwen-image-flash", mode: "off"), "off", false),
-            (Self.generate("a fox", model: "moss-image-sft"), "no_profile", false),
-            (Self.generate("a fox", model: "moss-image-sft", mode: "on"), "no_profile", true),
+            (Self.generate("a fox", model: "moss-image-sft"), "not_recommended", false),                  // optional, structured
         ]
         for (request, outcome, warned) in cases {
             try await withEngine { probe, runner in

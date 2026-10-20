@@ -112,7 +112,7 @@ struct EnhancePromptTests {
     func asTyped() async throws {
         // (Under on, a long prompt is still rewritten; only a structured one goes as typed.)
         let cases: [(JobRequest, outcome: String, loads: Bool)] = [
-            (Self.preview("a fox", target: "moss-image-sft"), "no_profile", false),                 // no profile
+            (Self.preview("a fox", target: "ming-image"), "no_profile", false),                     // no profile
             (Self.preview(#"{"caption": "a fox", "items": []}"#, target: "qwen-image-flash"), "passed_through", false),
             (Self.preview("a fox", target: PromptEnhance.flux3), "built_in", false),                // its own upsampler
         ]

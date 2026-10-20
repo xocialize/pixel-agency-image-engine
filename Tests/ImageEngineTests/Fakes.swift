@@ -134,13 +134,34 @@ final class FakeRunner: ModelRunner, TextRunner {
     let rewrite: String?
     /// The backbone's answer to a structured (JSON) request: SenseNova Render JSON with a 2:3 canvas by default.
     let structured: String
+    /// The canvas a MOSS-Image layout draft is for; nil lays it out for the target resolution the request names (or the
+    /// skill's 1024² when it names none), as a backbone that follows the profile does.
+    let mossCanvas: (width: Int, height: Int)?
     let textDelay: Duration
 
     init(delay: Duration = .milliseconds(30), editKeepsMarker: Bool = false, fit: MemoryFit? = nil,
          rewrite: String? = FakeRunner.lighthouse, structured: String = FakeRunner.renderJSON,
-         textDelay: Duration = .milliseconds(20)) {
+         mossCanvas: (width: Int, height: Int)? = nil, textDelay: Duration = .milliseconds(20)) {
         self.delay = delay; self.editKeepsMarker = editKeepsMarker; self.fit = fit; self.rewrite = rewrite
-        self.structured = structured; self.textDelay = textDelay
+        self.structured = structured; self.mossCanvas = mossCanvas; self.textDelay = textDelay
+    }
+
+    /// A MOSS-Image Layout draft (the skill's pixel form) for a `width` × `height` canvas: a lighthouse in the lower middle
+    /// and a title across the top.
+    static func mossDraft(width: Int, height: Int) -> String {
+        #"{"width": \#(width), "height": \#(height), "bbox_coord_space": "abs", "bbox_format": "xyxy", "#
+            + #""summary": {"meta": ["poster"], "canvas": "single", "caption": "A white lighthouse at dusk."}, "items": ["#
+            + #"{"label": "object", "caption": "A white lighthouse.", "bbox": [\#(width / 4), \#(height / 4), \#(width * 3 / 4), \#(height)]}, "#
+            + #"{"label": "text", "caption": "Bold title.", "text": "DUSK", "bbox": [0, 0, \#(width), \#(height / 8)]}]}"#
+    }
+
+    /// `mossDraft` as the engine sends it to MOSS-Image: compiled, its boxes `yxyx` and centred on the canvas.
+    static func mossLayout(width: Int, height: Int) -> String {
+        let (hw, hh) = (width / 2, height / 2)
+        return #"{"summary":{"meta":["poster"],"canvas":"single","caption":"A white lighthouse at dusk."},"items":["#
+            + #"{"label":"object","caption":"A white lighthouse.","bbox":[\#(height / 4 - hh),\#(width / 4 - hw),\#(height - hh),\#(width * 3 / 4 - hw)]},"#
+            + #"{"label":"text","caption":"Bold title.","text":"DUSK","bbox":[\#(-hh),\#(-hw),\#(height / 8 - hh),\#(width - hw)]}],"#
+            + #""bbox_coord_space":"abs_centralized","bbox_format":"yxyx"}"#
     }
 
     static let lighthouse = "A white lighthouse stands on a rocky headland at dusk, its lamp just lit against a violet sky."
@@ -174,6 +195,12 @@ final class FakeRunner: ModelRunner, TextRunner {
         textRoutes.withLock { $0.append(route.id.rawValue) }
         try await Task.sleep(for: textDelay)
         guard let rewrite else { throw APIError.unavailable("The fake backbone failed.") }
+        if request.messages.first?.content.contains("name: moss-image-prompt-enhancer") == true {
+            let target = (request.messages.last?.content ?? "").firstMatch(of: /Target resolution: (\d+)x(\d+)\./)
+                .flatMap { m in Int(m.1).flatMap { w in Int(m.2).map { (width: w, height: $0) } } }
+            let canvas = mossCanvas ?? target ?? (1024, 1024)
+            return Self.mossDraft(width: canvas.width, height: canvas.height)
+        }
         return request.responseFormat == nil ? rewrite : structured
     }
 

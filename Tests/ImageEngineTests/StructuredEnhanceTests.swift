@@ -10,7 +10,8 @@ import Testing
 
 // Structured prompt enhancement (AB-D-0155, E3): SenseNova U1.5's Render JSON, prompt-enhance-kit's structured profile, on
 // the large backbone (Qwen3.5-9B); the size the rewrite suggests, used when the request names none; the request's size
-// told to the profile when it names one. Ming-Image's layers failed the gate, so it has no profile.
+// told to the profile when it names one. MOSS-Image's layouts: always told a size (the request's, or the model's default),
+// and the job runs at exactly the canvas the layout is for. Ming-Image's layers failed the gate, so it has no profile.
 
 @Suite("Structured prompt enhancement (E3)", .serialized)
 struct StructuredEnhanceTests {
@@ -156,6 +157,92 @@ struct StructuredEnhanceTests {
                                                            params: ["target_model": "klein-4b"]))
             let kleinValue = try await EnhancePromptTests.enhanced(probe, klein)
             #expect(klein.plan?.model.id == PromptEnhance.backboneID && kleinValue["size"] == nil)
+        }
+    }
+
+    // MARK: - MOSS-Image layouts
+
+    @Test("MOSS-Image: optional, so auto sends the prompt as typed; its notes say on lays it out for the job's size, on the 9B")
+    func mossOffer() async throws {
+        let normalizer = ImageNormalizer(directory: FakeModels(), runner: FakeRunner(), textRunner: FakeRunner())
+        let generate = try #require(await normalizer.descriptors().first { $0.operation == "image.generate" })
+        let notes = try #require(generate.models.first { $0.id == "moss-image-sft" }?.notes)
+        #expect(notes.contains("MOSS-Image profile's layout JSON on qwen3.5-9b") && notes.contains("runs at exactly that size"))
+        #expect(PromptEnhance.backbone(forModel: "moss-image-base") == PromptEnhance.largeBackboneID)
+        #expect(PromptEnhance.backboneNote(PromptEnhance.largeBackboneID).contains("moss-image-base, moss-image-sft"))
+        try await withEngine { probe, runner in
+            let job = try await probe.succeed(Self.generate("a lighthouse at dusk", model: "moss-image-sft"))
+            #expect(job.result?.effective["model_params"]?["prompt_enhancement"]?["outcome"] == "not_recommended")
+            #expect(runner.textCalls.withLock { $0.isEmpty } && Self.size(job) == [1024, 1024])
+        }
+    }
+
+    @Test("MOSS-Image, on, no size named: the 9B is told the model's default canvas, its draft is compiled, the job runs at that canvas")
+    func mossDefaultCanvas() async throws {
+        try await withEngine { probe, runner in
+            let job = try await probe.succeed(Self.generate("a lighthouse at dusk", model: "moss-image-sft", mode: "on"))
+            #expect(runner.textRoutes.withLock { $0 } == [PromptEnhance.largeBackboneID])
+            let request = try #require(runner.textCalls.withLock { $0.first })
+            #expect(request.messages.last?.content.hasSuffix("Image idea: a lighthouse at dusk\n\nTarget resolution: 1024x1024.") == true)
+            #expect(request.responseFormat == .json(container: .object) && request.parameters.temperature == 0.3)
+            let layout = FakeRunner.mossLayout(width: 1024, height: 1024)
+            #expect(Self.imageCall(runner)?.spec.params["prompt"]?.stringValue == layout)
+            #expect(job.result?.effective["prompt"] == .string(layout))
+            #expect(Self.size(job) == [1024, 1024] && Self.imageCall(runner)?.width == 1024 && Self.imageCall(runner)?.height == 1024)
+            let record = try #require(job.result?.effective["model_params"]?["prompt_enhancement"])
+            #expect(record["profile"] == "moss-image" && record["outcome"] == "enhanced" && record["attempts"] == 1)
+            #expect(record["canvas"] == ["width": 1024, "height": 1024] && record["suggested_size"] == nil)
+            #expect(job.result?.provenance.helpers?.map(\.id) == [PromptEnhance.largeBackboneID])
+            #expect(job.warnings.contains { $0.code == "prompt_rewritten" })
+        }
+    }
+
+    @Test("MOSS-Image, on, a size named: the snapped size is the canvas the 9B lays out and the job runs at, with size_snapped")
+    func mossNamedSize() async throws {
+        try await withEngine { probe, runner in
+            let job = try await probe.succeed(Self.generate("a lighthouse at dusk", model: "moss-image-sft", size: (1000, 1500), mode: "on"))
+            #expect(runner.textCalls.withLock { $0.last?.messages.last?.content.hasSuffix("Target resolution: 992x1488.") } == true)
+            #expect(Self.imageCall(runner)?.spec.params["prompt"]?.stringValue == FakeRunner.mossLayout(width: 992, height: 1488))
+            #expect(Self.size(job) == [992, 1488] && Self.imageCall(runner)?.width == 992 && Self.imageCall(runner)?.height == 1488)
+            #expect(job.warnings.contains { $0.code == "size_snapped" })
+            #expect(job.result?.effective["model_params"]?["prompt_enhancement"]?["canvas"] == ["width": 992, "height": 1488])
+        }
+    }
+
+    @Test("MOSS-Image: a draft for another canvas is sent back once, then the prompt goes as typed at the job's own size")
+    func mossWrongCanvas() async throws {
+        try await withEngine(runner: FakeRunner(mossCanvas: (1536, 1024))) { probe, runner in
+            let job = try await probe.succeed(Self.generate("a lighthouse at dusk", model: "moss-image-sft", mode: "on"))
+            let calls = runner.textCalls.withLock { $0 }
+            #expect(calls.count == 2)
+            #expect(calls.last?.messages.last?.content.contains("compile_prompt.py rejected it: The layout is for a 1536x1024 "
+                                                               + "canvas, not the target 1024x1024.") == true)
+            let record = try #require(job.result?.effective["model_params"]?["prompt_enhancement"])
+            #expect(record["outcome"] == "failed" && record["applied"] == false && record["attempts"] == 2 && record["canvas"] == nil)
+            #expect(Self.imageCall(runner)?.spec.params["prompt"]?.stringValue == "a lighthouse at dusk" && Self.size(job) == [1024, 1024])
+            #expect(job.warnings.contains { $0.code == "prompt_enhance_failed" } && job.result?.provenance.helpers == nil)
+        }
+    }
+
+    @Test("MOSS-Image's preview lays out the target's default canvas and returns it as size; that text at that size, off, runs as is")
+    func mossPreview() async throws {
+        try await withEngine { probe, runner in
+            let job = try await probe.succeed(JobRequest(operation: "image.enhance_prompt", inputs: ["prompt": .text("a lighthouse at dusk")],
+                                                         params: ["target_model": "moss-image-sft", "seed": 42]))
+            #expect(job.plan?.model.id == PromptEnhance.largeBackboneID)
+            #expect(runner.textCalls.withLock { $0.last?.messages.last?.content.hasSuffix("Target resolution: 1024x1024.") } == true)
+            let value = try await EnhancePromptTests.enhanced(probe, job)
+            let layout = FakeRunner.mossLayout(width: 1024, height: 1024)
+            #expect(value["prompt"] == .string(layout) && value["applied"] == true && value["size"] == ["width": 1024, "height": 1024])
+
+            let run = try await probe.succeed(JobRequest(
+                operation: "image.generate", inputs: ["prompt": .text(layout)],
+                params: ["size": ["width": 1024, "height": 1024], "prompt_enhance": "off", "seed": 42], model: "moss-image-sft"))
+            #expect(Self.size(run) == [1024, 1024] && Self.imageCall(runner)?.spec.params["prompt"]?.stringValue == layout)
+            #expect(runner.textCalls.withLock { $0.count } == 1, "off: the layout went as typed")
+            // A layout as the prompt is already structured: on sends it as typed too.
+            let typed = try await probe.succeed(Self.generate(layout, model: "moss-image-sft", mode: "on"))
+            #expect(typed.result?.effective["model_params"]?["prompt_enhancement"]?["outcome"] == "passed_through")
         }
     }
 }

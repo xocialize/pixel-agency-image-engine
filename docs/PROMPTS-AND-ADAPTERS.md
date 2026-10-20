@@ -44,8 +44,14 @@ Progress:
     Qwen3.5-9B int4, and the job takes the canvas's aspect ratio. The gate (prompt-enhance-e2e `--structured`) had the
     9B in the vendor's exact format 16 of 16 times, and the 4B 15 of 16.
   - **Ming-Image's layers** failed the gate on the 9B (3/12, 6/12 at temperature 0.3), so they aren't shipped.
-  - **Still open:** MOSS-Image's layout (an agent skill with a converter script) and Qwen-Image 2.1's
-    `{rewritten_prompt, wh_ratio}` (Qwen Research licence).
+  - **Still open (then):** MOSS-Image's layout and Qwen-Image 2.1's `{rewritten_prompt, wh_ratio}`.
+- **E3** (second part) shipped in prompt-enhance-kit-swift 0.7.0 and the engine's 0.9.0 (2026-10-20).
+  - **MOSS-Image's layout.** OpenMOSS's enhancer skill, verbatim (Apache-2.0), on the 9B at temperature 0.3, with the
+    skill's coordinate converter (`compile_prompt.py`) ported into the kit as a compiler hook. A rejected draft goes back
+    once with the converter's message. The engine always tells the profile the job's size and runs at the layout's
+    canvas. The gate had the 9B's layouts valid with every quoted string 24 of 24 times, and 22 of 24 on briefs written
+    after tuning (both misses went as typed). See the README's "Prompt enhancement".
+  - **Still open:** Qwen-Image 2.1's `{rewritten_prompt, wh_ratio}` (Qwen Research licence).
 
 ## Summary
 
@@ -183,7 +189,8 @@ released, unless it's small enough to keep warm.
 2. **E2.** Engine: the `prompt_enhance` extension, provenance, residency, and the console line. Also the runtime's
    `metaData` pass-through, so FLUX 3's `upsample` and `boxes` work per request.
 3. **E3.** Structured profiles (SenseNova Render JSON, MOSS layout with its coordinate converter, Ming layers, Qwen 2.1
-   with `wh_ratio`), each measured on the large backbone.
+   with `wh_ratio`), each measured on the large backbone. (SenseNova in 0.8.0 and MOSS in 0.9.0; Ming failed the gate;
+   Qwen 2.1 is open.)
 4. **E4.** Vision: edit profiles once the contract or transport carries images.
 5. **E5.** The preview operation, if the spec takes it. (Image §3.1 took it; done in the engine's 0.7.0.)
 

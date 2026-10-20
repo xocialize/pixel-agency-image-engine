@@ -24,6 +24,8 @@ struct RunPlan {
     var admitted: [RoutedModel] = []
     /// The size a structured rewrite suggested (SenseNova's canvas), used when the request names none.
     var suggestedSize: SuggestedSize?
+    /// The canvas a layout was laid out for (MOSS-Image): its boxes are in these pixels, so the job runs at exactly it.
+    var layoutCanvas: CanvasSize?
 
     init(context: RunContext, spec: OperationSpec, normalizer: ImageNormalizer) {
         self.context = context; self.spec = spec; self.normalizer = normalizer
@@ -227,25 +229,30 @@ struct RunPlan {
     }
 
     /// `size`, or `aspect` + `megapixels`, or else the size a structured rewrite suggested (`suggestedSize`), or the
-    /// model's default; then snapped to its envelope (`size_snapped` when the request asked for it).
+    /// model's default; then snapped to its envelope (`size_snapped` when the request asked for it). A layout's canvas
+    /// (`layoutCanvas`) is the size: it's what the profile was told (`targetSize`), and the kit holds the layout to it.
     mutating func size(for route: RoutedModel, required: Bool) -> (Int, Int)? {
         var w = route.defaults.width, h = route.defaults.height
         let asked = askedSize()
         let suggested = asked == nil ? suggestedSize.flatMap { Self.pixels($0, defaultWidth: w, defaultHeight: h) } : nil
         if let chosen = asked ?? suggested { (w, h) = chosen }
-        guard asked != nil || suggested != nil || required else { return nil }
-        let fitted = route.envelope.fit(width: w, height: h) ?? route.envelope.clamp(width: w, height: h)
+        guard asked != nil || suggested != nil || layoutCanvas != nil || required else { return nil }
+        var fitted = route.envelope.fit(width: w, height: h) ?? route.envelope.clamp(width: w, height: h)
         if asked != nil, fitted.width != w || fitted.height != h {
             warn(ImageProfile.WarningCode.sizeSnapped, "\(w)×\(h) became \(fitted.width)×\(fitted.height) for \(route.displayName).", param: "size")
         }
+        if let canvas = layoutCanvas { fitted = (canvas.width, canvas.height) }
         effective["size"] = ["width": .number(Double(fitted.width)), "height": .number(Double(fitted.height))]
         return (fitted.width, fitted.height)
     }
 
     /// The size the request asks for, snapped to `model`'s envelope as `size(for:)` will: what a structured profile is
-    /// told to lay out for. nil when the request names none.
+    /// told to lay out for. nil when the request names none, except for a profile that lays out a canvas (MOSS-Image),
+    /// which is always told one, the model's default when the request names none: its boxes are in that canvas's pixels.
     func targetSize(for model: String) async -> (width: Int, height: Int)? {
-        guard let asked = askedSize(), let info = await normalizer.directory.model(ModelID(model)) else { return nil }
+        guard let info = await normalizer.directory.model(ModelID(model)) else { return nil }
+        let laysOut = PromptEnhance.library.profile(forModel: model)?.laysOutCanvas == true
+        guard let asked = askedSize() ?? (laysOut ? (info.defaults.width, info.defaults.height) : nil) else { return nil }
         let fitted = info.envelope.fit(width: asked.width, height: asked.height)
             ?? info.envelope.clamp(width: asked.width, height: asked.height)
         return (fitted.width, fitted.height)
