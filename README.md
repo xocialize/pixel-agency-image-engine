@@ -327,9 +327,15 @@ The normalizer (`ImageNormalizer`, `RunPlan`) holds every model to the profile, 
     prompt that goes as typed never loads it. Once loaded, a rewrite takes about 2 s; the timeout is 60 s.
   - **The backbone is a model like any other.** It has a card in the app's console, it's in the enabled set, and it's
     downloaded on first use. Turned off, prompts go as typed and the extension isn't declared.
-  - **FLUX 3 Klein** keeps BFL's own upsampler inside its package (`outcome: built_in`). `MLXIMG_FLUX3_UPSAMPLER`
-    switches it for the whole engine. Until the runtime passes request metaData through (AB-A-0191), `mode: off` can't
-    switch it per request, and says so with `prompt_enhance_ignored`.
+  - **FLUX 3 Klein** keeps BFL's own upsampler inside its package (`outcome: built_in`). Since 0.4.1 the mode switches
+    it per request, through the package's `upsample` key (mlx-image-runtime ≥ 0.14.0, AB-T-0336):
+    - `auto` leaves the engine's setting;
+    - `on` asks for it;
+    - `off` skips it (`outcome: off`), with `prompt_upsampler_off`: BFL requires it, so a prompt should then be a
+      full scene caption.
+
+    `MLXIMG_FLUX3_UPSAMPLER` sets it for the whole engine; `off` there loads none (`outcome: unavailable`, and `on`
+    warns `prompt_enhance_ignored`). Prompts the engine writes (fill, extend, erase by name) always skip it.
   - **Measured** ([docs/PROMPT-ENHANCE-AB.md](docs/PROMPT-ENHANCE-AB.md)). On four profiles × two prompts at one seed, SigLIP2
     quality rose or held in 7 of 8. The rewrite fixed rendered text twice (a stray "INIGHT", a sign reading "O PEN") and
     a spatial relation once, and it never broke a quoted string. A fixed seed reproduces the rewrite and the image
@@ -387,7 +393,6 @@ offline, that test is skipped.
 - **Channel clearance** (ENG-14).
 - **A real edit benchmark**, before edit's best tier is final (docs/TIERS.md, Open).
 - **Prompt enhancement, the rest of AB-D-0155:**
-  - FLUX 3 Klein's upsampler switched per request (AB-T-0336, on mlx-image-runtime 0.14.0's request metaData);
   - structured profiles on a larger backbone (E3);
   - edit rewriters that see the image (E4);
   - the console line "Prompting: …" as MESEngineUI's own row (it's a tag on each card for now).

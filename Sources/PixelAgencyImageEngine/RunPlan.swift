@@ -74,10 +74,12 @@ struct RunPlan {
         for route in admitted { await normalizer.residency.release(route) }
     }
 
-    /// Runs one model invocation, reporting its progress as output `index` of `count`.
+    /// Runs one model invocation, reporting its progress as output `index` of `count`. `metaData` carries package keys the
+    /// routed model declares (`RoutedModel.requestKeys`), such as FLUX 3 Klein's `upsample`.
     func invoke(_ route: RoutedModel, params: ISValueObject, mode: String? = nil, inputs: [String: [MLXToolKit.Image]] = [:],
-                seed: UInt64 = 0, width: Int? = nil, height: Int? = nil, index: Int = 0, count: Int = 1) async throws -> RunOutputValue {
-        let spec = JobSpec(capability: route.capability, model: route.id, mode: mode, params: params, count: 1)
+                metaData: ISValueObject? = nil, seed: UInt64 = 0, width: Int? = nil, height: Int? = nil, index: Int = 0,
+                count: Int = 1) async throws -> RunOutputValue {
+        let spec = JobSpec(capability: route.capability, model: route.id, mode: mode, params: params, count: 1, metaData: metaData)
         let work = RunWork(route: route, spec: spec, seed: seed, width: width, height: height, inputs: inputs, outputIndex: index)
         let relay = ProgressRelay(context.reporter)
         do {
@@ -229,7 +231,8 @@ struct RunPlan {
         record(route)
         var outputs: [ProducedOutput] = []
         for i in 0..<count {
-            let result = try image(try await invoke(route, params: params, seed: base + UInt64(i), width: w, height: h, index: i, count: count))
+            let result = try image(try await invoke(route, params: params, metaData: requestPromptKeys(route), seed: base + UInt64(i),
+                                                    width: w, height: h, index: i, count: count))
             outputs.append(try write(result, name: "images", index: i))
         }
         effective["count"] = .number(Double(count))
@@ -256,8 +259,8 @@ struct RunPlan {
         var params: ISValueObject = ["prompt": .string(instruction)]
         if let strength = context.param("strength")?.numberValue { params["strength"] = .number(strength) }
         record(route)
-        var result = try image(try await invoke(route, params: params, inputs: ["images": images], seed: base,
-                                                 width: size?.0, height: size?.1))
+        var result = try image(try await invoke(route, params: params, inputs: ["images": images],
+                                                 metaData: requestPromptKeys(route), seed: base, width: size?.0, height: size?.1))
         if size == nil, result.width != first.width || result.height != first.height {
             result = result.resized(first.width, first.height)                     // the first image sets the size
         }
@@ -356,8 +359,8 @@ struct RunPlan {
         let base = seed(count: 2)
         for attempt in 0..<2 {
             let result = try image(try await invoke(editor, params: ["prompt": .string(Erase.instruction(name))],
-                                                    inputs: ["images": [Media.modelImage(input)]], seed: base + UInt64(attempt),
-                                                    width: side, height: side))
+                                                    inputs: ["images": [Media.modelImage(input)]], metaData: writtenPromptKeys(editor),
+                                                    seed: base + UInt64(attempt), width: side, height: side))
                 .resized(square.width, square.height)
             guard Media.meanDifference(result, before, within: squareHole) < Erase.handedBack else {
                 seedUsed = base + UInt64(attempt)
@@ -427,7 +430,8 @@ struct RunPlan {
         let checkable = !["magenta", "pink", "fuchsia", "purple"].contains { prompt.lowercased().contains($0) }
         for attempt in 0..<2 {
             let result = try image(try await invoke(route, params: ["prompt": .string(instruction)], inputs: ["images": [Media.modelImage(marked)]],
-                                                    seed: base + UInt64(attempt), width: fitted.width, height: fitted.height))
+                                                    metaData: writtenPromptKeys(route), seed: base + UInt64(attempt),
+                                                    width: fitted.width, height: fitted.height))
                 .resized(canvas.width, canvas.height)
             let problem = checkable ? Media.paintingProblem(result, canvas: canvas, parts: parts ?? [region], checkDark: checkDark) : nil
             guard let problem else {

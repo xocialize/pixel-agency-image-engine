@@ -1,5 +1,6 @@
 import Foundation
 import ImageServerAPI
+import ImageServerCatalog
 import ImageServerModels
 @testable import MESConformance
 import MESCore
@@ -199,14 +200,66 @@ struct PromptEnhanceTests {
         }
     }
 
-    @Test("FLUX 3 Klein: its own upsampler, reported as built in; off can't be honoured per request yet (AB-A-0191)")
+    @Test("FLUX 3 Klein: its own upsampler, switched per request through the package's upsample key (AB-T-0336)")
     func flux3() async throws {
         try await withEngine(research: true) { probe, runner in
-            let job = try await probe.succeed(Self.generate("a lighthouse at dusk", model: "flux-3-klein", ["mode": "off"]))
-            let record = try #require(Self.enhancement(job))
+            /// The `upsample` key the image model's last call carried.
+            func upsample() -> ISValue? {
+                runner.calls.withLock { $0 }.last { $0.route.capability == .textToImage || $0.route.capability == .imageEdit }?
+                    .spec.metaData?[PromptEnhance.upsampleKey]
+            }
+            // auto: no key, so the configured upsampler runs; reported as built in.
+            var job = try await probe.succeed(Self.generate("a lighthouse at dusk", model: "flux-3-klein"))
+            var record = try #require(Self.enhancement(job))
             #expect(record["outcome"] == "built_in" && record["profile"] == "flux3-upsampler" && record["applied"] == true)
-            #expect(job.warnings.contains { $0.code == "prompt_enhance_ignored" } && job.warnings.contains { $0.code == "prompt_rewritten" })
+            #expect(job.warnings.contains { $0.code == "prompt_rewritten" } && upsample() == nil)
             #expect(Self.ranPrompt(runner) == "a lighthouse at dusk" && runner.textCalls.withLock { $0.isEmpty })
+
+            // off: upsample false, not applied, and a warning that its makers require it.
+            job = try await probe.succeed(Self.generate("a lighthouse at dusk", model: "flux-3-klein", ["mode": "off"]))
+            record = try #require(Self.enhancement(job))
+            #expect(record["outcome"] == "off" && record["applied"] == false && upsample() == .bool(false))
+            #expect(job.warnings.contains { $0.code == "prompt_upsampler_off" } && !job.warnings.contains { $0.code == "prompt_rewritten" })
+
+            // on: upsample true.
+            job = try await probe.succeed(Self.generate("a lighthouse at dusk", model: "flux-3-klein", ["mode": "on"]))
+            #expect(Self.enhancement(job)?["applied"] == true && upsample() == .bool(true))
+
+            // An edit's own instruction follows the mode too.
+            job = try await probe.succeed(JobRequest(
+                operation: "image.edit", inputs: ["images": image(), "instruction": .text("make it night")], model: "flux-3-klein",
+                extensions: [PromptEnhance.name: ["mode": "off"]]))
+            #expect(Self.ranPrompt(runner) == "make it night" && upsample() == .bool(false))
+            #expect(Self.enhancement(job)?["outcome"] == "off")
+
+            // A prompt the engine wrote (fill's marker instruction; fill takes no extension) is never upsampled.
+            _ = try await probe.succeed(JobRequest(
+                operation: "image.fill", inputs: ["image": image(), "mask": .one(.inline(mediaType: "image/png", data: Fixtures.mask())),
+                                                  "prompt": .text("a snowy owl")], model: "flux-3-klein"))
+            #expect(Self.ranPrompt(runner)?.contains("magenta area with a snowy owl") == true && upsample() == .bool(false))
+
+            // Another model declares no such key, so none is sent.
+            _ = try await probe.succeed(Self.generate("a lighthouse at dusk", model: "klein-4b", ["mode": "off"]))
+            #expect(runner.calls.withLock { $0.last?.spec.metaData } == nil)
         }
+    }
+
+    @Test("The runtime's own FLUX 3 Klein takes upsample on generate and edit, so what the engine sends passes its check")
+    @MainActor
+    func flux3RuntimeKeys() async throws {
+        let store = FileManager.default.temporaryDirectory.appendingPathComponent("pa-flux3-keys-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: store) }
+        let runtime = await ImageRuntime.start(modelStore: store, catalog: ModelCatalog.all(environment: [:]))
+        for capability in [Capability.textToImage, .imageEdit] {
+            let route = try await runtime.service.route(capability, model: ModelID(PromptEnhance.flux3))
+            #expect(route.takes(PromptEnhance.upsampleKey), "\(capability.rawValue)")
+            for value in [false, true] {
+                let spec = JobSpec(capability: capability, model: route.id, count: 1,
+                                   metaData: [PromptEnhance.upsampleKey: .bool(value)])
+                #expect(SubmitValidation.metaDataProblem(spec, route: route) == nil)
+            }
+        }
+        let klein = try await runtime.service.route(.textToImage, model: "klein-4b")
+        #expect(!klein.takes(PromptEnhance.upsampleKey))
     }
 }

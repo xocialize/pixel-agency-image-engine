@@ -7,10 +7,10 @@ Progress:
 - **E1** is prompt-enhance-kit-swift 0.5.0, which passed its gate on Qwen3.5-4B int4 (AB-R-0588), and 0.5.1 (the public
   `decision`, v2 `flux2-klein` and `z-image`; AB-A-0195, AB-R-0589).
 - **E2** shipped in the engine's 0.4.0 (2026-10-19), on prompt-enhance-kit-swift 0.5.1 and mlx-qwen-llm-swift 0.6.2.
-  See the README's "Prompt enhancement" and `Sources/PixelAgencyImageEngine/PromptEnhance.swift`. What's still open:
-  - FLUX 3 Klein's per-request switch (AB-T-0336): mlx-image-runtime 0.14.0 passes request metaData through
-    (AB-A-0191), and the engine has yet to use it;
-  - the console line is a tag on each card for now.
+  See the README's "Prompt enhancement" and `Sources/PixelAgencyImageEngine/PromptEnhance.swift`.
+  - FLUX 3 Klein's upsampler is switched per request since the engine's 0.4.1 (AB-T-0336), through the package's
+    `upsample` key (mlx-image-runtime 0.14.0, AB-A-0191).
+  - Still open: the console line is a tag on each card for now.
 
 ## Summary
 

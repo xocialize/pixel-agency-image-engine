@@ -30,7 +30,8 @@ actor FakeModels: ImageModelDirectory, ModelRouter {
         }
         return RoutedModel(id: info.id, packageID: "fake.\(info.id.rawValue)", capability: capability, displayName: info.displayName,
                            license: info.license, envelope: info.envelope, defaults: info.defaults, sourceRepo: info.sourceRepo,
-                           revision: info.revision, footprintBytes: info.footprintBytes)
+                           revision: info.revision, footprintBytes: info.footprintBytes,
+                           requestKeys: info.requestKeys.filter { $0.capabilities.contains(capability) })
     }
 
     func modelID(forPackage packageID: String) -> ModelID? {
@@ -48,12 +49,14 @@ actor FakeModels: ImageModelDirectory, ModelRouter {
                                         portCodeLicense: "MIT")
 
     static func model(_ id: String, _ capabilities: [Capability], license: LicenseStamp = apache, maturity: Maturity = .prod,
-                      guidance: Double? = nil, maxPixels: Int = 2_100_000, maxInputs: Int = 1, gb: Double = 2) -> ModelInfo {
+                      guidance: Double? = nil, maxPixels: Int = 2_100_000, maxInputs: Int = 1, gb: Double = 2,
+                      requestKeys: [RequestKey] = []) -> ModelInfo {
         ModelInfo(id: ModelID(id), displayName: id.capitalized, summary: "", capabilities: capabilities, defaultFor: [],
                   maturity: maturity, license: license, sourceRepo: "example/\(id)", revision: "main",
                   envelope: SizeEnvelope(maxPixels: maxPixels, multipleOf: 16, maxInputs: maxInputs),
                   defaults: GenerationDefaults(steps: 4, guidance: guidance, width: 1024, height: 1024),
-                  footprintBytes: UInt64(gb * 1_073_741_824), state: ModelState(downloaded: true, resident: false))
+                  footprintBytes: UInt64(gb * 1_073_741_824), state: ModelState(downloaded: true, resident: false),
+                  requestKeys: requestKeys)
     }
 
     static let catalog: [ModelInfo] = [
@@ -64,7 +67,8 @@ actor FakeModels: ImageModelDirectory, ModelRouter {
         model("moss-image-sft", [.textToImage], guidance: 3, gb: 10),
         model("qwen-image-2.1", [.textToImage], license: research, guidance: 1, gb: 30),
         model("flux-3-klein", [.textToImage, .imageEdit], license: kommunity, maturity: .wip, guidance: 1,
-              maxPixels: 2048 * 2048, maxInputs: 10, gb: 24),
+              maxPixels: 2048 * 2048, maxInputs: 10, gb: 24,
+              requestKeys: [RequestKey("upsample", .bool, capabilities: [.textToImage, .imageEdit], summary: "")]),
         model("boogu", [.imageEdit], maturity: .wip, guidance: 4, gb: 20),
         model("mage-flow-edit-turbo", [.imageEdit], guidance: 1, maxPixels: 1024 * 1024, maxInputs: 3, gb: 14),
         model("lama-inpaint", [.imageInpaint]),

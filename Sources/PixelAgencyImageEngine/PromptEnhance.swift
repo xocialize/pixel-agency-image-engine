@@ -23,8 +23,9 @@ import PromptEnhanceKit
 /// - **Honest results (G4).** `effective.model_params.prompt_enhancement` says what happened, with the rewrite, and a
 ///   `prompt_rewritten` warning says the prompt was changed.
 /// - **Edits** need a rewriter that sees the input image (E4), so an edit's instruction goes as typed (`needs_vision`).
-/// - **FLUX 3 Klein** keeps BFL's own upsampler, inside its package, switched only for the whole engine
-///   (`MLXIMG_FLUX3_UPSAMPLER`) until the runtime passes request metaData through (AB-A-0191).
+/// - **FLUX 3 Klein** keeps BFL's own upsampler, inside its package. The extension's mode switches it per request through
+///   the package's `upsample` key (mlx-image-runtime ≥ 0.14.0, AB-T-0336); `MLXIMG_FLUX3_UPSAMPLER` sets it for the
+///   whole engine, and `off` there loads none.
 public enum PromptEnhance {
     static let name = "x-pixelagency.prompt_enhance"
     /// The backbone every text-to-image profile runs on: Qwen3.5-4B int4 (`PromptBackbones`).
@@ -32,6 +33,8 @@ public enum PromptEnhance {
     static let library = ProfileLibrary.imageModels()
     /// The model whose enhancer lives in its own package.
     static let flux3 = "flux-3-klein"
+    /// The package key that switches a model's own upsampler for one request (FLUX 3 Klein's, AB-A-0191).
+    static let upsampleKey = "upsample"
     /// The operations whose prompts it enhances.
     static let operations: Set<String> = ["image.generate", "image.edit"]
 
@@ -112,7 +115,8 @@ public enum PromptEnhance {
     struct Record {
         var applied = false
         /// The kit's outcome (`wire`), or the engine's own: `off` (the request asked), `no_profile`, `unavailable` (the
-        /// backbone is off or failed to load), `built_in` (FLUX 3 Klein's upsampler).
+        /// backbone is off or failed to load, or FLUX 3 Klein's upsampler is off on this engine), `built_in` (FLUX 3
+        /// Klein's upsampler rewrote it).
         var outcome: String
         var profile: String?
         var version: Int?
@@ -235,26 +239,58 @@ extension RunPlan {
         return result.prompt
     }
 
-    /// FLUX 3 Klein's enhancer is BFL's upsampler, inside flux3-klein-swift, which rewrites every prompt unless the engine
-    /// was started with `MLXIMG_FLUX3_UPSAMPLER=off` (the runtime reads the same variable). The package doesn't hand the
-    /// rewrite back, so it isn't reported.
-    ///
-    /// TODO(AB-A-0191): once the runtime passes request metaData through, map the mode onto the package's
-    /// `metaData["upsample"]` (off → false, with a warning that results will suffer) instead of warning that it can't.
+    /// FLUX 3 Klein's enhancer is BFL's upsampler, inside flux3-klein-swift. The mode reaches it as the package's
+    /// `upsample` key (`requestPromptKeys`): off skips it, with a warning, since BFL requires it; on asks for it; auto
+    /// leaves the engine's setting. `MLXIMG_FLUX3_UPSAMPLER=off` (the runtime reads the same variable) loads no
+    /// upsampler, so on can't be honoured. The package doesn't hand the rewrite back, so it isn't reported.
     mutating func flux3Upsampler(_ mode: PromptEnhance.Mode) -> PromptEnhance.Record {
         let tier = ProcessInfo.processInfo.environment["MLXIMG_FLUX3_UPSAMPLER"]?.lowercased() ?? "int8"
-        let on = tier != "off"
-        if mode == .off, on {
-            warn("prompt_enhance_ignored", "FLUX 3 Klein's own prompt upsampler can't be switched off per request yet; it "
-                 + "rewrote the prompt.", param: PromptEnhance.name)
-        } else if mode == .on, !on {
+        let configured = tier != "off"
+        var record = PromptEnhance.Record(outcome: "built_in", profile: "flux3-upsampler")
+        switch mode {
+        case .off:
+            record.outcome = "off"
+            if configured {
+                warn("prompt_upsampler_off", "FLUX 3 Klein's own prompt upsampler was skipped, as asked; its makers require "
+                     + "it, so expect weaker results unless the prompt is already a full scene caption.", param: PromptEnhance.name)
+            }
+            return record
+        case .on where !configured:
             warn("prompt_enhance_ignored", "FLUX 3 Klein's prompt upsampler is switched off on this engine; the prompt was used "
                  + "as typed.", param: PromptEnhance.name)
-        }
-        if on {
+            record.outcome = "unavailable"
+            return record
+        case .auto where !configured:
+            record.outcome = "unavailable"
+            return record
+        case .on, .auto:
             warn("prompt_rewritten", "FLUX 3 Klein's own upsampler rewrote the prompt inside the model, as its makers require; "
-                 + "the rewrite isn't reported.", param: "prompt")
+                 + "the rewrite isn't reported. \(PromptEnhance.name) mode off sends a prompt as typed.", param: "prompt")
+            record.applied = true
+            record.backbone = "flux-3-image-klein-pup (\(tier))"
+            return record
         }
-        return .init(applied: on, outcome: "built_in", profile: "flux3-upsampler", backbone: on ? "flux-3-image-klein-pup (\(tier))" : nil)
     }
+
+    /// The package keys for the request's own prompt, on a model that rewrites prompts itself (FLUX 3 Klein's
+    /// `upsample`, AB-T-0336): off sends it as typed, on asks for the upsampler, auto leaves the engine's setting.
+    func requestPromptKeys(_ route: RoutedModel) -> ISValueObject? {
+        guard route.takes(PromptEnhance.upsampleKey) else { return nil }
+        switch PromptEnhance.Request(context.extensions).mode {
+        case .off: return [PromptEnhance.upsampleKey: .bool(false)]
+        case .on: return [PromptEnhance.upsampleKey: .bool(true)]
+        case .auto: return nil
+        }
+    }
+
+    /// The package keys for a prompt the engine wrote (fill and extend's marker instructions, erase by name, the creative
+    /// upscale's instruction): it goes to the model as written, so a model's own upsampler is skipped (§1.1).
+    func writtenPromptKeys(_ route: RoutedModel) -> ISValueObject? {
+        route.takes(PromptEnhance.upsampleKey) ? [PromptEnhance.upsampleKey: .bool(false)] : nil
+    }
+}
+
+extension RoutedModel {
+    /// Whether this model takes the package key `name` per request, for the routed capability.
+    func takes(_ name: String) -> Bool { requestKeys.contains { $0.name == name } }
 }

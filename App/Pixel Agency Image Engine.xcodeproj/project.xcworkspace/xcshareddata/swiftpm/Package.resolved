@@ -357,8 +357,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-image-runtime.git",
       "state" : {
-        "revision" : "8a521aba4bb66457db5c521b65b77d8dd3f65082",
-        "version" : "0.13.0"
+        "revision" : "f69a316fc9eefb849044445a65f79e7bc69caed6",
+        "version" : "0.14.0"
       }
     },
     {

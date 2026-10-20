@@ -322,7 +322,7 @@ extension RunPlan {
             for (b, batch) in batches.enumerated() {
                 let strip = try image(try await invoke(editor, params: params, mode: Creative.tilesMode,
                                                        inputs: ["images": batch.map { Media.modelImage(tiles[$0]) }],
-                                                       seed: seedBase + UInt64(batch.lowerBound), width: side, height: side,
+                                                       metaData: writtenPromptKeys(editor), seed: seedBase + UInt64(batch.lowerBound), width: side, height: side,
                                                        index: b, count: batches.count))
                 guard strip.width == side, strip.height == side * batch.count else {
                     throw NormalizerError.engine("The editor returned \(strip.width)×\(strip.height) for \(batch.count) tiles of \(side)².")
@@ -332,7 +332,7 @@ extension RunPlan {
         } else {
             for k in 0..<count {
                 let edited = try image(try await invoke(editor, params: params, inputs: ["images": [Media.modelImage(tiles[k])]],
-                                                        seed: seedBase + UInt64(k), width: side, height: side,
+                                                        metaData: writtenPromptKeys(editor), seed: seedBase + UInt64(k), width: side, height: side,
                                                         index: k, count: count)).resized(side, side)
                 accumulate(edited, row: 0, tile: k)
             }
