@@ -1,0 +1,650 @@
+[
+ {
+  "case": "qwen-lighthouse",
+  "model": "qwen-image-flash",
+  "policy": "recommended",
+  "arm": "off",
+  "mode": "off",
+  "prompt": "a lighthouse at dusk",
+  "state": "holding",
+  "outcome": "succeeded",
+  "seconds": 13.1,
+  "error": null,
+  "warnings": [],
+  "effective": {
+   "count": 1,
+   "model_params": {
+    "guidance": 1,
+    "model": "qwen-image-flash",
+    "prompt_enhancement": {
+     "applied": false,
+     "outcome": "off",
+     "profile": "qwen-image",
+     "version": 1
+    },
+    "steps": 4
+   },
+   "quality": "standard",
+   "seed": 20261019,
+   "size": {
+    "height": 1024,
+    "width": 1024
+   }
+  },
+  "seed": 20261019,
+  "image": "qwen-lighthouse-off.png",
+  "quality": 0.9236673
+ },
+ {
+  "case": "qwen-lighthouse",
+  "model": "qwen-image-flash",
+  "policy": "recommended",
+  "arm": "on",
+  "mode": "auto",
+  "prompt": "a lighthouse at dusk",
+  "state": "holding",
+  "outcome": "succeeded",
+  "seconds": 17.7,
+  "error": null,
+  "warnings": [
+   {
+    "code": "prompt_rewritten",
+    "message": "The prompt was rewritten for Qwen-Image Flash with the Qwen-Image profile (v1) on Qwen3.5 4B; the rewrite is in effective.model_params.prompt_enhancement. x-pixelagency.prompt_enhance mode off sends a prompt as typed.",
+    "param": "prompt"
+   }
+  ],
+  "effective": {
+   "count": 1,
+   "model_params": {
+    "guidance": 1,
+    "model": "qwen-image-flash",
+    "prompt_enhancement": {
+     "applied": true,
+     "backbone": "qwen3.5-4b",
+     "outcome": "enhanced",
+     "profile": "qwen-image",
+     "prompt": "Cinematic travel photography of a solitary lighthouse perched atop rugged cliffs, illuminated by a warm, pulsating beacon against a twilight sky transitioning from deep indigo to burnt orange hues. The glass lantern room glows vividly, casting a golden rim light that silhouettes the spiral staircase and metal grating. Foreground features a weathered stone base with creeping ivy, while the midground reveals crashing ocean waves under a dramatic sky. A lens flare effect highlights the light beam piercing the clouds. Shot on a wide-angle lens, shallow depth of field, high contrast, rich saturation, 8K resolution, photorealistic texture, atmospheric haze, and a moody, evocative mood. Ultra HD, 4K, cinematic composition",
+     "seed": 20261019,
+     "version": 1
+    },
+    "steps": 4
+   },
+   "quality": "standard",
+   "seed": 20261019,
+   "size": {
+    "height": 1024,
+    "width": 1024
+   }
+  },
+  "seed": 20261019,
+  "image": "qwen-lighthouse-on.png",
+  "quality": 0.92432356
+ },
+ {
+  "case": "qwen-jazz",
+  "model": "qwen-image-flash",
+  "policy": "recommended",
+  "arm": "off",
+  "mode": "off",
+  "prompt": "a poster for a jazz night called \"Blue Hour\"",
+  "state": "holding",
+  "outcome": "succeeded",
+  "seconds": 15.5,
+  "error": null,
+  "warnings": [],
+  "effective": {
+   "count": 1,
+   "model_params": {
+    "guidance": 1,
+    "model": "qwen-image-flash",
+    "prompt_enhancement": {
+     "applied": false,
+     "outcome": "off",
+     "profile": "qwen-image",
+     "version": 1
+    },
+    "steps": 4
+   },
+   "quality": "standard",
+   "seed": 20261019,
+   "size": {
+    "height": 1024,
+    "width": 1024
+   }
+  },
+  "seed": 20261019,
+  "image": "qwen-jazz-off.png",
+  "quality": 0.91523534
+ },
+ {
+  "case": "qwen-jazz",
+  "model": "qwen-image-flash",
+  "policy": "recommended",
+  "arm": "on",
+  "mode": "auto",
+  "prompt": "a poster for a jazz night called \"Blue Hour\"",
+  "state": "holding",
+  "outcome": "succeeded",
+  "seconds": 16.1,
+  "error": null,
+  "warnings": [
+   {
+    "code": "prompt_rewritten",
+    "message": "The prompt was rewritten for Qwen-Image Flash with the Qwen-Image profile (v1) on Qwen3.5 4B; the rewrite is in effective.model_params.prompt_enhancement. x-pixelagency.prompt_enhance mode off sends a prompt as typed.",
+    "param": "prompt"
+   }
+  ],
+  "effective": {
+   "count": 1,
+   "model_params": {
+    "guidance": 1,
+    "model": "qwen-image-flash",
+    "prompt_enhancement": {
+     "applied": true,
+     "backbone": "qwen3.5-4b",
+     "outcome": "enhanced",
+     "profile": "qwen-image",
+     "prompt": "Vibrant jazz night poster titled \"Blue Hour\" in elegant serif typography, positioned at the top center with a glowing neon gradient effect against deep indigo and twilight purple hues. Central composition features silhouetted saxophone musicians mid-performance, bathed in dynamic blue moonlight beams cutting through a smoky club atmosphere. Warm amber stage lights contrast with cool shadows, creating a moody, cinematic depth. Art style mimics a high-end music album cover: mixed media texture with ink wash and digital glow, featuring subtle grain and film stock aesthetic. Foreground includes floating musical notes and swirling dust particles to enhance motion. High contrast, rich saturation, and ultra-detailed rendering, shot at 8K resolution with a shallow depth of field to isolate the performers. Ultra HD, 4K, cinematic composition",
+     "seed": 20261019,
+     "version": 1
+    },
+    "steps": 4
+   },
+   "quality": "standard",
+   "seed": 20261019,
+   "size": {
+    "height": 1024,
+    "width": 1024
+   }
+  },
+  "seed": 20261019,
+  "image": "qwen-jazz-on.png",
+  "quality": 0.8869609
+ },
+ {
+  "case": "klein-bakery",
+  "model": "klein-4b",
+  "policy": "recommended",
+  "arm": "off",
+  "mode": "off",
+  "prompt": "a bakery storefront at dawn with a sign that says \"OPEN\"",
+  "state": "holding",
+  "outcome": "succeeded",
+  "seconds": 12.5,
+  "error": null,
+  "warnings": [],
+  "effective": {
+   "count": 1,
+   "model_params": {
+    "guidance": 1,
+    "model": "klein-4b",
+    "prompt_enhancement": {
+     "applied": false,
+     "outcome": "off",
+     "profile": "flux2-klein",
+     "version": 1
+    },
+    "steps": 4
+   },
+   "quality": "draft",
+   "seed": 20261019,
+   "size": {
+    "height": 1024,
+    "width": 1024
+   }
+  },
+  "seed": 20261019,
+  "image": "klein-bakery-off.png",
+  "quality": 0.9005486
+ },
+ {
+  "case": "klein-bakery",
+  "model": "klein-4b",
+  "policy": "recommended",
+  "arm": "on",
+  "mode": "auto",
+  "prompt": "a bakery storefront at dawn with a sign that says \"OPEN\"",
+  "state": "holding",
+  "outcome": "succeeded",
+  "seconds": 9.3,
+  "error": null,
+  "warnings": [
+   {
+    "code": "prompt_rewritten",
+    "message": "The prompt was rewritten for FLUX.2 Klein 4B with the FLUX.2 [klein] profile (v1) on Qwen3.5 4B; the rewrite is in effective.model_params.prompt_enhancement. x-pixelagency.prompt_enhance mode off sends a prompt as typed.",
+    "param": "prompt"
+   }
+  ],
+  "effective": {
+   "count": 1,
+   "model_params": {
+    "guidance": 1,
+    "model": "klein-4b",
+    "prompt_enhancement": {
+     "applied": true,
+     "backbone": "qwen3.5-4b",
+     "outcome": "enhanced",
+     "profile": "flux2-klein",
+     "prompt": "A cozy bakery storefront stands at the edge of a quiet street just as dawn breaks, its warm yellow light spilling from large glass windows onto the damp pavement. Centered above the wooden double doors hangs a weathered wooden sign painted in bold, white capital letters that read \"OPEN,\" with the text slightly raised and catching the first shafts of morning sun. The scene is framed by a wide-angle shot that captures the full facade, with two potted plants flanking the entrance and morning mist lingering low near the ground. Soft, golden morning light bathes the cream-colored brick walls and tiled floor, contrasting with the deep blue of the early sky above.",
+     "seed": 20261019,
+     "version": 1
+    },
+    "steps": 4
+   },
+   "quality": "draft",
+   "seed": 20261019,
+   "size": {
+    "height": 1024,
+    "width": 1024
+   }
+  },
+  "seed": 20261019,
+  "image": "klein-bakery-on.png",
+  "quality": 0.9090663
+ },
+ {
+  "case": "klein-apples",
+  "model": "klein-4b",
+  "policy": "recommended",
+  "arm": "off",
+  "mode": "off",
+  "prompt": "three red apples on a wooden table, left of a blue mug",
+  "state": "holding",
+  "outcome": "succeeded",
+  "seconds": 7.7,
+  "error": null,
+  "warnings": [],
+  "effective": {
+   "count": 1,
+   "model_params": {
+    "guidance": 1,
+    "model": "klein-4b",
+    "prompt_enhancement": {
+     "applied": false,
+     "outcome": "off",
+     "profile": "flux2-klein",
+     "version": 1
+    },
+    "steps": 4
+   },
+   "quality": "draft",
+   "seed": 20261019,
+   "size": {
+    "height": 1024,
+    "width": 1024
+   }
+  },
+  "seed": 20261019,
+  "image": "klein-apples-off.png",
+  "quality": 0.8830253
+ },
+ {
+  "case": "klein-apples",
+  "model": "klein-4b",
+  "policy": "recommended",
+  "arm": "on",
+  "mode": "auto",
+  "prompt": "three red apples on a wooden table, left of a blue mug",
+  "state": "holding",
+  "outcome": "succeeded",
+  "seconds": 10.3,
+  "error": null,
+  "warnings": [
+   {
+    "code": "prompt_rewritten",
+    "message": "The prompt was rewritten for FLUX.2 Klein 4B with the FLUX.2 [klein] profile (v1) on Qwen3.5 4B; the rewrite is in effective.model_params.prompt_enhancement. x-pixelagency.prompt_enhance mode off sends a prompt as typed.",
+    "param": "prompt"
+   }
+  ],
+  "effective": {
+   "count": 1,
+   "model_params": {
+    "guidance": 1,
+    "model": "klein-4b",
+    "prompt_enhancement": {
+     "applied": true,
+     "backbone": "qwen3.5-4b",
+     "outcome": "enhanced",
+     "profile": "flux2-klein",
+     "prompt": "Three glossy red apples rest on a weathered wooden table, clustered tightly on the left side of the frame while a single blue ceramic mug sits beside them to the right. The scene is captured from a slightly elevated eye-level angle using a 35mm lens with a shallow depth of field that blurs the background while keeping the fruit and mug in sharp focus. Warm, natural afternoon light streams from the left, casting soft shadows to the right and highlighting the smooth, waxy skin of the apples and the matte glaze of the mug. The color palette consists of rich crimson and deep crimson-red for the fruit, a cool slate blue for the mug, and warm honey-brown tones for the wood grain, creating a cozy, domestic still life. No text, logos, or other people are present.",
+     "seed": 20261019,
+     "version": 1
+    },
+    "steps": 4
+   },
+   "quality": "draft",
+   "seed": 20261019,
+   "size": {
+    "height": 1024,
+    "width": 1024
+   }
+  },
+  "seed": 20261019,
+  "image": "klein-apples-on.png",
+  "quality": 0.90395457
+ },
+ {
+  "case": "zimage-lighthouse",
+  "model": "z-image-turbo",
+  "policy": "optional",
+  "arm": "off",
+  "mode": "off",
+  "prompt": "a lighthouse at dusk",
+  "state": "holding",
+  "outcome": "succeeded",
+  "seconds": 18.3,
+  "error": null,
+  "warnings": [],
+  "effective": {
+   "count": 1,
+   "model_params": {
+    "guidance": 0,
+    "model": "z-image-turbo",
+    "prompt_enhancement": {
+     "applied": false,
+     "outcome": "off",
+     "profile": "z-image",
+     "version": 1
+    },
+    "steps": 8
+   },
+   "quality": "standard",
+   "seed": 20261019,
+   "size": {
+    "height": 1024,
+    "width": 1024
+   }
+  },
+  "seed": 20261019,
+  "image": "zimage-lighthouse-off.png",
+  "quality": 0.92153865
+ },
+ {
+  "case": "zimage-lighthouse",
+  "model": "z-image-turbo",
+  "policy": "optional",
+  "arm": "on",
+  "mode": "on",
+  "prompt": "a lighthouse at dusk",
+  "state": "holding",
+  "outcome": "succeeded",
+  "seconds": 19.7,
+  "error": null,
+  "warnings": [
+   {
+    "code": "prompt_rewritten",
+    "message": "The prompt was rewritten for Z-Image Turbo with the Z-Image profile (v1) on Qwen3.5 4B; the rewrite is in effective.model_params.prompt_enhancement. x-pixelagency.prompt_enhance mode off sends a prompt as typed.",
+    "param": "prompt"
+   }
+  ],
+  "effective": {
+   "count": 1,
+   "model_params": {
+    "guidance": 0,
+    "model": "z-image-turbo",
+    "prompt_enhancement": {
+     "applied": true,
+     "backbone": "qwen3.5-4b",
+     "outcome": "enhanced",
+     "profile": "z-image",
+     "prompt": "A solitary lighthouse stands on a rugged, dark granite cliff overlooking a churning sea at dusk. The sky is a gradient of deep indigo and charcoal, transitioning to a soft band of burnt orange near the horizon where a single sliver of moon begins to emerge. The lighthouse itself is a tall, cylindrical tower of weathered white stone, featuring vertical grooves and a conical roof topped with a small lantern room. A beam of warm, golden light spirals down the exterior of the tower, illuminating the damp, mossy stones. The ocean below is turbulent, with dark, foamy waves crashing against the base of the cliff, creating splashes of white spray that catch the fading light. In the foreground, the cliff face is covered in dense, shadowy pine trees, their needles glistening with moisture. The overall atmosphere is moody and atmospheric, with a subtle volumetric fog clinging to the water's surface. The lighting is natural, low-angle, and diffuse, emphasizing the texture of the stone and the movement of the water. The image is rendered in hyper-realistic detail with a shallow depth of field, focusing sharply on the lighthouse while softly blurring the distant horizon. No text is present.",
+     "seed": 20261019,
+     "version": 1
+    },
+    "steps": 8
+   },
+   "quality": "standard",
+   "seed": 20261019,
+   "size": {
+    "height": 1024,
+    "width": 1024
+   }
+  },
+  "seed": 20261019,
+  "image": "zimage-lighthouse-on.png",
+  "quality": 0.9287031
+ },
+ {
+  "case": "zimage-fox",
+  "model": "z-image-turbo",
+  "policy": "optional",
+  "arm": "off",
+  "mode": "off",
+  "prompt": "a red fox in fresh snow",
+  "state": "holding",
+  "outcome": "succeeded",
+  "seconds": 14.5,
+  "error": null,
+  "warnings": [],
+  "effective": {
+   "count": 1,
+   "model_params": {
+    "guidance": 0,
+    "model": "z-image-turbo",
+    "prompt_enhancement": {
+     "applied": false,
+     "outcome": "off",
+     "profile": "z-image",
+     "version": 1
+    },
+    "steps": 8
+   },
+   "quality": "standard",
+   "seed": 20261019,
+   "size": {
+    "height": 1024,
+    "width": 1024
+   }
+  },
+  "seed": 20261019,
+  "image": "zimage-fox-off.png",
+  "quality": 0.9224744
+ },
+ {
+  "case": "zimage-fox",
+  "model": "z-image-turbo",
+  "policy": "optional",
+  "arm": "on",
+  "mode": "on",
+  "prompt": "a red fox in fresh snow",
+  "state": "holding",
+  "outcome": "succeeded",
+  "seconds": 14.9,
+  "error": null,
+  "warnings": [
+   {
+    "code": "prompt_rewritten",
+    "message": "The prompt was rewritten for Z-Image Turbo with the Z-Image profile (v1) on Qwen3.5 4B; the rewrite is in effective.model_params.prompt_enhancement. x-pixelagency.prompt_enhance mode off sends a prompt as typed.",
+    "param": "prompt"
+   }
+  ],
+  "effective": {
+   "count": 1,
+   "model_params": {
+    "guidance": 0,
+    "model": "z-image-turbo",
+    "prompt_enhancement": {
+     "applied": true,
+     "backbone": "qwen3.5-4b",
+     "outcome": "enhanced",
+     "profile": "z-image",
+     "prompt": "A realistic red fox standing in deep, pristine fresh snow, fur displaying vibrant orange-red tones with white-tipped tail and facial markings, blending subtly with the white surroundings, soft diffused natural light casting gentle shadows, crisp winter atmosphere, high detail on fur texture and snow crystals, eye-level perspective, shallow depth of field, hyper-realistic, 8k resolution, sharp focus.",
+     "seed": 20261019,
+     "version": 1
+    },
+    "steps": 8
+   },
+   "quality": "standard",
+   "seed": 20261019,
+   "size": {
+    "height": 1024,
+    "width": 1024
+   }
+  },
+  "seed": 20261019,
+  "image": "zimage-fox-on.png",
+  "quality": 0.923702
+ },
+ {
+  "case": "mage-teashop",
+  "model": "mage-flow-turbo",
+  "policy": "optional",
+  "arm": "off",
+  "mode": "off",
+  "prompt": "a tea shop sign that reads \"茶馆\" in gold",
+  "state": "holding",
+  "outcome": "succeeded",
+  "seconds": 5.7,
+  "error": null,
+  "warnings": [],
+  "effective": {
+   "count": 1,
+   "model_params": {
+    "guidance": 1,
+    "model": "mage-flow-turbo",
+    "prompt_enhancement": {
+     "applied": false,
+     "outcome": "off",
+     "profile": "mage-flow",
+     "version": 1
+    },
+    "steps": 4
+   },
+   "quality": "standard",
+   "seed": 20261019,
+   "size": {
+    "height": 1024,
+    "width": 1024
+   }
+  },
+  "seed": 20261019,
+  "image": "mage-teashop-off.png",
+  "quality": 0.8929713
+ },
+ {
+  "case": "mage-teashop",
+  "model": "mage-flow-turbo",
+  "policy": "optional",
+  "arm": "on",
+  "mode": "on",
+  "prompt": "a tea shop sign that reads \"茶馆\" in gold",
+  "state": "holding",
+  "outcome": "succeeded",
+  "seconds": 3.0,
+  "error": null,
+  "warnings": [
+   {
+    "code": "prompt_rewritten",
+    "message": "The prompt was rewritten for Mage-Flow Turbo with the Mage-Flow profile (v1) on Qwen3.5 4B; the rewrite is in effective.model_params.prompt_enhancement. x-pixelagency.prompt_enhance mode off sends a prompt as typed.",
+    "param": "prompt"
+   }
+  ],
+  "effective": {
+   "count": 1,
+   "model_params": {
+    "guidance": 1,
+    "model": "mage-flow-turbo",
+    "prompt_enhancement": {
+     "applied": true,
+     "backbone": "qwen3.5-4b",
+     "outcome": "enhanced",
+     "profile": "mage-flow",
+     "prompt": "A close-up, eye-level shot captures a weathered wooden tea shop sign featuring the characters \"茶馆\" rendered in elegant, glowing gold brush strokes that gleam warmly against the dark timber. The sign hangs suspended from a rusted iron bracket, positioned slightly right of center to frame a bustling alleyway backdrop where steam rises from nearby lanterns. The scene is bathed in the soft, amber glow of twilight, casting long shadows and highlighting the rich, grainy texture of the aged wood and the metallic sheen of the gold lettering. Dust motes dance in the shafts of fading light, adding an atmospheric depth to the mid-range focus. The composition employs a shallow depth of field to blur the background street, drawing the viewer's eye directly to the luminous text, which is set in a traditional calligraphic style that evokes a cozy, rustic East Asian ambiance.",
+     "seed": 20261019,
+     "version": 1
+    },
+    "steps": 4
+   },
+   "quality": "standard",
+   "seed": 20261019,
+   "size": {
+    "height": 1024,
+    "width": 1024
+   }
+  },
+  "seed": 20261019,
+  "image": "mage-teashop-on.png",
+  "quality": 0.8968584
+ },
+ {
+  "case": "mage-robot",
+  "model": "mage-flow-turbo",
+  "policy": "optional",
+  "arm": "off",
+  "mode": "off",
+  "prompt": "a small robot watering plants on a balcony",
+  "state": "holding",
+  "outcome": "succeeded",
+  "seconds": 1.6,
+  "error": null,
+  "warnings": [],
+  "effective": {
+   "count": 1,
+   "model_params": {
+    "guidance": 1,
+    "model": "mage-flow-turbo",
+    "prompt_enhancement": {
+     "applied": false,
+     "outcome": "off",
+     "profile": "mage-flow",
+     "version": 1
+    },
+    "steps": 4
+   },
+   "quality": "standard",
+   "seed": 20261019,
+   "size": {
+    "height": 1024,
+    "width": 1024
+   }
+  },
+  "seed": 20261019,
+  "image": "mage-robot-off.png",
+  "quality": 0.89413774
+ },
+ {
+  "case": "mage-robot",
+  "model": "mage-flow-turbo",
+  "policy": "optional",
+  "arm": "on",
+  "mode": "on",
+  "prompt": "a small robot watering plants on a balcony",
+  "state": "holding",
+  "outcome": "succeeded",
+  "seconds": 3.8,
+  "error": null,
+  "warnings": [
+   {
+    "code": "prompt_rewritten",
+    "message": "The prompt was rewritten for Mage-Flow Turbo with the Mage-Flow profile (v1) on Qwen3.5 4B; the rewrite is in effective.model_params.prompt_enhancement. x-pixelagency.prompt_enhance mode off sends a prompt as typed.",
+    "param": "prompt"
+   }
+  ],
+  "effective": {
+   "count": 1,
+   "model_params": {
+    "guidance": 1,
+    "model": "mage-flow-turbo",
+    "prompt_enhancement": {
+     "applied": true,
+     "backbone": "qwen3.5-4b",
+     "outcome": "enhanced",
+     "profile": "mage-flow",
+     "prompt": "A petite, silver alloy robot with expressive LED eyes carefully waters a cluster of vibrant green succulents and delicate lavender on a weathered wooden balcony railing. The scene is set during golden hour, where soft, warm sunlight filters through sheer curtains, casting long, dappled shadows across the railing and illuminating the dust motes in the air. The composition centers the robot slightly to the left, creating a balanced diagonal line from the watering can down to the soil, with the camera positioned at eye level to emphasize the interaction between the machine and nature. The robot's metallic surface gleams under the light, contrasting with the rough texture of the wood and the smooth, waxy leaves of the plants. In the foreground, a small ceramic pot holds the greenery, while a string of fairy lights hangs loosely in the background, adding a touch of cozy ambiance. The overall style is a hyper-realistic photograph with shallow depth of field, capturing the intricate details of the robot's joints and the glistening water droplets on the plant leaves, evoking a serene, futuristic atmosphere.",
+     "seed": 20261019,
+     "version": 1
+    },
+    "steps": 4
+   },
+   "quality": "standard",
+   "seed": 20261019,
+   "size": {
+    "height": 1024,
+    "width": 1024
+   }
+  },
+  "seed": 20261019,
+  "image": "mage-robot-on.png",
+  "quality": 0.90355945
+ }
+]

@@ -31,8 +31,10 @@ struct ImageConsoleBackend: EngineConsoleBackend {
             let id = info.id.rawValue
             let offers = all.compactMap { d in d.models.first { $0.id == id }.map { (d.operation, $0) } }
             let unavailable = info.state.problem ?? ImageNormalizer.quarantined[id]
-            // A model that serves no operation (a helper inside another one) has nothing to switch.
-            guard !offers.isEmpty || unavailable != nil else { return nil }
+            // A model that serves no operation (a helper inside another one) has nothing to switch; the prompt enhancer's
+            // backbone has, since turning it off stops prompt enhancement.
+            let backbone = id == PromptEnhance.backboneID
+            guard !offers.isEmpty || unavailable != nil || backbone else { return nil }
             let optIn = ImageNormalizer.isOptIn(info)
             let enabled = enablement.isEnabled(id, optIn: optIn)
             // On, a model is the default where the served operations say so (it may have taken over from one that's
@@ -48,11 +50,15 @@ struct ImageConsoleBackend: EngineConsoleBackend {
             var tags: [String] = []
             if info.maturity == .wip { tags.append("Work in progress") }
             if deep.contains(id) { tags.append("16-bit") }
+            // How the model wants its prompts (AB-D-0155): its enhancer's policy.
+            if let prompting = PromptEnhance.prompting(forModel: id) { tags.append("Prompt enhancement: \(prompting.policy)") }
+            if backbone { tags.append("Prompt enhancer") }
             let card = EngineModel(
                 id: id, title: info.displayName, summary: info.summary,
                 license: offer?.license ?? ImageNormalizer.license(info), optIn: optIn,
                 enabled: enabled, acceptedAt: enablement.acceptedAt(id), roles: roles,
-                notes: offer?.notes, memoryClass: offer?.memoryClass, speedClass: offer?.speedClass,
+                notes: backbone ? PromptEnhance.backboneNote : offer?.notes,
+                memoryClass: offer?.memoryClass ?? ImageNormalizer.memoryClass(info.footprintBytes), speedClass: offer?.speedClass,
                 footprintBytes: info.state.residentBytes ?? info.footprintBytes,
                 install: info.state.downloaded ? .downloaded(bytes: nil) : .notDownloaded(bytes: nil),
                 resident: info.state.resident, unavailable: unavailable,

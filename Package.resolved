@@ -1,5 +1,5 @@
 {
-  "originHash" : "21ae0bcbe0f3bfd1842ae966034fbbcaf8431c748b0ab99af72e1c4179adb218",
+  "originHash" : "24452213932b7f184c324a7a0ae80549f393e63bef06feac4bdcfcaa4675755d",
   "pins" : [
     {
       "identity" : "anima-mlx-swift",
@@ -272,6 +272,15 @@
       }
     },
     {
+      "identity" : "mlx-constrained-decoding-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/xocialize/mlx-constrained-decoding-swift",
+      "state" : {
+        "revision" : "846adbebe5f8cae995415998f9e9bf0afce4cf11",
+        "version" : "0.1.0"
+      }
+    },
+    {
       "identity" : "mlx-ddcolor-swift",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-ddcolor-swift.git",
@@ -398,6 +407,15 @@
       }
     },
     {
+      "identity" : "mlx-qwen-llm-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/xocialize/mlx-qwen-llm-swift.git",
+      "state" : {
+        "revision" : "385786556ac70b991bea3f82ed86ce6e6d1c40fc",
+        "version" : "0.6.2"
+      }
+    },
+    {
       "identity" : "mlx-realesrgan-swift",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/xocialize/mlx-realesrgan-swift",
@@ -521,6 +539,15 @@
       "state" : {
         "revision" : "aab49bbfa19e2f7c493e652e5dae5b25b252f37c",
         "version" : "0.3.0"
+      }
+    },
+    {
+      "identity" : "prompt-enhance-kit-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/xocialize/prompt-enhance-kit-swift.git",
+      "state" : {
+        "revision" : "bcf937624f3ec0cba0544ae1a525f06475d786e3",
+        "version" : "0.5.1"
       }
     },
     {

@@ -293,9 +293,54 @@ The normalizer (`ImageNormalizer`, `RunPlan`) holds every model to the profile, 
     A job that finds the Mac short of free memory after Residency has made room warns `memory_tight`.
   - Needs mlx-image-runtime ≥ 0.5.0 and mage-flow-swift ≥ 0.11.0.
 
+- **Prompt enhancement (0.4.0, AB-D-0155, E2).** Before `image.generate` runs, a short prompt is rewritten into the detailed
+  caption the model was trained on. Each model has its own profile from prompt-enhance-kit
+  (`ProfileLibrary.imageModels()`, prompt-enhance-kit-swift ≥ 0.5.1). The text model that rewrites it, the **backbone**, is Qwen3.5-4B int4
+  (`qwen3.5-4b`, Apache-2.0, about 2 GB, through mlx-qwen-llm-swift ≥ 0.6.2). The design is [docs/PROMPTS-AND-ADAPTERS.md](docs/PROMPTS-AND-ADAPTERS.md) §1.5.
+  - **The extension** `x-pixelagency.prompt_enhance {mode: auto | on | off, seed?}`, on `image.generate` and
+    `image.edit`. The engine declares it while the backbone is on. A request without it is `auto`:
+
+    | Profile | Models | `auto` |
+    |---|---|---|
+    | `qwen-image` (Qwen's own rewriter, EN and ZH) | qwen-image-flash | rewrites a prompt under 60 words |
+    | `flux2-klein` | klein-4b, klein-4b-base | rewrites a prompt under 60 words |
+    | `z-image` (Tongyi's own expander) | z-image-turbo, z-image | as typed; `on` rewrites |
+    | `mage-flow` | mage-flow, mage-flow-turbo | as typed; `on` rewrites |
+
+    `off` sends the prompt as typed, and a prompt that's already JSON (a layout) always goes as typed. Models without a
+    profile, such as MOSS-Image and SenseNova, take prompts as typed.
+  - **Reported.** `effective.model_params.prompt_enhancement` is `{applied, outcome, profile, version, backbone, seed,
+    prompt}`, with the rewrite in `prompt`. The warning `prompt_rewritten` says the prompt was changed.
+    - `outcome` is `enhanced`, `passed_through`, `not_recommended`, `off` or `no_profile`, or why a rewrite didn't
+      happen: `needs_vision`, `unavailable`, `failed`, `timed_out` or `empty`.
+    - A failed rewrite never fails the job. The prompt goes as typed, with `prompt_enhance_failed`.
+    - `on` that can't be honoured warns `prompt_enhance_ignored`.
+    - Each `image.generate` offer's `notes` say how the engine treats that model's prompts. The MCP tool descriptions
+      carry them too, but MCP tools can't pass extensions yet (MES §15).
+  - **Reproducible.** The rewrite is seeded from the job's seed, or the extension's `seed`, so a fixed seed reproduces
+    the image end to end.
+  - **Only the request's own prompt is rewritten.** The engine's own instructions go as written: fill and extend's
+    marker instructions, erase by name, and the creative upscale.
+  - **Edits** keep their instruction (`needs_vision`): an edit rewriter has to see the image (E4).
+  - **Memory.** The backbone loads, rewrites and is released before the image model loads. At about 2 GB it stays warm
+    for the next job (`Residency.Policy.warmHelperBytes`, 4 GB); a larger backbone would be released straight away. A
+    prompt that goes as typed never loads it. Once loaded, a rewrite takes about 2 s; the timeout is 60 s.
+  - **The backbone is a model like any other.** It has a card in the app's console, it's in the enabled set, and it's
+    downloaded on first use. Turned off, prompts go as typed and the extension isn't declared.
+  - **FLUX 3 Klein** keeps BFL's own upsampler inside its package (`outcome: built_in`). `MLXIMG_FLUX3_UPSAMPLER`
+    switches it for the whole engine. Until the runtime passes request metaData through (AB-A-0191), `mode: off` can't
+    switch it per request, and says so with `prompt_enhance_ignored`.
+  - **Measured** ([docs/PROMPT-ENHANCE-AB.md](docs/PROMPT-ENHANCE-AB.md)). On four profiles × two prompts at one seed, SigLIP2
+    quality rose or held in 7 of 8. The rewrite fixed rendered text twice (a stray "INIGHT", a sign reading "O PEN") and
+    a spatial relation once, and it never broke a quoted string. A fixed seed reproduces the rewrite and the image
+    byte for byte. That was on kit 0.5.0's v1 profiles; 0.5.1's v2 `flux2-klein` and `z-image` stop the closing "No
+    text is present." sentence and Z-Image's tag lists (AB-R-0589).
+
 ## Conformance
 
-The engine passes the MES conformance suite. Against the live engine with real models (2026-10-09):
+The engine passes the MES conformance suite. Most recently, with prompt enhancement (2026-10-19): 35 passed, 0 failed,
+4 skipped, Base 0.1 and Image 0.1 conform ([`docs/conformance/2026-10-19-live.md`](docs/conformance/2026-10-19-live.md)).
+Against the live engine with real models (2026-10-09):
 - **Results:** 34 passed, 0 failed, 4 skipped. **Base 0.1 conforms, Image 0.1 conforms.** The report is in
   [`docs/conformance/2026-10-10-live.md`](docs/conformance/2026-10-10-live.md) (re-run after R1b; the first run is `2026-10-09-live.md`).
 - **Skipped:** the paired-mode tests and output expiry, which don't apply to an open-mode engine with a one-hour TTL.
@@ -320,7 +365,9 @@ offline, that test is skipped.
 | `Sources/PixelAgencyImageEngine/OperationTable.swift` | Each operation's capability, tier defaults and vocabulary |
 | `Sources/PixelAgencyImageEngine/RunPlan.swift` | Each operation as model runs, and the profile's rules on the results |
 | `Sources/PixelAgencyImageEngine/Media.swift` | Pixels and masks: loading, compositing, padding, marking, encoding |
-| `Sources/PixelAgencyImageEngine/Runtime.swift` | Bootstraps the model runtime and the shared models folder |
+| `Sources/PixelAgencyImageEngine/Runtime.swift` | Bootstraps the model runtime and the shared models folder; `EngineTextRunner` runs the backbone |
+| `Sources/PixelAgencyImageEngine/PromptEnhance.swift` | Prompt enhancement: the extension, the profiles' decisions, the backbone call, provenance |
+| `Sources/PromptBackbones` | The prompt enhancer's backbone as a catalog entry (links MLX through MLXQwenLLM) |
 | `Sources/ImageEngineHost` | The engine in the app: the console over the runtime, and the models folder (`ModelsFolder`, onboarding, Settings) |
 | `Sources/ImageEngineCLI` | `pixel-agency-image-engine`, the headless engine |
 | `App/` | The Mac app around `ImageEngineHost`: entitlements, Info.plist, the Xcode project |
@@ -339,6 +386,11 @@ offline, that test is skipped.
 - **Paired clients and remote providers in the app** (the rest of ENG-9).
 - **Channel clearance** (ENG-14).
 - **A real edit benchmark**, before edit's best tier is final (docs/TIERS.md, Open).
+- **Prompt enhancement, the rest of AB-D-0155:**
+  - FLUX 3 Klein's upsampler switched per request (AB-T-0336, on mlx-image-runtime 0.14.0's request metaData);
+  - structured profiles on a larger backbone (E3);
+  - edit rewriters that see the image (E4);
+  - the console line "Prompting: …" as MESEngineUI's own row (it's a tag on each card for now).
 
 Residency (ENG-3) is in: one heavy model at a time, eviction when a load won't fit, and idle models released after 10
 minutes (3 at ≥ 20 GB). Evictions are logged.

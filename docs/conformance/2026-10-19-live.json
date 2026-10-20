@@ -1,0 +1,301 @@
+{
+  "engine" : {
+    "auth" : "open",
+    "features" : [
+      "uploads",
+      "sse",
+      "grants",
+      "previews",
+      "websocket",
+      "mcp"
+    ],
+    "id" : "eng_9edf123f946c4195",
+    "implementation" : "pixel-agency-image-engine 0.3.0",
+    "name" : "Pixel Agency Image Engine",
+    "profiles" : [
+      "image 0.1"
+    ],
+    "url" : "http://127.0.0.1:17620/mes/v0"
+  },
+  "results" : [
+    {
+      "id" : "BASE-001",
+      "milliseconds" : 1,
+      "spec" : "§4",
+      "status" : "pass",
+      "title" : "Engine information validates; uploads and SSE are claimed; Base 0.1 is offered"
+    },
+    {
+      "id" : "BASE-002",
+      "milliseconds" : 1,
+      "spec" : "§2, §3.2",
+      "status" : "pass",
+      "title" : "Responses echo MES-Version and carry MES-Request-Id, on success and on error"
+    },
+    {
+      "id" : "BASE-003",
+      "milliseconds" : 0,
+      "spec" : "§2",
+      "status" : "pass",
+      "title" : "An unsupported MES-Version is refused with 400 unsupported_version"
+    },
+    {
+      "id" : "BASE-004",
+      "milliseconds" : 0,
+      "spec" : "§3.2",
+      "status" : "pass",
+      "title" : "A request from a browser origin outside the allowlist is refused with 403 origin_not_allowed"
+    },
+    {
+      "detail" : "open mode",
+      "id" : "BASE-005",
+      "milliseconds" : 0,
+      "spec" : "§3.3",
+      "status" : "skip",
+      "title" : "Paired mode: the handshake needs no token; everything else answers 401 without one"
+    },
+    {
+      "detail" : "open mode",
+      "id" : "BASE-006",
+      "milliseconds" : 0,
+      "spec" : "§3.3, §5",
+      "status" : "skip",
+      "title" : "Paired mode: the certificate served is the one tls.fingerprint_sha256 names"
+    },
+    {
+      "id" : "BASE-010",
+      "milliseconds" : 33,
+      "spec" : "§6, §10.2",
+      "status" : "pass",
+      "title" : "Descriptors validate, name their profile, and offer at least one licensed model"
+    },
+    {
+      "id" : "BASE-011",
+      "milliseconds" : 2,
+      "spec" : "§6",
+      "status" : "pass",
+      "title" : "The operations list has an ETag, and If-None-Match answers 304"
+    },
+    {
+      "id" : "BASE-012",
+      "milliseconds" : 1,
+      "spec" : "§6",
+      "status" : "pass",
+      "title" : "One descriptor by name matches the list; an unknown one is 404 unknown_operation"
+    },
+    {
+      "id" : "BASE-020",
+      "milliseconds" : 12493,
+      "spec" : "§7, §10",
+      "status" : "pass",
+      "title" : "A job: 201 with Location, then held with a valid result, plan and provenance"
+    },
+    {
+      "id" : "BASE-021",
+      "milliseconds" : 17,
+      "spec" : "§7.1, §12",
+      "status" : "pass",
+      "title" : "Request errors: 400 invalid_request, 404 unknown_operation, 422 unsupported_parameter, with valid error bodies"
+    },
+    {
+      "id" : "BASE-022",
+      "milliseconds" : 12217,
+      "spec" : "§7.1",
+      "status" : "pass",
+      "title" : "An Idempotency-Key repeated returns the original job"
+    },
+    {
+      "id" : "BASE-023",
+      "milliseconds" : 12134,
+      "spec" : "§7.3",
+      "status" : "pass",
+      "title" : "A long poll on a held job answers at once with a valid snapshot"
+    },
+    {
+      "id" : "BASE-024",
+      "milliseconds" : 12206,
+      "spec" : "§7.3",
+      "status" : "pass",
+      "title" : "GET jobs lists the caller's jobs and filters by state"
+    },
+    {
+      "id" : "BASE-025",
+      "milliseconds" : 11662,
+      "spec" : "§7.3",
+      "status" : "pass",
+      "title" : "An output: its media type, its bytes and an ETag of its SHA-256"
+    },
+    {
+      "id" : "BASE-026",
+      "milliseconds" : 11710,
+      "spec" : "§7.3",
+      "status" : "pass",
+      "title" : "Outputs serve byte ranges: 206 with Content-Range, suffixes, and 416 beyond the end"
+    },
+    {
+      "id" : "BASE-027",
+      "milliseconds" : 11710,
+      "spec" : "§7.3, §13",
+      "status" : "pass",
+      "title" : "Confirm purges: the job is purged and succeeded, its outputs answer 410 gone"
+    },
+    {
+      "id" : "BASE-028",
+      "milliseconds" : 19,
+      "spec" : "§7.3, §13",
+      "status" : "pass",
+      "title" : "Release is idempotent; a released job's outputs answer 410"
+    },
+    {
+      "id" : "BASE-030",
+      "milliseconds" : 14822,
+      "spec" : "§8",
+      "status" : "pass",
+      "title" : "Uploads: 201 with the right size and SHA-256, at most an hour's expiry, and single use"
+    },
+    {
+      "id" : "BASE-031",
+      "milliseconds" : 1,
+      "spec" : "§8",
+      "status" : "pass",
+      "title" : "An upload whose Content-Digest doesn't match is refused"
+    },
+    {
+      "id" : "BASE-040",
+      "milliseconds" : 13043,
+      "spec" : "§9",
+      "status" : "pass",
+      "title" : "Grants: the engine pulls with the bearer token, and fails the job on a wrong SHA-256"
+    },
+    {
+      "id" : "BASE-050",
+      "milliseconds" : 11758,
+      "spec" : "§11",
+      "status" : "pass",
+      "title" : "SSE: framed events that validate, rising seq, output_ready, then job.ended after confirm"
+    },
+    {
+      "id" : "BASE-051",
+      "milliseconds" : 11466,
+      "spec" : "§11",
+      "status" : "pass",
+      "title" : "SSE resumes after Last-Event-ID"
+    },
+    {
+      "id" : "BASE-052",
+      "milliseconds" : 11366,
+      "spec" : "§11",
+      "status" : "pass",
+      "title" : "WebSocket: pong, engine.health on \"*\", the client's job events, error messages"
+    },
+    {
+      "id" : "BASE-060",
+      "milliseconds" : 3,
+      "spec" : "§14",
+      "status" : "pass",
+      "title" : "Health validates"
+    },
+    {
+      "id" : "BASE-070",
+      "milliseconds" : 11322,
+      "spec" : "§13",
+      "status" : "pass",
+      "title" : "Retention deadlines respect the engine's TTLs"
+    },
+    {
+      "detail" : "outputs_ttl_s is 3600 s (observed only up to 30 s)",
+      "id" : "BASE-071",
+      "milliseconds" : 7,
+      "spec" : "§13 rule 2",
+      "status" : "skip",
+      "title" : "Outputs expire: after outputs_ttl_s the job is expired and its outputs answer 410"
+    },
+    {
+      "id" : "BASE-080",
+      "milliseconds" : 17,
+      "spec" : "§15",
+      "status" : "pass",
+      "title" : "MCP: a session lists one tool per operation (dots → underscores) and the four helpers"
+    },
+    {
+      "id" : "IMAGE-001",
+      "milliseconds" : 3880,
+      "spec" : "Image §1.7",
+      "status" : "pass",
+      "title" : "fill and erase keep black-mask pixels byte-identical"
+    },
+    {
+      "id" : "IMAGE-002",
+      "milliseconds" : 840,
+      "spec" : "Image §3",
+      "status" : "pass",
+      "title" : "upscale returns exactly input size × scale, for each scale offered"
+    },
+    {
+      "id" : "IMAGE-003",
+      "milliseconds" : 21349,
+      "spec" : "Image §1.8, §3",
+      "status" : "pass",
+      "title" : "Image operations keep the input size (except upscale and extend)"
+    },
+    {
+      "id" : "IMAGE-004",
+      "milliseconds" : 413,
+      "spec" : "Image §1.5, §1.6",
+      "status" : "pass",
+      "title" : "matte masks are 8-bit grey; extract carries alpha"
+    },
+    {
+      "id" : "IMAGE-005",
+      "milliseconds" : 12313,
+      "spec" : "Image §1.4",
+      "status" : "pass",
+      "title" : "EXIF orientation is applied; outputs are upright with no rotation flag"
+    },
+    {
+      "id" : "IMAGE-006",
+      "milliseconds" : 14788,
+      "spec" : "Image §1.3, §4",
+      "status" : "pass",
+      "title" : "A non-sRGB input is converted: a color_converted warning and an output tagged sRGB"
+    },
+    {
+      "id" : "IMAGE-007",
+      "milliseconds" : 29002,
+      "spec" : "Image §2",
+      "status" : "pass",
+      "title" : "The seed is reported, and the same seed reproduces the result"
+    },
+    {
+      "id" : "IMAGE-008",
+      "milliseconds" : 1,
+      "spec" : "Image §2",
+      "status" : "pass",
+      "title" : "size and aspect together are refused with 400"
+    },
+    {
+      "id" : "IMAGE-009",
+      "milliseconds" : 0,
+      "spec" : "Image §3, §5",
+      "status" : "pass",
+      "title" : "Descriptors match the profile table: required inputs and outputs, of the right kinds"
+    },
+    {
+      "id" : "IMAGE-010",
+      "milliseconds" : 2,
+      "spec" : "Image §1.2",
+      "status" : "pass",
+      "title" : "An output the operation doesn't offer is refused with 422 unsupported_parameter"
+    },
+    {
+      "detail" : "open mode",
+      "id" : "BASE-090",
+      "milliseconds" : 0,
+      "spec" : "§5",
+      "status" : "skip",
+      "title" : "Pairing: the token is handed out once, and unpairing revokes it"
+    }
+  ],
+  "startedAt" : "2026-10-19T21:12:24Z",
+  "suite" : "MES conformance 0.1"
+}

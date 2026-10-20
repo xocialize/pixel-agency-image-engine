@@ -19,7 +19,7 @@ public final class ImageRuntime {
     }
 
     /// The engine's version, as `GET {path}` and provenance report it.
-    public nonisolated static let version = "0.3.0"
+    public nonisolated static let version = "0.4.0"
 
     /// A stable engine id (Base §4), made once and kept with the state.
     public nonisolated static func engineID(in state: URL) throws -> String {
@@ -43,8 +43,9 @@ public final class ImageRuntime {
     }
 
     /// Registers `catalog`'s models with the runtime (nothing is downloaded or loaded until a job needs it). The
-    /// headless engine passes `ModelCatalog.all()` (ImageServerCatalog: every package); an app that embeds only
-    /// ForgeCore's tiers passes those (`ModelCatalog.processing()`, or a subset), and links no generative package.
+    /// headless engine passes `ModelCatalog.all()` (ImageServerCatalog: every package) and the prompt enhancer's backbones
+    /// (`PromptBackbones.entries()`); an app that embeds only ForgeCore's tiers passes those (`ModelCatalog.processing()`,
+    /// or a subset), and links no generative package. Without a backbone, prompts go as typed.
     ///
     /// The router may run restricted models: what's offered is the normalizer's call (`allowResearch`), and an
     /// offered research model is `named_only`, so it runs only when a request names it.
@@ -62,7 +63,8 @@ public final class ImageRuntime {
         options.tiledEditors.formUnion(await tiledEditors(service))
         let runner = EngineRunner(engine: service.engine, enhancer: enhancer)
         if options.creativeUnavailable == nil { options.creativeUnavailable = await creativeUnavailable(service, runner: runner) }
-        let normalizer = ImageNormalizer(directory: service, runner: runner, options: options)
+        let normalizer = ImageNormalizer(directory: service, runner: runner, textRunner: EngineTextRunner(engine: service.engine),
+                                         options: options)
         return ImageRuntime(normalizer: normalizer, service: service, forge: forge)
     }
 
@@ -103,5 +105,26 @@ public final class ImageRuntime {
             }
         }
         return ids
+    }
+}
+
+/// Runs a chat request on a text model the runtime registered: the prompt enhancer's backbone. The runtime's `ModelRunner`
+/// maps image capabilities only, so `.llm` goes to the engine directly. Prepare the route first (`RunPlan.route`).
+public protocol TextRunner: Sendable {
+    func generate(_ request: LLMRequest, on route: RoutedModel) async throws -> String
+}
+
+/// `TextRunner` over MLXServe. Awaits the engine directly, so cancelling the job reaches the package (AB-L-0052).
+public struct EngineTextRunner: TextRunner {
+    public let engine: MLXServeEngine
+
+    public init(engine: MLXServeEngine) { self.engine = engine }
+
+    public func generate(_ request: LLMRequest, on route: RoutedModel) async throws -> String {
+        let response = try await engine.run(request, package: PackageID(route.packageID))
+        guard let text = response as? LLMResponse else {
+            throw NormalizerError.engine("\(route.id.rawValue) returned \(type(of: response)), not text.")
+        }
+        return text.text
     }
 }

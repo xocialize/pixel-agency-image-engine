@@ -9,6 +9,8 @@ import ImageServerModels
 /// - **One heavy slot.** Loading a heavy model (≥ `heavyBytes`) first evicts every other heavy one.
 /// - **Machine fit.** If the runtime says a model won't fit, everything idle is evicted before it loads.
 /// - **Keep-warm.** A model unused for `keepWarm` is released; one of `bigBytes` or more after `bigKeepWarm`.
+/// - **Helpers.** A model a job uses before its own (the prompt enhancer's backbone) is released as soon as it's done,
+///   unless it's under `warmHelperBytes`: small enough to stay for the next job beside the image model.
 /// Models a running job is using are never evicted.
 public actor Residency {
     public struct Policy: Sendable {
@@ -17,6 +19,8 @@ public actor Residency {
         public var keepWarm: Duration = .seconds(600)
         public var bigKeepWarm: Duration = .seconds(180)
         public var sweepInterval: Duration = .seconds(30)
+        /// A helper this small stays warm after use (Qwen3.5-4B int4 is about 2 GB); a larger one is released at once.
+        public var warmHelperBytes: UInt64 = 4 << 30
         public init() {}
     }
 
@@ -61,6 +65,15 @@ public actor Residency {
         let package = route.packageID
         inUse[package] = max(0, (inUse[package] ?? 1) - 1)
         lastUse[package] = .now
+    }
+
+    /// Marks a helper `route` no longer in use, and releases it now unless it's small enough to stay warm.
+    public func releaseHelper(_ route: RoutedModel) async {
+        release(route)
+        let package = route.packageID
+        let size = route.footprintBytes ?? footprint(package)
+        guard size >= policy.warmHelperBytes, idle(package), await runner.residentPackages().contains(package) else { return }
+        await evict(package, reason: "a helper of \(size >> 20) MB isn't kept warm")
     }
 
     /// Releases `route`'s package now if no job is using it (the operator's "release from memory"). Returns whether it was

@@ -6,7 +6,8 @@ import PackageDescription
 // engine half (ImageServerModels: the catalog, routing, and the runner over MLXEngine and ForgeCore). This package adds the
 // normalizer between them: MES operations and vocabulary in, model runs out, the profile's rules enforced.
 //
-//   PixelAgencyImageEngine     the normalizer (a MediaEngine), media I/O, the runtime bootstrap
+//   PixelAgencyImageEngine     the normalizer (a MediaEngine), media I/O, the runtime bootstrap, prompt enhancement
+//   PromptBackbones            the prompt enhancer's text models as catalog entries (links MLX through MLXQwenLLM)
 //   ImageEngineHost            the engine in an app (ENG-9): MESEngineUI's console and menu-bar item over the runtime;
 //                              App/ is the Mac app around it
 //   pixel-agency-image-engine  the headless engine
@@ -52,6 +53,17 @@ let package = Package(
         .package(url: "https://github.com/xocialize/mlx-engine-swift.git", from: "0.67.0"),
         .package(url: "https://github.com/xocialize/flux2-klein-swift.git", from: "0.8.1"),
         .package(url: "https://github.com/xocialize/sensenova-u1-swift.git", from: "0.5.1"),
+        // Prompt enhancement (AB-D-0155, E2). ≥ 0.5.1: the kit's model profiles (EnhanceProfile,
+        // ProfileLibrary.imageModels(), enhance(_:profile:...) with outcomes, a timeout and rethrown cancellation), the
+        // public pass-through `decision`, and the v2 flux2-klein and z-image profiles (AB-A-0195).
+        .package(url: "https://github.com/xocialize/prompt-enhance-kit-swift.git", from: "0.5.1"),
+        // The backbone, Qwen3.5-4B int4. ≥ 0.6.2: promptEnhance answers without thinking (0.6.1, AB-L-0301; before it,
+        // the rewrite was the model's thinking trace), and the configured checkpoint is a WeightSource, so the install
+        // marker and needsDownload follow the 4B that loads, not the manifest's 0.8B (0.6.2). MLXQwenLLM links MLXLLM and
+        // MLXVLM. MLXVLM is already in the graph (flux3-klein, ming, qwen-image-edit, boogu), and no image package
+        // dispatches through mlx-swift-lm's generic loader (FLUX 3's upsampler names VLMModelFactory), so linking it
+        // shadows no image package's text encoder.
+        .package(url: "https://github.com/xocialize/mlx-qwen-llm-swift.git", from: "0.6.2"),
     ],
     targets: [
         .target(name: "PixelAgencyImageEngine", dependencies: [
@@ -60,9 +72,19 @@ let package = Package(
             .product(name: "MESEngineCore", package: "media-engine-spec"),
             .product(name: "ImageServerModels", package: "mlx-image-runtime"),
             .product(name: "ImageServerAPI", package: "mlx-image-runtime"),
+            .product(name: "PromptEnhanceKit", package: "prompt-enhance-kit-swift"),
+        ]),
+        .target(name: "PromptBackbones", dependencies: [
+            "PixelAgencyImageEngine",
+            .product(name: "ImageServerAPI", package: "mlx-image-runtime"),
+            .product(name: "ImageServerModels", package: "mlx-image-runtime"),
+            .product(name: "MLXQwenLLM", package: "mlx-qwen-llm-swift"),
+            .product(name: "MLXToolKit", package: "mlx-engine-swift"),
+            .product(name: "MLXServeCore", package: "mlx-engine-swift"),
         ]),
         .target(name: "ImageEngineHost", dependencies: [
             "PixelAgencyImageEngine",
+            "PromptBackbones",
             .product(name: "MESCore", package: "media-engine-spec"),
             .product(name: "MESEngineKit", package: "media-engine-spec"),
             .product(name: "MESEngineUI", package: "media-engine-spec"),
@@ -73,6 +95,7 @@ let package = Package(
         ]),
         .executableTarget(name: "ImageEngineCLI", dependencies: [
             "PixelAgencyImageEngine",
+            "PromptBackbones",
             .product(name: "ImageServerCatalog", package: "mlx-image-runtime"),
             .product(name: "ImageServerModels", package: "mlx-image-runtime"),
             .product(name: "MESEngineKit", package: "media-engine-spec"),
@@ -85,6 +108,7 @@ let package = Package(
         ]),
         .testTarget(name: "ImageEngineTests", dependencies: [
             "PixelAgencyImageEngine",
+            .product(name: "PromptEnhanceKit", package: "prompt-enhance-kit-swift"),
             .product(name: "MESEngineKit", package: "media-engine-spec"),
             .product(name: "MESConformance", package: "media-engine-spec"),
             .product(name: "ImageServerModels", package: "mlx-image-runtime"),

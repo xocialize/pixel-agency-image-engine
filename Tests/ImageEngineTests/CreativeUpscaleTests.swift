@@ -21,7 +21,7 @@ struct CreativeUpscaleTests {
         let up = try #require(ops.first { $0.operation == "image.upscale" })
         let ext = try #require(up.extensions?.first { $0.name == Creative.name })
         #expect(ext.schema["properties"]?["creativity"]?["maximum"] == 1 && ext.schema["additionalProperties"] == false)
-        #expect(ops.filter { $0.operation != "image.upscale" }.allSatisfy { $0.extensions == nil })
+        #expect(ops.filter { $0.operation != "image.upscale" }.allSatisfy { $0.extensions?.contains { $0.name == Creative.name } != true })
         let missing = FakeModels(FakeModels.catalog.filter { $0.id.rawValue != Creative.editor })
         let without = await ImageNormalizer(directory: missing, runner: FakeRunner()).descriptors()
         #expect(without.first { $0.operation == "image.upscale" }?.extensions == nil, "no editor, no creative upscale")

@@ -4,6 +4,7 @@ import ImageIO
 import ImageServerAPI
 import ImageServerModels
 import MLXToolKit
+@testable import PixelAgencyImageEngine
 import Synchronization
 import UniformTypeIdentifiers
 
@@ -57,6 +58,7 @@ actor FakeModels: ImageModelDirectory, ModelRouter {
 
     static let catalog: [ModelInfo] = [
         model("z-image-turbo", [.textToImage], guidance: 1, gb: 12),
+        model("qwen-image-flash", [.textToImage], guidance: 1, gb: 20),
         model("klein-4b", [.textToImage, .imageEdit], guidance: 4, maxInputs: 4, gb: 8),
         model("z-image", [.textToImage], guidance: 4, gb: 12),
         model("moss-image-sft", [.textToImage], guidance: 3, gb: 10),
@@ -82,29 +84,51 @@ actor FakeModels: ImageModelDirectory, ModelRouter {
         model("sam21-segment", [.promptSegment]),
         model("mage-vl", [.imageAnalysis]),
         model("siglip2-quality", [.imageQualityScore]),
+        // The prompt enhancer's backbone (PromptBackbones): a model in the catalog that serves no operation.
+        model(PromptEnhance.backboneID, [.llm]),
     ]
 }
 
 /// A runner that answers like the real packages do (sizes a little off, alpha dropped, mattes at their own
-/// resolution), so the normalizer's rules are what make the outputs right.
-final class FakeRunner: ModelRunner {
+/// resolution), so the normalizer's rules are what make the outputs right. As a `TextRunner` it's the prompt enhancer's
+/// backbone, answering `rewrite`.
+final class FakeRunner: ModelRunner, TextRunner {
     let calls = Mutex<[RunWork]>([])
     let resident = Mutex<Set<String>>([])
+    /// Models prepared, in order.
+    let prepared = Mutex<[String]>([])
+    /// The backbone's requests.
+    let textCalls = Mutex<[LLMRequest]>([])
     let delay: Duration
     /// An edit model that returns its input, keeping the marker (as Qwen-Image-Edit did on some R1b extends).
     let editKeepsMarker: Bool
     /// What `machineFit` answers (nil: unknown, as most tests want).
     let fit: MemoryFit?
+    /// The backbone's answer; nil, it fails.
+    let rewrite: String?
+    let textDelay: Duration
 
-    init(delay: Duration = .milliseconds(30), editKeepsMarker: Bool = false, fit: MemoryFit? = nil) {
-        self.delay = delay; self.editKeepsMarker = editKeepsMarker; self.fit = fit
+    init(delay: Duration = .milliseconds(30), editKeepsMarker: Bool = false, fit: MemoryFit? = nil,
+         rewrite: String? = FakeRunner.lighthouse, textDelay: Duration = .milliseconds(20)) {
+        self.delay = delay; self.editKeepsMarker = editKeepsMarker; self.fit = fit; self.rewrite = rewrite
+        self.textDelay = textDelay
     }
+
+    static let lighthouse = "A white lighthouse stands on a rocky headland at dusk, its lamp just lit against a violet sky."
 
     func residentPackages() async -> Set<String> { resident.withLock { $0 } }
 
     func prepare(_ route: RoutedModel, progress: @escaping @Sendable (JobProgress) -> Void) async throws {
         progress(JobProgress(phase: "loading", fraction: 0.5))
+        prepared.withLock { $0.append(route.id.rawValue) }
         resident.withLock { _ = $0.insert(route.packageID) }   // like the runtime: loaded models stay until evicted
+    }
+
+    func generate(_ request: LLMRequest, on route: RoutedModel) async throws -> String {
+        textCalls.withLock { $0.append(request) }
+        try await Task.sleep(for: textDelay)
+        guard let rewrite else { throw APIError.unavailable("The fake backbone failed.") }
+        return rewrite
     }
 
     func run(_ work: RunWork, progress: @escaping @Sendable (JobProgress) -> Void) async throws -> ImageServerModels.RunOutput {

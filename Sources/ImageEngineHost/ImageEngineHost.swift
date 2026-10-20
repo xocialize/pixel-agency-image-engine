@@ -6,6 +6,7 @@ import MESCore
 import MESEngineKit
 import MESEngineUI
 import PixelAgencyImageEngine
+import PromptBackbones
 
 /// The Image Engine as a Mac app (Engines-PRD ENG-9): the engine in process, with MESEngineUI's console window and
 /// menu-bar item. It serves as the headless engine does, open mode on this Mac, and the operator chooses its enabled set
@@ -68,7 +69,7 @@ public final class ImageEngineHost {
             try FileManager.default.createDirectory(at: stateDir, withIntermediateDirectories: true)
             let enablement = ModelEnablement(file: stateDir.appendingPathComponent("enabled-models.json"))
             console.status = .starting("Registering models…")
-            let runtime = await ImageRuntime.start(modelStore: modelStore, catalog: ModelCatalog.all(),
+            let runtime = await ImageRuntime.start(modelStore: modelStore, catalog: ModelCatalog.all() + PromptBackbones.entries(),
                                                    options: .init(enablement: enablement))
             self.runtime = runtime
 

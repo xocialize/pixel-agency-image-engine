@@ -1,0 +1,122 @@
+{
+ "created_at": "2026-10-19T21:07:47Z",
+ "id": "job_k4wnjbjh1ancw5mhwna4",
+ "operation": "image.generate",
+ "outcome": "succeeded",
+ "plan": {
+  "effective": {
+   "count": 1,
+   "model_params": {
+    "guidance": 1,
+    "model": "qwen-image-flash",
+    "prompt_enhancement": {
+     "applied": true,
+     "backbone": "qwen3.5-4b",
+     "outcome": "enhanced",
+     "profile": "qwen-image",
+     "prompt": "Atmospheric dusk scene: A solitary, weathered stone lighthouse stands sentinel against a dramatic sky transitioning from deep indigo to fiery orange, with streaks of clouds illuminated by the last fading sunlight. The illuminated light beam pierces through the encroaching twilight, cutting through a hazy mist that shrouds the surrounding cliffs. Water splashes gently against the lighthouse base, reflecting the warm glow in a vibrant, golden hue. Shot composition: Low-angle perspective emphasizing the structure's height, with a shallow depth of field blurring the distant coastline. Style: Cinematic real-world photography with rich texture, high contrast, and volumetric lighting, 8K resolution, ultra-detailed, color-graded for mood. Ultra HD, 4K, cinematic composition",
+     "seed": 42,
+     "version": 1
+    },
+    "steps": 4
+   },
+   "quality": "standard",
+   "seed": 42,
+   "size": {
+    "height": 1024,
+    "width": 1024
+   }
+  },
+  "model": {
+   "id": "qwen-image-flash",
+   "license": {
+    "commercial_use": true,
+    "spdx": "LicenseRef-NVIDIA-Open-Model",
+    "terms_url": "https://huggingface.co/nvidia/Qwen-Image-Flash"
+   },
+   "title": "Qwen-Image Flash"
+  }
+ },
+ "progress": {
+  "fraction": 1,
+  "stage": "finishing"
+ },
+ "result": {
+  "effective": {
+   "count": 1,
+   "model_params": {
+    "guidance": 1,
+    "model": "qwen-image-flash",
+    "prompt_enhancement": {
+     "applied": true,
+     "backbone": "qwen3.5-4b",
+     "outcome": "enhanced",
+     "profile": "qwen-image",
+     "prompt": "Atmospheric dusk scene: A solitary, weathered stone lighthouse stands sentinel against a dramatic sky transitioning from deep indigo to fiery orange, with streaks of clouds illuminated by the last fading sunlight. The illuminated light beam pierces through the encroaching twilight, cutting through a hazy mist that shrouds the surrounding cliffs. Water splashes gently against the lighthouse base, reflecting the warm glow in a vibrant, golden hue. Shot composition: Low-angle perspective emphasizing the structure's height, with a shallow depth of field blurring the distant coastline. Style: Cinematic real-world photography with rich texture, high contrast, and volumetric lighting, 8K resolution, ultra-detailed, color-graded for mood. Ultra HD, 4K, cinematic composition",
+     "seed": 42,
+     "version": 1
+    },
+    "steps": 4
+   },
+   "quality": "standard",
+   "seed": 42,
+   "size": {
+    "height": 1024,
+    "width": 1024
+   }
+  },
+  "outputs": [
+   {
+    "bytes": 1313553,
+    "height": 1024,
+    "href": "/mes/v0/jobs/job_k4wnjbjh1ancw5mhwna4/outputs/0",
+    "index": 0,
+    "kind": "image",
+    "media_type": "image/png",
+    "name": "images",
+    "sha256": "575a6da30bdd516787256d90d5a79262aad3d903deada0836d16b950f4a2851d",
+    "width": 1024
+   }
+  ],
+  "provenance": {
+   "engine": {
+    "id": "eng_9edf123f946c4195",
+    "implementation": "pixel-agency-image-engine",
+    "name": "Pixel Agency Image Engine",
+    "version": "0.3.0"
+   },
+   "model": {
+    "id": "qwen-image-flash",
+    "license": {
+     "commercial_use": true,
+     "spdx": "LicenseRef-NVIDIA-Open-Model",
+     "terms_url": "https://huggingface.co/nvidia/Qwen-Image-Flash"
+    },
+    "title": "Qwen-Image Flash"
+   },
+   "operation": "image.generate",
+   "profile_version": "0.1",
+   "seed": 42,
+   "timings": {
+    "finished_at": "2026-10-19T21:08:17Z",
+    "queue_ms": 0,
+    "received_at": "2026-10-19T21:07:47Z",
+    "run_ms": 29947,
+    "started_at": "2026-10-19T21:07:47Z"
+   }
+  }
+ },
+ "retention": {
+  "outputs_expire_at": "2026-10-19T22:08:17Z",
+  "record_expires_at": "2026-10-20T21:07:47Z"
+ },
+ "state": "holding",
+ "updated_at": "2026-10-19T21:08:17Z",
+ "warnings": [
+  {
+   "code": "prompt_rewritten",
+   "message": "The prompt was rewritten for Qwen-Image Flash with the Qwen-Image profile (v1) on Qwen3.5 4B; the rewrite is in effective.model_params.prompt_enhancement. x-pixelagency.prompt_enhance mode off sends a prompt as typed.",
+   "param": "prompt"
+  }
+ ]
+}

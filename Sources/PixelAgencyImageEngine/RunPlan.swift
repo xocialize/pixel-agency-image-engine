@@ -4,6 +4,7 @@ import ImageServerModels
 import MESCore
 import MESEngineCore
 import MLXToolKit
+import PromptEnhanceKit
 
 /// One job's plan: the operation's mapping onto model runs, and the profile's rules applied to what comes back.
 struct RunPlan {
@@ -217,11 +218,13 @@ struct RunPlan {
     }
 
     mutating func generate() async throws -> [ProducedOutput] {
-        let route = try await route(.textToImage)
-        let (w, h) = size(for: route, required: true)!
         let count = context.param("count")?.intValue ?? 1
         let base = seed(count: count)
-        var params: ISValueObject = ["prompt": .string(context.input("prompt")?.text ?? "")]
+        // The request's prompt, enhanced for this model (`PromptEnhance`), before the model loads: one heavy model at a time.
+        let prompt = try await enhancedPrompt(context.input("prompt")?.text ?? "", task: .textToImage, seed: base)
+        let route = try await route(.textToImage)
+        let (w, h) = size(for: route, required: true)!
+        var params: ISValueObject = ["prompt": .string(prompt)]
         if let negative = negativePrompt(for: route) { params["negativePrompt"] = .string(negative) }
         record(route)
         var outputs: [ProducedOutput] = []
@@ -248,7 +251,9 @@ struct RunPlan {
         guard let first else { throw NormalizerError.input("image.edit needs at least one image.") }
         let size = size(for: route, required: false)
         let base = seed(count: 1)
-        var params: ISValueObject = ["prompt": .string(context.input("instruction")?.text ?? "")]
+        // An edit's rewriter would need to see the image (E4): for now this reports `needs_vision` and keeps the instruction.
+        let instruction = try await enhancedPrompt(context.input("instruction")?.text ?? "", task: .imageEdit, seed: base)
+        var params: ISValueObject = ["prompt": .string(instruction)]
         if let strength = context.param("strength")?.numberValue { params["strength"] = .number(strength) }
         record(route)
         var result = try image(try await invoke(route, params: params, inputs: ["images": images], seed: base,

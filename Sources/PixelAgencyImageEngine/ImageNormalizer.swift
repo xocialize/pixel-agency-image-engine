@@ -42,9 +42,12 @@ public struct ImageNormalizer: MediaEngine {
         /// `ImageRuntime.start` asks the runtime (`Creative.unavailableReason`); the extension is left out of
         /// `image.upscale` and its summary says why.
         public var creativeUnavailable: String?
+        /// How long the prompt enhancer's backbone may take to answer, once loaded (`PromptEnhance`); past it the prompt goes
+        /// as typed. Measured answers take 1.3–2.6 s on Qwen3.5-4B int4 (AB-R-0588).
+        public var promptEnhanceTimeout: Duration = .seconds(60)
         public init(allowResearch: Bool = false, enablement: ModelEnablement? = nil, residency: Residency.Policy = .init(),
                     sixteenBitUpscalers: Set<String> = [], sixteenBitRestorers: Set<String> = [], tiledEditors: Set<String> = [],
-                    creativeUnavailable: String? = nil) {
+                    creativeUnavailable: String? = nil, promptEnhanceTimeout: Duration = .seconds(60)) {
             self.allowResearch = allowResearch
             self.enablement = enablement
             self.residency = residency
@@ -52,6 +55,7 @@ public struct ImageNormalizer: MediaEngine {
             self.sixteenBitRestorers = sixteenBitRestorers
             self.tiledEditors = tiledEditors
             self.creativeUnavailable = creativeUnavailable
+            self.promptEnhanceTimeout = promptEnhanceTimeout
         }
 
         /// The models of `operation` that keep 16 bits (upscale and restore offer them; nothing else does).
@@ -66,12 +70,16 @@ public struct ImageNormalizer: MediaEngine {
 
     let directory: any ImageModelDirectory & ModelRouter
     let runner: any ModelRunner
+    /// Runs the prompt enhancer's backbone (`PromptEnhance`). Without one, prompts go as typed.
+    let textRunner: (any TextRunner)?
     public let options: Options
     public let residency: Residency
 
-    public init(directory: any ImageModelDirectory & ModelRouter, runner: any ModelRunner, options: Options = Options()) {
+    public init(directory: any ImageModelDirectory & ModelRouter, runner: any ModelRunner, textRunner: (any TextRunner)? = nil,
+                options: Options = Options()) {
         self.directory = directory
         self.runner = runner
+        self.textRunner = textRunner
         self.options = options
         residency = Residency(runner: runner, router: directory, policy: options.residency)
     }
@@ -137,6 +145,16 @@ public struct ImageNormalizer: MediaEngine {
         return info.isDefaultRoutable || options.allowResearch
     }
 
+    /// The prompt enhancer can run: a text runner, and its backbone registered, usable here and on.
+    func backboneOffered() async -> Bool {
+        guard textRunner != nil, let info = await directory.model(ModelID(PromptEnhance.backboneID)) else { return false }
+        return offered(info)
+    }
+
+    func enhancing(_ models: [ModelInfo], offering: (ModelInfo) -> Bool) -> Bool {
+        textRunner != nil && models.contains { $0.id.rawValue == PromptEnhance.backboneID && offering($0) }
+    }
+
     func descriptor(_ spec: OperationSpec, models: [ModelInfo]) -> Descriptor? {
         descriptor(spec, models: models, offering: offered)
     }
@@ -146,12 +164,15 @@ public struct ImageNormalizer: MediaEngine {
         guard !candidates.isEmpty, let profile = ImageProfile.operations.operations[spec.operation] else { return nil }
         let defaultID = spec.defaults.first { id in candidates.contains { $0.id.rawValue == id && $0.isDefaultRoutable } }
             ?? candidates.first { $0.isDefaultRoutable }?.id.rawValue
+        // Prompt enhancement (AB-D-0155): on generate and edit while its backbone is on.
+        let enhancing = PromptEnhance.operations.contains(spec.operation) && enhancing(models, offering: offering)
         var offers = candidates.map { info in
             ModelOffer(id: info.id.rawValue, title: info.displayName, license: Self.license(info),
                        memoryClass: Self.memoryClass(info.footprintBytes), speedClass: Self.speedClass(spec, info),
                        qualityTiers: spec.tiers[info.id.rawValue] ?? spec.otherTiers,
                        isDefault: info.id.rawValue == defaultID ? true : nil,
-                       namedOnly: info.isDefaultRoutable ? nil : true, notes: Self.notes[info.id.rawValue])
+                       namedOnly: info.isDefaultRoutable ? nil : true,
+                       notes: Self.notes(info.id.rawValue, operation: spec.operation, enhancing: enhancing))
         }
         offers.sort { a, b in
             func rank(_ o: ModelOffer) -> Int { o.isDefault == true ? 0 : o.namedOnly == true ? 2 : 1 }
@@ -213,6 +234,7 @@ public struct ImageNormalizer: MediaEngine {
         // The creative upscale: offered when its models are here and fit this Mac; otherwise the summary says why.
         let creative = spec.operation == "image.upscale" && creativeAvailable(models, offering: offering)
         let creativeOffered = creative && options.creativeUnavailable == nil
+        let extensions = (creativeOffered ? [Creative.spec] : []) + (enhancing ? [PromptEnhance.spec] : [])
         var summary = Self.summaries[spec.operation]
         if creative, let why = options.creativeUnavailable { summary = [summary, why].compactMap { $0 }.joined(separator: " ") }
         return Descriptor(
@@ -223,7 +245,7 @@ public struct ImageNormalizer: MediaEngine {
             outputs: outputs,
             limits: .init(maxMegapixels: Double(maxPixels) / 1_000_000, maxInputs: maxInputs, maxCount: spec.operation == "image.generate" ? 4 : 1),
             qualityTiers: OperationTable.all.filter(tiers.contains), models: offers,
-            extensions: creativeOffered ? [Creative.spec] : nil,
+            extensions: extensions.isEmpty ? nil : extensions,
             remote: .init(possible: false))
     }
 
@@ -248,6 +270,14 @@ public struct ImageNormalizer: MediaEngine {
         return MESCore.License(spdx: spdx, commercialUse: permissive ? .yes : .no,
                                termsURL: info.sourceRepo.isEmpty ? nil : "https://huggingface.co/\(info.sourceRepo)",
                                notice: notice(info, spdx: spdx), acceptedRequired: permissive ? nil : true)
+    }
+
+    /// An offer's `notes` (Base §6 rule 5): the model's usage guidance, and on `image.generate` how the engine treats its
+    /// prompts while the prompt enhancer is on.
+    static func notes(_ id: String, operation: String, enhancing: Bool) -> String? {
+        let prompts = enhancing && operation == "image.generate" ? PromptEnhance.note(forModel: id) : nil
+        let parts = [notes[id], prompts].compactMap { $0 }
+        return parts.isEmpty ? nil : parts.joined(separator: " ")
     }
 
     /// Per-model usage guidance for the offer's `notes` (Base §6 rule 5): how to prompt the model, in a sentence or two.
@@ -284,7 +314,7 @@ public struct ImageNormalizer: MediaEngine {
         return parts.isEmpty ? nil : parts.joined(separator: " ")
     }
 
-    static func memoryClass(_ bytes: UInt64?) -> ModelOffer.MemoryClass? {
+    public static func memoryClass(_ bytes: UInt64?) -> ModelOffer.MemoryClass? {
         guard let bytes else { return nil }
         let gb = Double(bytes) / 1_073_741_824
         return gb < 4 ? .small : gb < 12 ? .medium : gb < 24 ? .large : .xlarge

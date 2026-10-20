@@ -23,12 +23,14 @@ func config() -> EngineConfiguration {
 /// Serves a normalizer over fakes on a free loopback port, connected with the conformance suite's probe.
 func withEngine(research: Bool = false, residency: Residency.Policy = .init(), runner: FakeRunner = FakeRunner(),
                 models: FakeModels = FakeModels(), sixteenBit: Set<String> = [], sixteenBitRestorers: Set<String> = [],
-                tiled: Set<String> = [], creativeUnavailable: String? = nil,
+                tiled: Set<String> = [], creativeUnavailable: String? = nil, enablement: ModelEnablement? = nil,
+                promptEnhanceTimeout: Duration = .seconds(60),
                 _ body: (Probe, FakeRunner) async throws -> Void) async throws {
-    let engine = ImageNormalizer(directory: models, runner: runner,
-                                 options: .init(allowResearch: research, residency: residency, sixteenBitUpscalers: sixteenBit,
-                                                sixteenBitRestorers: sixteenBitRestorers, tiledEditors: tiled,
-                                                creativeUnavailable: creativeUnavailable))
+    let engine = ImageNormalizer(directory: models, runner: runner, textRunner: runner,
+                                 options: .init(allowResearch: research, enablement: enablement, residency: residency,
+                                                sixteenBitUpscalers: sixteenBit, sixteenBitRestorers: sixteenBitRestorers,
+                                                tiledEditors: tiled, creativeUnavailable: creativeUnavailable,
+                                                promptEnhanceTimeout: promptEnhanceTimeout))
     let server = MESEngineServer(engine: engine, configuration: config())
     let (ports, continuation) = AsyncStream<Int>.makeStream()
     let app = try await server.makeApplication { port in continuation.yield(port) }

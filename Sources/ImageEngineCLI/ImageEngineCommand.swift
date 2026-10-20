@@ -4,6 +4,7 @@ import ImageServerCatalog
 import ImageServerModels
 import MESEngineKit
 import PixelAgencyImageEngine
+import PromptBackbones
 
 /// The Pixel Agency Image Engine, headless: MES Base 0.1 with the Image profile, over the local model runtime.
 @main
@@ -44,7 +45,7 @@ struct ImageEngineCommand: AsyncParsableCommand {
 
         let modelStore = store.map { URL(fileURLWithPath: $0, isDirectory: true) } ?? ImageRuntime.defaultModelStore
         print("Registering models (models folder: \(modelStore.path))…")
-        let catalog = ModelCatalog.all() + (quantGateArms ? QuantGateArms.entries() : [])
+        let catalog = ModelCatalog.all() + PromptBackbones.entries() + (quantGateArms ? QuantGateArms.entries() : [])
         let runtime = await ImageRuntime.start(modelStore: modelStore, catalog: catalog,
                                                options: .init(allowResearch: allowResearch))
         for (model, reason) in ImageNormalizer.quarantined.sorted(by: { $0.key < $1.key }) {
