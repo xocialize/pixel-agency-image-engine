@@ -34,7 +34,11 @@ Progress:
     `prompt_enhance` helper in `provenance.helpers`. FLUX 3 Klein's upsampler isn't a helper.
   - **Removed:** `x-pixelagency.adapters` and `x-pixelagency.prompt_enhance` (no client sent either), and with them
     `effective.model_params.adapters` and `adapter_prompt`.
-  - Still open: `image.enhance_prompt` (E5).
+- **E5** shipped in the engine's 0.7.0 (2026-10-19): `image.enhance_prompt` (Image §3.1), the rewrite a generate job
+  would run with `prompt_enhance: on`, returned without generating. Its offer is the backbone, its target
+  `image.generate` (edits wait for E4), and it goes through the job's own rewrite (`RunPlan.rewrite`), so a seeded
+  preview matches the job. It returns `{prompt, applied}`; no profile suggests a `size` until E3. See the README's
+  "Prompt enhancement".
 
 ## Summary
 
@@ -174,7 +178,7 @@ released, unless it's small enough to keep warm.
 3. **E3.** Structured profiles (SenseNova Render JSON, MOSS layout with its coordinate converter, Ming layers, Qwen 2.1
    with `wh_ratio`), each measured on the large backbone.
 4. **E4.** Vision: edit profiles once the contract or transport carries images.
-5. **E5.** The preview operation, if the spec takes it.
+5. **E5.** The preview operation, if the spec takes it. (Image §3.1 took it; done in the engine's 0.7.0.)
 
 Retire `ernie-pe-swift` once E1 lands (AB-T-0054).
 

@@ -29,6 +29,9 @@ import PromptEnhanceKit
 /// - **FLUX 3 Klein** keeps BFL's own upsampler, inside its package: not a helper, and its rewrite isn't handed back. The
 ///   mode switches it per request through the package's `upsample` key (mlx-image-runtime ≥ 0.14.0, AB-T-0336);
 ///   `MLXIMG_FLUX3_UPSAMPLER` sets it for the whole engine, and `off` there loads none.
+/// - **The preview** `image.enhance_prompt` (Image §3.1; AB-D-0155, E5) returns the rewrite a target job would run with
+///   `prompt_enhance: on`, without running it, so a client can show it and let its user edit it first. Its offers are the
+///   backbones; it's declared while one is on. See `RunPlan.previewPrompt`.
 public enum PromptEnhance {
     /// The backbone every text-to-image profile runs on: Qwen3.5-4B int4 (`PromptBackbones`).
     public static let backboneID = "qwen3.5-4b"
@@ -39,6 +42,16 @@ public enum PromptEnhance {
     static let upsampleKey = "upsample"
     /// The operations whose prompts it enhances.
     static let operations: Set<String> = ["image.generate", "image.edit"]
+    /// The preview operation (Image §3.1).
+    static let preview = "image.enhance_prompt"
+    /// The operations a preview can be for: those the enhancer rewrites without seeing an image (an edit's rewriter
+    /// needs vision, E4). The first is the default `target_operation`.
+    static let previewTargets = ["image.generate"]
+
+    /// The backbone's offer on `image.enhance_prompt`.
+    static let previewNote = "Returns the prompt image.generate would run with prompt_enhance on, rewritten with "
+        + "target_model's own profile and the job's seed, without generating. Run the target with that text, the same "
+        + "model named, and prompt_enhance off. FLUX 3 Klein's own upsampler can't be previewed."
 
     typealias Mode = ImageProfile.PromptEnhanceMode
 
@@ -125,37 +138,47 @@ extension RunPlan {
     /// `model_params.prompt_enhancement`; `reportPrompt` reports the text once adapters have had their say.
     mutating func enhancedPrompt(_ prompt: String, param: String, task: EnhanceTask, seed: UInt64) async throws -> String {
         let mode = promptEnhanceMode
-        let model = context.model.id
         if context.descriptor.params["properties"]?[ImageProfile.Param.promptEnhance] != nil {
             effective[ImageProfile.Param.promptEnhance] = .string(mode.rawValue)
         }
-        func report(_ record: PromptEnhance.Record) { modelParams["prompt_enhancement"] = record.value }
-
-        if model == PromptEnhance.flux3 {
-            report(flux3Upsampler(mode, param: param))
+        if context.model.id == PromptEnhance.flux3 {
+            modelParams["prompt_enhancement"] = flux3Upsampler(mode, param: param).value
             return prompt
         }
-        guard let profile = PromptEnhance.library.profile(forModel: model) else {
+        let (text, record) = try await rewrite(prompt, param: param, task: task, seed: seed, mode: mode, for: context.model)
+        modelParams["prompt_enhancement"] = record.value
+        return text
+    }
+
+    /// Whether this job is the preview (`image.enhance_prompt`), whose own model is the backbone.
+    var previewing: Bool { context.operation == PromptEnhance.preview }
+    /// The param enhancement's warnings name: the job's `prompt_enhance`, or the preview's `target_model`.
+    var enhanceParam: String { previewing ? ImageProfile.Param.targetModel : ImageProfile.Param.promptEnhance }
+    /// What became of a text the enhancer left alone.
+    func asTyped(_ param: String) -> String { previewing ? "the \(param) is returned as typed" : "the \(param) was used as typed" }
+
+    /// The rewrite `model`'s profile makes of `prompt` under `mode`, and what to report of it: the job's own prompt
+    /// (`enhancedPrompt`) and the preview (`previewPrompt`, always `on`) both come through here, so a preview is what its
+    /// target would run. The backbone loads only when the kit would call it; it runs with the job's `seed`, under the
+    /// request's licence policy, and is listed in `helpers` when it rewrote.
+    mutating func rewrite(_ prompt: String, param: String, task: EnhanceTask, seed: UInt64, mode: PromptEnhance.Mode,
+                          for model: ModelOffer) async throws -> (prompt: String, record: PromptEnhance.Record) {
+        guard let profile = PromptEnhance.library.profile(forModel: model.id) else {
             if mode == .on {
-                warn(ImageProfile.WarningCode.promptEnhanceIgnored, "\(context.model.title) has no prompt enhancement profile; "
-                     + "the \(param) was used as typed.", param: ImageProfile.Param.promptEnhance)
+                warn(ImageProfile.WarningCode.promptEnhanceIgnored, "\(model.title) has no prompt enhancement profile; "
+                     + "\(asTyped(param)).", param: enhanceParam)
             }
-            report(.init(outcome: "no_profile"))
-            return prompt
+            return (prompt, .init(outcome: "no_profile"))
         }
         var record = PromptEnhance.Record(outcome: "off", profile: profile.id, version: profile.version)
-        guard mode != .off else {
-            report(record)
-            return prompt
-        }
+        guard mode != .off else { return (prompt, record) }
         if task.needsVision {
             if mode == .on {
                 warn(ImageProfile.WarningCode.promptEnhanceIgnored, "Edit instructions aren't enhanced yet: the rewriter would "
-                     + "need to see the image. The instruction was used as typed.", param: ImageProfile.Param.promptEnhance)
+                     + "need to see the image. The instruction was used as typed.", param: enhanceParam)
             }
             record.outcome = PromptEnhance.wire(.needsVision)
-            report(record)
-            return prompt
+            return (prompt, record)
         }
 
         // Would the kit call the backbone at all? Its decision reads only the prompt and the profile, so a prompt that
@@ -163,8 +186,7 @@ extension RunPlan {
         let enhanceMode: EnhanceMode = mode == .on ? .always : .auto
         if let skip = PromptEnhancer.decision(prompt, profile: profile, task: task, mode: enhanceMode) {
             record.outcome = PromptEnhance.wire(skip)
-            report(record)
-            return prompt
+            return (prompt, record)
         }
 
         record.backbone = PromptEnhance.backboneID
@@ -174,19 +196,17 @@ extension RunPlan {
             record.outcome = "unavailable"
             if mode == .on {
                 warn(ImageProfile.WarningCode.promptEnhanceIgnored, "The prompt enhancer (\(PromptEnhance.backboneID)) is off "
-                     + "on this engine; the \(param) was used as typed.", param: ImageProfile.Param.promptEnhance)
+                     + "on this engine; \(asTyped(param)).", param: enhanceParam)
             }
-            report(record)
-            return prompt
+            return (prompt, record)
         }
         // A helper's licence is held to the request's policy like the model's (Base §10.3).
         let license = ImageNormalizer.license(info)
         guard context.policy.allows(license) else {
             record.outcome = "policy"
             warn(BaseWarningCode.helperSkippedByPolicy, "The prompt enhancer (\(info.displayName), \(license.spdx)) doesn't "
-                 + "satisfy the request's licence policy; the \(param) was used as typed.", param: ImageProfile.Param.promptEnhance)
-            report(record)
-            return prompt
+                 + "satisfy the request's licence policy; \(asTyped(param)).", param: enhanceParam)
+            return (prompt, record)
         }
         let backbone: RoutedModel
         do {
@@ -198,12 +218,15 @@ extension RunPlan {
             print("job \(context.jobID): the prompt enhancer didn't load: \(error)")
             record.outcome = "unavailable"
             let why = (ImageNormalizer.mesError(error) as? MESError)?.message ?? "\(error)"
-            warn(ImageProfile.WarningCode.promptEnhanceFailed, "The prompt enhancer couldn't load (\(why)); the \(param) was "
-                 + "used as typed.", param: ImageProfile.Param.promptEnhance)
-            report(record)
-            return prompt
+            warn(ImageProfile.WarningCode.promptEnhanceFailed, "The prompt enhancer couldn't load (\(why)); \(asTyped(param)).",
+                 param: enhanceParam)
+            return (prompt, record)
         }
-        await context.reporter.progress(.preparing, message: "enhancing the prompt")
+        // The preview's own model is the backbone: its pinned commit is provenance.model.revision.
+        if backbone.id.rawValue == context.model.id, let revision = Self.pinned(backbone.revision) {
+            revisions[context.model.id] = revision
+        }
+        await context.reporter.progress(previewing ? .running : .preparing, message: "enhancing the prompt")
         let enhancer = PromptEnhancer(parameters: LLMParameters(temperature: 0.7, maxTokens: 512, seed: seed))
         // The kit rethrows cancellation, so a cancelled job stops here instead of generating from the prompt as typed.
         let result = try await enhancer.enhance(prompt, profile: profile, task: task, mode: enhanceMode,
@@ -220,19 +243,86 @@ extension RunPlan {
             helpers.append(HelperRef(id: PromptEnhance.backboneID, title: backbone.displayName,
                                      revision: Self.pinned(backbone.revision), license: license,
                                      role: ImageProfile.HelperRole.promptEnhance))
-            warn(ImageProfile.WarningCode.promptRewritten, "The \(param) was rewritten for \(context.model.title) with the "
-                 + "\(profile.title) profile (v\(profile.version)) on \(backbone.displayName); what ran is in effective.\(param). "
-                 + "prompt_enhance off sends it as typed.", param: param)
+            // No model receives a preview's rewrite, so only a job warns that one did.
+            if !previewing {
+                warn(ImageProfile.WarningCode.promptRewritten, "The \(param) was rewritten for \(model.title) with the "
+                     + "\(profile.title) profile (v\(profile.version)) on \(backbone.displayName); what ran is in "
+                     + "effective.\(param). prompt_enhance off sends it as typed.", param: param)
+            }
         case .failed, .timedOut, .empty:
             print("job \(context.jobID): prompt enhancement \(record.outcome): \(result.failure ?? "-")")
             warn(ImageProfile.WarningCode.promptEnhanceFailed, "Prompt enhancement "
-                 + "\(record.outcome.replacingOccurrences(of: "_", with: " ")); the \(param) was used as typed.",
-                 param: ImageProfile.Param.promptEnhance)
+                 + "\(record.outcome.replacingOccurrences(of: "_", with: " ")); \(asTyped(param)).", param: enhanceParam)
         default:
             break
         }
-        report(record)
-        return result.prompt
+        return (result.prompt, record)
+    }
+
+    /// `image.enhance_prompt` (Image §3.1; AB-D-0155, E5): the text the target job would run with `prompt_enhance: on`,
+    /// without running it. The target is `target_operation` (image.generate) and `target_model`, or else the model that
+    /// operation runs for a request naming none (`previewTarget`); the rewrite is `rewrite`'s, with that model's profile
+    /// and the job's seed, so the same seed gives the same text. `enhanced` is `{prompt, applied}`: `applied` says whether
+    /// the text changed, and when it didn't a `prompt_enhance_ignored` warning says why. FLUX 3 Klein's upsampler runs
+    /// inside its model and doesn't hand its rewrite back, so it can't be previewed. No `size`: no profile suggests one yet
+    /// (Qwen-Image 2.1's `wh_ratio` comes with E3).
+    mutating func previewPrompt() async throws -> [ProducedOutput] {
+        let operation = context.param(ImageProfile.Param.targetOperation)?.stringValue ?? PromptEnhance.previewTargets[0]
+        let target = try await previewTarget(operation)
+        effective[ImageProfile.Param.targetOperation] = .string(operation)
+        effective[ImageProfile.Param.targetModel] = .string(target.id)
+        let typed = context.input("prompt")?.text ?? ""
+        let base = seed(count: 1)
+        seedUsed = base
+        var text = typed
+        var record = PromptEnhance.Record(outcome: "built_in", profile: "flux3-upsampler")
+        if target.id == PromptEnhance.flux3 {
+            warn(ImageProfile.WarningCode.promptEnhanceIgnored, "FLUX 3 Klein rewrites prompts with its own upsampler, inside "
+                 + "the model, and doesn't hand the rewrite back, so it can't be previewed; the prompt is returned as typed. "
+                 + "Run it with prompt_enhance auto or on to have it upsampled, or off to send exactly this text.",
+                 param: ImageProfile.Param.targetModel)
+        } else {
+            (text, record) = try await rewrite(typed, param: "prompt", task: .textToImage, seed: base, mode: .on, for: target)
+        }
+        record.applied = text != typed
+        if !record.applied, !warnings.contains(where: { $0.code == ImageProfile.WarningCode.promptEnhanceIgnored }) {
+            let why = switch record.outcome {
+            case PromptEnhance.wire(.passedThrough): "it's already detailed or structured enough for the \(record.profile ?? "") profile"
+            case PromptEnhance.wire(.noInstruction): "the \(record.profile ?? "") profile has no rewrite for text to image"
+            case "policy": "the prompt enhancer doesn't satisfy the request's licence policy"
+            case PromptEnhance.wire(.enhanced): "the enhancer kept it as it was"
+            default: "prompt enhancement \(record.outcome.replacingOccurrences(of: "_", with: " "))"
+            }
+            warn(ImageProfile.WarningCode.promptEnhanceIgnored, "No rewrite for \(target.title): \(why). The prompt is "
+                 + "returned as typed; \(operation) would run it so.", param: ImageProfile.Param.targetModel)
+        }
+        modelParams["prompt_enhancement"] = record.value
+        return [.data(["prompt": .string(text), "applied": .bool(record.applied)], name: "enhanced")]
+    }
+
+    /// The preview's target model: `target_model`, one of `operation`'s offers; or, when it names none, the model that
+    /// operation runs for a request naming none under the same policy (Image §3.1), as MESEngineCore and `defaultModel`
+    /// would choose it at standard quality.
+    func previewTarget(_ operation: String) async throws -> ModelOffer {
+        guard let spec = OperationTable.specs.first(where: { $0.operation == operation }),
+              let descriptor = normalizer.descriptor(spec, models: await normalizer.directory.models()) else {
+            throw MESError(.unsupportedParameter, "No \(operation) on this engine to enhance a prompt for.",
+                           param: ImageProfile.Param.targetOperation)
+        }
+        if let named = context.param(ImageProfile.Param.targetModel)?.stringValue {
+            guard let offer = descriptor.models.first(where: { $0.id == named }) else {
+                throw MESError(.modelUnavailable, "\(operation) offers no model \(named).", param: ImageProfile.Param.targetModel)
+            }
+            return offer
+        }
+        let candidates = descriptor.models.filter { $0.qualityTiers.contains(.standard) && $0.namedOnly != true && context.policy.allows($0) }
+        guard let kitChoice = candidates.first(where: { $0.isDefault == true }) ?? candidates.first else {
+            throw MESError(.policyUnmet, "No model for \(operation) satisfies the request's policy.", param: ImageProfile.Param.targetModel)
+        }
+        let request = JobRequest(operation: operation, inputs: ["prompt": .text(context.input("prompt")?.text ?? "")],
+                                 policy: context.policy)
+        return normalizer.defaultModel(for: request, descriptor: descriptor, kitChoice: kitChoice, candidates: candidates)
+            ?? kitChoice
     }
 
     /// The text the model receives, in `effective.prompt` or `effective.instruction`, when it isn't the request's own

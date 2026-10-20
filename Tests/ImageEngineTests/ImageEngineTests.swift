@@ -62,6 +62,8 @@ struct ImageEngineTests {
             let failed = report.results.filter { $0.status == .fail }.map { "\($0.id): \($0.detail ?? "")" }
             #expect(failed.isEmpty, "\(failed.joined(separator: "\n"))")
             #expect(report.conformsToBase && report.conformsToImage == true)
+            // The prompt enhancer's preview runs (AB-D-0155, E5), not skipped.
+            #expect(report.results.first { $0.id == "IMAGE-011" }?.status == .pass)
         }
     }
 

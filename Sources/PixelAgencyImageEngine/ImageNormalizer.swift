@@ -209,6 +209,18 @@ public struct ImageNormalizer: MediaEngine {
                     supports: [Capability: [String: AdapterSupport]] = [:]) -> Descriptor? {
         let candidates = models.filter { spec.serves($0.id.rawValue, capabilities: $0.capabilities) && offering($0) }
         guard !candidates.isEmpty, let profile = ImageProfile.operations.operations[spec.operation] else { return nil }
+        // The preview (Image §3.1) runs on the backbone, so it's here while the backbone is, for the models its targets
+        // offer: `target_model` is one of them.
+        var targetModels: [String] = []
+        if spec.operation == PromptEnhance.preview {
+            guard enhancing(models, offering: offering) else { return nil }
+            for target in PromptEnhance.previewTargets {
+                guard let targetSpec = OperationTable.specs.first(where: { $0.operation == target }),
+                      let offers = descriptor(targetSpec, models: models, offering: offering)?.models else { continue }
+                targetModels += offers.map(\.id).filter { !targetModels.contains($0) }
+            }
+            guard !targetModels.isEmpty else { return nil }
+        }
         let defaultID = spec.defaults.first { id in candidates.contains { $0.id.rawValue == id && $0.isDefaultRoutable } }
             ?? candidates.first { $0.isDefaultRoutable }?.id.rawValue
         // Prompt enhancement (AB-D-0155): on generate and edit while its backbone is on.
@@ -261,6 +273,13 @@ public struct ImageNormalizer: MediaEngine {
             let narrowed = name == "output" && !deepModels.isEmpty ? OperationTable.deepOutput(models: deepModels) : spec.narrowed[name]
             guard case .object(var schema)? = narrowed ?? ImageProfile.vocabularySchema(name, operation: spec.operation)
             else { continue }
+            if name == ImageProfile.Param.targetModel {
+                schema["enum"] = .array(targetModels.map { .string($0) })
+                schema["pattern"] = nil
+                let targets = PromptEnhance.previewTargets.joined(separator: " or ")
+                schema["description"] = .string("The model the prompt is for, one of \(targets)'s. Omitted: the model "
+                    + "\(targets) runs for a request that names none.")
+            }
             schema["x-mes-ui"] = .object(Self.hints(name, order: order))
             properties[name] = .object(schema)
         }
@@ -286,6 +305,9 @@ public struct ImageNormalizer: MediaEngine {
                        max: name == "images" ? 4 : 1)
         }
         let maxPixels = candidates.map(\.envelope.maxPixels).max() ?? 1 << 20
+        // A text model's envelope (one pixel, no inputs) is no image limit: the preview declares none.
+        let limits: Descriptor.Limits? = spec.capability == .llm ? nil
+            : .init(maxMegapixels: Double(maxPixels) / 1_000_000, maxInputs: maxInputs, maxCount: spec.operation == "image.generate" ? 4 : 1)
         var params: [String: MESValue] = ["type": "object", "additionalProperties": false, "properties": .object(properties)]
         if !deepModels.isEmpty {
             let routable = offers.filter { $0.namedOnly != true }
@@ -321,7 +343,7 @@ public struct ImageNormalizer: MediaEngine {
             inputs: inputs,
             params: .object(params),
             outputs: outputs,
-            limits: .init(maxMegapixels: Double(maxPixels) / 1_000_000, maxInputs: maxInputs, maxCount: spec.operation == "image.generate" ? 4 : 1),
+            limits: limits,
             qualityTiers: OperationTable.all.filter(tiers.contains), models: offers,
             extensions: extensions.isEmpty ? nil : extensions,
             remote: .init(possible: false))
@@ -353,6 +375,7 @@ public struct ImageNormalizer: MediaEngine {
     /// An offer's `notes` (Base §6 rule 5): the model's usage guidance, and on `image.generate` how the engine treats its
     /// prompts while the prompt enhancer is on.
     static func notes(_ id: String, operation: String, enhancing: Bool) -> String? {
+        if operation == PromptEnhance.preview { return PromptEnhance.previewNote }
         let prompts = enhancing && operation == "image.generate" ? PromptEnhance.note(forModel: id) : nil
         let parts = [notes[id], prompts].compactMap { $0 }
         return parts.isEmpty ? nil : parts.joined(separator: " ")
@@ -407,7 +430,8 @@ public struct ImageNormalizer: MediaEngine {
         let widgets: [String: String] = ["negative_prompt": "textarea", "seed": "seed", "quality": "picker", "size": "size",
                                          "aspect": "aspect", "megapixels": "slider", "strength": "slider", "count": "stepper",
                                          "scale": "picker", "content": "picker", "kind": "picker", "outputs": "picker",
-                                         "language": "text", "prompt_enhance": "picker"]
+                                         "language": "text", "prompt_enhance": "picker", "target_operation": "picker",
+                                         "target_model": "picker"]
         var hints: [String: MESValue] = ["label": .string(name.replacingOccurrences(of: "_", with: " ").capitalized),
                                          "order": .number(Double(order))]
         if let w = widgets[name] { hints["widget"] = .string(w) }
@@ -423,7 +447,7 @@ public struct ImageNormalizer: MediaEngine {
         "image.generate": "Generate", "image.edit": "Edit", "image.fill": "Generative fill", "image.erase": "Erase",
         "image.extend": "Extend canvas", "image.upscale": "Upscale", "image.restore": "Restore", "image.relight": "Relight",
         "image.colorize": "Colorize", "image.matte": "Select subject", "image.segment": "Select by points",
-        "image.describe": "Describe", "image.score": "Quality score",
+        "image.describe": "Describe", "image.score": "Quality score", "image.enhance_prompt": "Enhance prompt",
     ]
     static let summaries = [
         "image.generate": "Text to image.", "image.edit": "Changes an image as instructed, keeping what the instruction doesn't mention.",
@@ -433,6 +457,8 @@ public struct ImageNormalizer: MediaEngine {
         "image.relight": "Corrects under- and over-exposure.", "image.colorize": "Colours black-and-white photos.",
         "image.matte": "The main subject as a mask, and cut out.", "image.segment": "The object at the given points, as a mask.",
         "image.describe": "A caption, alt text and tags.", "image.score": "No-reference quality, 0 to 1.",
+        "image.enhance_prompt": "The prompt as the target model would run it with prompt enhancement on, to show and edit "
+            + "before generating.",
     ]
 
     // MARK: - Validation

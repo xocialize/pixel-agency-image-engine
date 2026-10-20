@@ -188,6 +188,16 @@ enum OperationTable {
                       params: ["language"], inputs: ["image": true]),
         OperationSpec("image.score", .imageQualityScore, defaults: ["siglip2-quality"], otherTiers: all,
                       params: [], inputs: ["image": true]),
+        // The prompt enhancer's preview (Image §3.1; AB-D-0155, E5): its offers are the backbones (`PromptBackbones`), and
+        // it's declared while one is on (`ImageNormalizer.descriptor`). `target_model` is narrowed there to the target's
+        // offers. `images` aren't declared: the targets' enhancer reads no image (an edit's rewriter needs vision, E4).
+        OperationSpec(PromptEnhance.preview, .llm, defaults: [PromptEnhance.backboneID],
+                      params: [ImageProfile.Param.targetOperation, ImageProfile.Param.targetModel, "seed"],
+                      narrowed: [ImageProfile.Param.targetOperation: [
+                          "type": "string", "enum": .array(PromptEnhance.previewTargets.map { .string($0) }),
+                          "default": .string(PromptEnhance.previewTargets[0]),
+                      ]],
+                      inputs: ["prompt": true], restricted: [.llm: [PromptEnhance.backboneID]]),
     ]
 
     /// Edit models that erase by name (`RunPlan.eraseByName`): the removal gate measured Mage's (AB-R-0464).

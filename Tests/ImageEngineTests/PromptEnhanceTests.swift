@@ -54,7 +54,8 @@ struct PromptEnhanceTests {
         #expect(generate.models.first { $0.id == "z-image-turbo" }?.notes?.contains("prompt_enhance on rewrites") == true, "optional")
         #expect(generate.models.first { $0.id == "moss-image-sft" }?.notes == nil, "no profile")
         #expect(ops.first { $0.operation == "image.edit" }?.models.allSatisfy { $0.notes == nil } == true, "generate's notes only")
-        #expect(!ops.flatMap(\.models).contains { $0.id == PromptEnhance.backboneID }, "the backbone serves no operation")
+        #expect(ops.filter { $0.models.contains { $0.id == PromptEnhance.backboneID } }.map(\.operation) == ["image.enhance_prompt"],
+                "the backbone serves only the preview")
 
         // No text runner, or the backbone switched off: nothing rewrites, so nothing declares it, and offers say nothing
         // about prompts.

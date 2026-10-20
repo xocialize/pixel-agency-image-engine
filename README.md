@@ -143,6 +143,7 @@ Measured on this Mac (ENG R1b): the evidence for every row is in [`docs/TIERS.md
 | `image.segment` | EdgeTAM (named) | **SAM 2.1** | SAM 2.1 |
 | `image.describe` | Mage-VL |||
 | `image.score` | SigLIP2 quality |||
+| `image.enhance_prompt` | Qwen3.5 4B, the prompt enhancer's backbone, while it's on |||
 
 Bold is the default when a request names no model. MI-GAN and LaMa are one package (`lama-inpaint`), so the
 offer is LaMa's; `effective.model_params.variant` says which ran. MI-GAN takes draft, LaMa standard and best (its
@@ -353,6 +354,28 @@ The normalizer (`ImageNormalizer`, `RunPlan`) holds every model to the profile, 
 
     `MLXIMG_FLUX3_UPSAMPLER` sets it for the whole engine; `off` there loads none (`outcome: unavailable`, and `on`
     warns `prompt_enhance_ignored`). Prompts the engine writes (fill, extend, erase by name) always skip it.
+  - **The preview, `image.enhance_prompt` (0.7.0, E5; Image §3.1).** It returns the rewrite a generate job would run
+    with `prompt_enhance: on`, without generating, so Pixel Agency Lite and Desktop can show it and let the user edit it
+    before spending a run. The client then runs `image.generate` with that text, the same model named, and
+    `prompt_enhance: off`.
+    - **Declared while the backbone is on.** Its one offer is the backbone (`qwen3.5-4b`, Apache-2.0), so the request's
+      licence policy holds it at submit like any model.
+    - **Its input** is `prompt`. `images` isn't declared, since generate's enhancer reads no image.
+    - **Its params:**
+      - `target_operation` is `image.generate`, the only operation it enhances today (edits need E4);
+      - `target_model` is one of generate's offers, listed in the schema. Without one, it's the model generate runs
+        for a request that names none (Z-Image Turbo).
+      - `seed` is the job's, as on generate.
+    - **The same enhancer.** It's the same profile, seed, backbone request and outcomes as the job's own rewrite
+      (`RunPlan.rewrite`), so a seeded preview matches the generate job word for word.
+    - **The output** `enhanced` is `{prompt, applied}`. `applied` says whether the text changed, and
+      `effective.target_operation` and `effective.target_model` name the job it's for. A rewrite lists the backbone as
+      a `prompt_enhance` helper, but warns no `prompt_rewritten`, since no model received the text.
+      `effective.model_params.prompt_enhancement` has the same detail as on generate.
+    - **Nothing rewritten** returns the prompt as typed with `applied: false` and `prompt_enhance_ignored` (param
+      `target_model`), saying why: no profile (MOSS-Image, SenseNova), a structured prompt, or a failed rewrite (with
+      `prompt_enhance_failed` too). FLUX 3 Klein's own upsampler runs inside the model and doesn't hand its rewrite
+      back, so it can't be previewed. No profile suggests a `size` yet; Qwen-Image 2.1's `wh_ratio` comes with E3.
   - **Measured** ([docs/PROMPT-ENHANCE-AB.md](docs/PROMPT-ENHANCE-AB.md)). On four profiles × two prompts at one seed, SigLIP2
     quality rose or held in 7 of 8. The rewrite fixed rendered text twice (a stray "INIGHT", a sign reading "O PEN") and
     a spatial relation once, and it never broke a quoted string. A fixed seed reproduces the rewrite and the image
@@ -440,8 +463,10 @@ The normalizer (`ImageNormalizer`, `RunPlan`) holds every model to the profile, 
 
 ## Conformance
 
-The engine passes the MES conformance suite. Most recently, with prompt enhancement (2026-10-19): 35 passed, 0 failed,
-4 skipped, Base 0.1 and Image 0.1 conform ([`docs/conformance/2026-10-19-live.md`](docs/conformance/2026-10-19-live.md)).
+The engine passes the MES conformance suite. Most recently, 0.7.0 on media-engine-spec 0.4.0 with real models
+(2026-10-19): 40 passed, 0 failed, 4 skipped, Base 0.1 and Image 0.1 conform, IMAGE-011 (`image.enhance_prompt`) among
+them ([`docs/conformance/2026-10-19-live-0.7.0.md`](docs/conformance/2026-10-19-live-0.7.0.md)). The run before it,
+on MES 0.3: 35 passed, 0 failed, 4 skipped ([`docs/conformance/2026-10-19-live.md`](docs/conformance/2026-10-19-live.md)).
 Against the live engine with real models (2026-10-09):
 - **Results:** 34 passed, 0 failed, 4 skipped. **Base 0.1 conforms, Image 0.1 conforms.** The report is in
   [`docs/conformance/2026-10-10-live.md`](docs/conformance/2026-10-10-live.md) (re-run after R1b; the first run is `2026-10-09-live.md`).
@@ -455,7 +480,8 @@ mes-conformance engine http://127.0.0.1:17610/mes/v0
 
 `swift test` runs the suite against the normalizer over a fake catalog and runner (no MLX). Since 0.6.0 that's
 media-engine-spec 0.4.0's suite, and with adapters on offer it runs and passes BASE-013 and BASE-029 (adapters),
-IMAGE-012 (`prompt_enhance: off`) and IMAGE-013 (IC slots). The fake answers like
+IMAGE-012 (`prompt_enhance: off`) and IMAGE-013 (IC slots). Since 0.7.0 it also runs and passes IMAGE-011
+(`image.enhance_prompt`). The fake answers like
 real packages do, with sizes a little off, alpha dropped and mattes at their own resolution, so the tests prove the
 normalizer's rules rather than the models'. With network access it also registers the real catalog into an empty
 models folder and lists, on the hub, everything each default offer would download, without downloading (AB-T-0221);
@@ -470,7 +496,7 @@ offline, that test is skipped.
 | `Sources/PixelAgencyImageEngine/RunPlan.swift` | Each operation as model runs, and the profile's rules on the results |
 | `Sources/PixelAgencyImageEngine/Media.swift` | Pixels and masks: loading, compositing, padding, marking, encoding |
 | `Sources/PixelAgencyImageEngine/Runtime.swift` | Bootstraps the model runtime and the shared models folder; `EngineTextRunner` runs the backbone |
-| `Sources/PixelAgencyImageEngine/PromptEnhance.swift` | Prompt enhancement: `prompt_enhance`, the profiles' decisions, the backbone call and its licence, what's reported |
+| `Sources/PixelAgencyImageEngine/PromptEnhance.swift` | Prompt enhancement: `prompt_enhance`, the profiles' decisions, the backbone call and its licence, what's reported, and the preview (`image.enhance_prompt`) |
 | `Sources/PixelAgencyImageEngine/Adapters.swift` | Adapters: offers, licences, the enabled set, IC slots, prompts, pinned revisions |
 | `Sources/PromptBackbones` | The prompt enhancer's backbone as a catalog entry (links MLX through MLXQwenLLM) |
 | `Sources/ImageEngineHost` | The engine in the app: the console over the runtime, and the models folder (`ModelsFolder`, onboarding, Settings) |
@@ -492,9 +518,9 @@ offline, that test is skipped.
 - **Channel clearance** (ENG-14).
 - **A real edit benchmark**, before edit's best tier is final (docs/TIERS.md, Open).
 - **Prompt enhancement, the rest of AB-D-0155:**
-  - `image.enhance_prompt` (Image §3.1, E5), so a client can show and edit a rewrite before it runs;
-  - structured profiles on a larger backbone (E3);
-  - edit rewriters that see the image (E4);
+  - structured profiles on a larger backbone (E3), and with them a `size` in the preview;
+  - edit rewriters that see the image (E4), and with them `image.edit` as a preview target and `images` as its input;
+  - an Enhance button in Lite and Desktop that calls the preview;
   - the console line "Prompting: …" as MESEngineUI's own row (it's a tag on each card for now).
 - **Adapters, the rest of AB-D-0155:**
   - adapter cards nested under their model's card in MESEngineUI (they're cards of their own for now);

@@ -43,6 +43,7 @@ struct RunPlan {
         case "image.segment": outputs = try await segment()
         case "image.describe": outputs = try await describe()
         case "image.score": outputs = try await score()
+        case PromptEnhance.preview: outputs = try await previewPrompt()
         default: throw MESError(.unknownOperation, "No plan for \(spec.operation).")
         }
         if !modelParams.isEmpty { effective["model_params"] = .object(modelParams) }
