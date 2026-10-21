@@ -129,7 +129,8 @@ struct PromptEnhanceTests {
                 #expect(record["outcome"] == .string(outcome) && record["applied"] == false, "\(outcome)")
                 #expect(record["prompt"] == nil && job.result?.effective["prompt"] == nil && job.result?.provenance.helpers == nil)
                 #expect(Self.ranPrompt(runner) == request.inputs?["prompt"].flatMap { if case .text(let t) = $0 { t } else { nil } })
-                #expect(runner.textCalls.withLock { $0.isEmpty } && !runner.prepared.withLock { $0 }.contains(PromptEnhance.backboneID))
+                #expect(runner.textCalls.withLock { $0.isEmpty }
+                        && !runner.prepared.withLock { $0 }.contains { PromptEnhance.backboneIDs.contains($0) })
                 #expect(job.warnings.contains { $0.code == "prompt_enhance_ignored" } == warned, "\(outcome)")
                 #expect(!job.warnings.contains { $0.code == "prompt_rewritten" })
             }

@@ -438,7 +438,8 @@ The normalizer (`ImageNormalizer`, `RunPlan`) holds every model to the profile, 
     - **Nothing rewritten** returns the prompt as typed with `applied: false` and `prompt_enhance_ignored` (param
       `target_model`), saying why: no profile (Ming-Image), a structured prompt, or a failed rewrite (with
       `prompt_enhance_failed` too). FLUX 3 Klein's own upsampler runs inside the model and doesn't hand its rewrite
-      back, so it can't be previewed. No profile suggests a `size` yet; Qwen-Image 2.1's `wh_ratio` comes with E3.
+      back, so it can't be previewed. A `size` comes back with SenseNova's Render JSON (its suggested aspect) and
+      MOSS-Image's layouts (the canvas they're for); Qwen-Image 2.1's `wh_ratio` is still open.
   - **Measured** ([docs/PROMPT-ENHANCE-AB.md](docs/PROMPT-ENHANCE-AB.md)). On four profiles × two prompts at one seed, SigLIP2
     quality rose or held in 7 of 8. The rewrite fixed rendered text twice (a stray "INIGHT", a sign reading "O PEN") and
     a spatial relation once, and it never broke a quoted string. A fixed seed reproduces the rewrite and the image

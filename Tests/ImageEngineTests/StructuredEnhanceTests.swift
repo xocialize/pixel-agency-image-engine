@@ -128,6 +128,10 @@ struct StructuredEnhanceTests {
             #expect(Self.imageCall(runner)?.spec.params["prompt"]?.stringValue == "a cozy cabin" && runner.textCalls.withLock { $0.isEmpty })
             #expect(job.result?.effective["model_params"]?["prompt_enhancement"]?["outcome"] == "no_profile")
             #expect(job.warnings.contains { $0.code == "prompt_enhance_ignored" })
+            // Under auto it says nothing.
+            let auto = try await probe.succeed(Self.generate("a cozy cabin", model: "ming-image"))
+            #expect(auto.result?.effective["model_params"]?["prompt_enhancement"]?["outcome"] == "no_profile")
+            #expect(!auto.warnings.contains { $0.code == "prompt_enhance_ignored" })
         }
     }
 

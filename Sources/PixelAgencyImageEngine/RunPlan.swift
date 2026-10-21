@@ -242,17 +242,22 @@ struct RunPlan {
             warn(ImageProfile.WarningCode.sizeSnapped, "\(w)×\(h) became \(fitted.width)×\(fitted.height) for \(route.displayName).", param: "size")
         }
         if let canvas = layoutCanvas { fitted = (canvas.width, canvas.height) }
-        effective["size"] = ["width": .number(Double(fitted.width)), "height": .number(Double(fitted.height))]
+        effective["size"] = Self.sizeValue(fitted.width, fitted.height)
         return (fitted.width, fitted.height)
     }
 
+    /// A size on the wire: `{width, height}`.
+    static func sizeValue(_ width: Int, _ height: Int) -> MESValue {
+        ["width": .number(Double(width)), "height": .number(Double(height))]
+    }
+
     /// The size the request asks for, snapped to `model`'s envelope as `size(for:)` will: what a structured profile is
-    /// told to lay out for. nil when the request names none, except for a profile that lays out a canvas (MOSS-Image),
-    /// which is always told one, the model's default when the request names none: its boxes are in that canvas's pixels.
-    func targetSize(for model: String) async -> (width: Int, height: Int)? {
-        guard let info = await normalizer.directory.model(ModelID(model)) else { return nil }
-        let laysOut = PromptEnhance.library.profile(forModel: model)?.laysOutCanvas == true
-        guard let asked = askedSize() ?? (laysOut ? (info.defaults.width, info.defaults.height) : nil) else { return nil }
+    /// told to lay out for. nil when the request names none, unless `laysOut` (MOSS-Image), which is always told one, the
+    /// model's default when the request names none: its boxes are in that canvas's pixels.
+    func targetSize(for model: String, laysOut: Bool) async -> (width: Int, height: Int)? {
+        let asked = askedSize()
+        guard asked != nil || laysOut, let info = await normalizer.directory.model(ModelID(model)) else { return nil }
+        guard let asked = asked ?? (laysOut ? (info.defaults.width, info.defaults.height) : nil) else { return nil }
         let fitted = info.envelope.fit(width: asked.width, height: asked.height)
             ?? info.envelope.clamp(width: asked.width, height: asked.height)
         return (fitted.width, fitted.height)
@@ -273,8 +278,7 @@ struct RunPlan {
         let base = seed(count: count)
         // The request's prompt, enhanced for this model (`PromptEnhance`), before the model loads: one heavy model at a time.
         let typed = context.input("prompt")?.text ?? ""
-        var prompt = try await enhancedPrompt(typed, param: "prompt", task: .textToImage, seed: base,
-                                              targetSize: await targetSize(for: context.model.id))
+        var prompt = try await enhancedPrompt(typed, param: "prompt", task: .textToImage, seed: base)
         let route = try await route(.textToImage)
         // The request's adapters (`Adapters`): their trigger or template goes into the prompt after enhancement; an IC
         // adapter's slots take the `references`, in order (Image §1.10).

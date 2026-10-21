@@ -179,7 +179,7 @@ public enum PromptEnhance {
                 if let aspect = size.aspectRatio { suggested["aspect"] = .string(aspect) }
                 object["suggested_size"] = .object(suggested)
             }
-            if let canvas { object["canvas"] = ["width": .number(Double(canvas.width)), "height": .number(Double(canvas.height))] }
+            if let canvas { object["canvas"] = RunPlan.sizeValue(canvas.width, canvas.height) }
             if let attempts { object["attempts"] = .number(Double(attempts)) }
             return .object(object)
         }
@@ -200,9 +200,9 @@ extension RunPlan {
     /// `model_params.prompt_enhancement`; `reportPrompt` reports the text once adapters have had their say.
     ///
     /// A structured profile (one whose answer suggests a size: SenseNova's canvas) is told the size the
-    /// request asked for, if it asked (`targetSize`), and what it suggests is kept in `suggestedSize` for `size(for:)`.
-    mutating func enhancedPrompt(_ prompt: String, param: String, task: EnhanceTask, seed: UInt64,
-                                 targetSize: (width: Int, height: Int)? = nil) async throws -> String {
+    /// request asked for, if it asked (`targetSize`), and what it suggests is kept in `suggestedSize` for `size(for:)`;
+    /// a layout's canvas is kept in `layoutCanvas`.
+    mutating func enhancedPrompt(_ prompt: String, param: String, task: EnhanceTask, seed: UInt64) async throws -> String {
         let mode = promptEnhanceMode
         if context.descriptor.params["properties"]?[ImageProfile.Param.promptEnhance] != nil {
             effective[ImageProfile.Param.promptEnhance] = .string(mode.rawValue)
@@ -211,8 +211,7 @@ extension RunPlan {
             modelParams["prompt_enhancement"] = flux3Upsampler(mode, param: param).value
             return prompt
         }
-        let (text, record) = try await rewrite(prompt, param: param, task: task, seed: seed, mode: mode, for: context.model,
-                                               targetSize: targetSize)
+        let (text, record) = try await rewrite(prompt, param: param, task: task, seed: seed, mode: mode, for: context.model)
         suggestedSize = record.suggestedSize
         layoutCanvas = record.canvas
         modelParams["prompt_enhancement"] = record.value
@@ -231,10 +230,10 @@ extension RunPlan {
     /// target would run. The backbone loads only when the kit would call it; it runs with the job's `seed`, under the
     /// request's licence policy, and is listed in `helpers` when it rewrote. The backbone is the one the profile's class
     /// needs (`PromptEnhance.backbone(for:)`): a structured profile runs on the 9B, and isn't moved to the 4B when the 9B
-    /// is off. `targetSize` reaches only a profile whose answer suggests a size (`sizeFields`) or lays out a canvas
-    /// (`laysOutCanvas`, MOSS-Image), so prose rewrites don't change with the request's size.
+    /// is off. Only a profile whose answer suggests a size (`sizeFields`) or lays out a canvas (`laysOutCanvas`,
+    /// MOSS-Image) is told one (`targetSize(for:laysOut:)`), so prose rewrites don't change with the request's size.
     mutating func rewrite(_ prompt: String, param: String, task: EnhanceTask, seed: UInt64, mode: PromptEnhance.Mode,
-                          for model: ModelOffer, targetSize: (width: Int, height: Int)? = nil) async throws
+                          for model: ModelOffer) async throws
         -> (prompt: String, record: PromptEnhance.Record) {
         guard let profile = PromptEnhance.library.profile(forModel: model.id) else {
             if mode == .on {
@@ -303,7 +302,8 @@ extension RunPlan {
         await context.reporter.progress(previewing ? .running : .preparing, message: "enhancing the prompt")
         let enhancer = PromptEnhancer(parameters: LLMParameters(temperature: 0.7, maxTokens: 512, seed: seed))
         // The kit rethrows cancellation, so a cancelled job stops here instead of generating from the prompt as typed.
-        let target = profile.sizeFields.isEmpty && !profile.laysOutCanvas ? nil : targetSize
+        let target = profile.sizeFields.isEmpty && !profile.laysOutCanvas ? nil
+            : await targetSize(for: model.id, laysOut: profile.laysOutCanvas)
         let timeout = profile.backbone == .large ? normalizer.options.structuredPromptEnhanceTimeout
             : normalizer.options.promptEnhanceTimeout
         let result = try await enhancer.enhance(prompt, profile: profile, task: task, mode: enhanceMode, targetSize: target,
@@ -367,8 +367,7 @@ extension RunPlan {
                  + "Run it with prompt_enhance auto or on to have it upsampled, or off to send exactly this text.",
                  param: ImageProfile.Param.targetModel)
         } else {
-            (text, record) = try await rewrite(typed, param: "prompt", task: .textToImage, seed: base, mode: .on, for: target,
-                                               targetSize: await targetSize(for: target.id))
+            (text, record) = try await rewrite(typed, param: "prompt", task: .textToImage, seed: base, mode: .on, for: target)
         }
         record.applied = text != typed
         if !record.applied, !warnings.contains(where: { $0.code == ImageProfile.WarningCode.promptEnhanceIgnored }) {
@@ -385,12 +384,12 @@ extension RunPlan {
         modelParams["prompt_enhancement"] = record.value
         var enhanced: [String: MESValue] = ["prompt": .string(text), "applied": .bool(record.applied)]
         if record.applied, let canvas = record.canvas {
-            enhanced["size"] = ["width": .number(Double(canvas.width)), "height": .number(Double(canvas.height))]
+            enhanced["size"] = Self.sizeValue(canvas.width, canvas.height)
         } else if record.applied, let suggested = record.suggestedSize, let info = await normalizer.directory.model(ModelID(target.id)),
            let pixels = Self.pixels(suggested, defaultWidth: info.defaults.width, defaultHeight: info.defaults.height) {
             let fitted = info.envelope.fit(width: pixels.width, height: pixels.height)
                 ?? info.envelope.clamp(width: pixels.width, height: pixels.height)
-            enhanced["size"] = ["width": .number(Double(fitted.width)), "height": .number(Double(fitted.height))]
+            enhanced["size"] = Self.sizeValue(fitted.width, fitted.height)
         }
         return [.data(.object(enhanced), name: "enhanced")]
     }
