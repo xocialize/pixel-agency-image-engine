@@ -19,7 +19,7 @@ public final class ImageRuntime {
     }
 
     /// The engine's version, as `GET {path}` and provenance report it.
-    public nonisolated static let version = "0.9.0"
+    public nonisolated static let version = "0.9.1"
 
     /// A stable engine id (Base §4), made once and kept with the state.
     public nonisolated static func engineID(in state: URL) throws -> String {
